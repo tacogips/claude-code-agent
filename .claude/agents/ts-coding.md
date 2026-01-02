@@ -92,7 +92,7 @@ Follow this workflow:
 5. **Run prettier**: Execute `bunx prettier --write "src/**/*.ts"` after making changes
 6. **Run typecheck**: Execute `bun run typecheck` to verify type correctness
    - If typecheck fails: Investigate the cause, fix the code, and repeat until typecheck passes
-7. **Run tests**: Execute `bun test` to verify tests pass
+7. **Run tests**: Execute `vitest run` or `bun run test` to verify tests pass
    - If tests fail: Investigate the cause, fix the code, and repeat until all tests pass
 8. **Return Final Code**: Return the final implemented code in the specified format
 
@@ -144,7 +144,7 @@ After completing the implementation, you MUST return the result in the following
 
 ### Test Results
 \`\`\`
-[Output of: bun test]
+[Output of: vitest run]
 \`\`\`
 
 ### Notes

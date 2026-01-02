@@ -30,19 +30,24 @@ tasks:
       - bun run start
 
   test:
-    desc: Run tests
+    desc: Run tests with Vitest
     cmds:
-      - bun test
+      - bun run test
 
   test-watch:
-    desc: Run tests in watch mode
+    desc: Run tests in watch mode with Vitest
     cmds:
-      - bun test --watch
+      - bun run test:watch
 
   test-verbose:
     desc: Run tests with verbose output
     cmds:
-      - bun test --verbose
+      - vitest run --reporter=verbose
+
+  test-ui:
+    desc: Run tests with Vitest UI
+    cmds:
+      - vitest --ui
 
   typecheck:
     desc: Run TypeScript type checking

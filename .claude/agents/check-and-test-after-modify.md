@@ -19,14 +19,14 @@ The main agent should provide context about modifications in the prompt. This in
    - Example: "Modified user service to use new repository pattern"
    - Example: "Refactored repository interface for Organization model"
 
-2. **Modified Modules**: List of modules that were modified
-   - Example: "Modified modules: src/usecase, src/repository"
-   - Example: "Modified module: src/handler"
+2. **Modified Packages/Layers**: List of Clean Architecture packages that were modified
+   - Example: "Modified packages: packages/domain, packages/application"
+   - Example: "Modified package: packages/adapter/src/persistence"
 
 ### Optional Information:
 
 3. **Modified Files**: Specific files changed (helps identify test requirements)
-   - Example: "Modified files: src/usecase/userService.ts"
+   - Example: "Modified files: packages/application/src/usecases/create-user.ts"
    - Helps determine which tests to run
 
 4. **Custom Test Instructions**: Specific test requirements or constraints
@@ -37,13 +37,13 @@ The main agent should provide context about modifications in the prompt. This in
 ### Recommended Prompt Format:
 
 ```
-Modified modules: src/usecase, src/repository
+Modified packages: packages/application, packages/adapter
 
-Summary: Changed user service to use new search service instead of direct repository access.
+Summary: Changed CreateUserUseCase to use new repository implementation.
 
 Modified files:
-- src/usecase/userService.ts
-- src/repository/userRepository.ts
+- packages/application/src/usecases/create-user.ts
+- packages/adapter/src/persistence/postgres/user-repository.ts
 
 Test instructions: Run both unit tests and integration tests.
 ```
@@ -51,9 +51,9 @@ Test instructions: Run both unit tests and integration tests.
 ### Minimal Prompt Format:
 
 ```
-Modified modules: src/usecase
+Modified packages: packages/application
 
-Summary: Updated user search logic.
+Summary: Updated CreateUserUseCase logic.
 ```
 
 ### Handling Input:
@@ -71,14 +71,14 @@ Summary: Updated user search logic.
 - **CRITICAL**: When errors occur, provide comprehensive error details including:
   - Complete type error messages with file paths and line numbers
   - Full test failure output including assertions and error messages
-  - All stdout/stderr output from bun test
+  - All stdout/stderr output from Vitest
   - Stack traces and error context when available
 - Re-run tests and checks after fixes if needed
 - Respect custom test instructions from the prompt when provided
 
 ## Capabilities
 
-- Run bun tests and type checks
+- Run Vitest tests and type checks
 - Execute Taskfile test and check targets (if available)
 - Filter and run specific test suites or individual tests
 - Parse test output and type errors to identify failure patterns
@@ -163,23 +163,24 @@ Test: userService > should search users (src/usecase/userService.test.ts:45)
 Status: FAILED
 
 Complete Output:
-bun test v1.1.0
-
-src/usecase/userService.test.ts:
-  userService
-    x should search users (10.5ms)
+ FAIL  src/usecase/userService.test.ts > userService > should search users
 
 DEBUG: Entering test
 DEBUG: Created test user with ID: user-123
 DEBUG: Search response: { results: [] }
-error: expect(received).toEqual(expected)
 
-Expected: 5
-Received: 0
+AssertionError: expected 0 to deeply equal 5
 
-at src/usecase/userService.test.ts:62:5
+- Expected
++ Received
 
-1 fail | 0 pass
+- 5
++ 0
+
+ at src/usecase/userService.test.ts:62:5
+
+Test Files  1 failed (1)
+Tests  1 failed (1)
 ```
 
 This shows the calling agent:
@@ -231,29 +232,33 @@ This is useless because:
 
 ### For Testing
 
-1. **Default with bun test**: `bun test` for fast testing
-2. **Specific file**: `bun test src/usecase/userService.test.ts`
-3. **Verbose output**: `bun test --verbose` when debugging failures
-4. **Watch mode**: `bun test --watch` for continuous testing
+1. **Default with Vitest**: `bun run test` or `vitest run` for fast testing
+2. **Specific file**: `vitest run src/usecase/userService.test.ts`
+3. **Verbose output**: `vitest run --reporter=verbose` when debugging failures
+4. **Watch mode**: `vitest` or `vitest --watch` for continuous testing
 5. **If Taskfile available**: Check for `task test` target
 
 ### Test Commands
 
 ```bash
-# Run all tests
-bun test
+# Run all tests (single run)
+bun run test
+# or
+vitest run
 
 # Run tests for specific file
-bun test src/usecase/userService.test.ts
+vitest run src/usecase/userService.test.ts
 
 # Run tests matching pattern
-bun test --filter "user"
+vitest run --testNamePattern "user"
 
 # Run with verbose output
-bun test --verbose
+vitest run --reporter=verbose
 
-# Run in watch mode
-bun test --watch
+# Run in watch mode (default vitest behavior)
+vitest
+# or explicitly
+vitest --watch
 ```
 
 ### Type Check Commands
@@ -278,14 +283,17 @@ bunx prettier --check "src/**/*.ts"
 
 ### Determining Which Tests to Run
 
-1. **For regular module modifications**: Run tests in the modified module
-   - Example: Changes in `src/usecase/` -> Run `bun test src/usecase/`
+1. **For domain package modifications**: Run all tests (domain affects everything)
+   - Example: Changes in `packages/domain/` -> Run `vitest run`
 
-2. **For core/shared code modifications**: Run broader tests
-   - Example: Changes in `src/models/` -> Run `bun test`
+2. **For application package modifications**: Run application and adapter package tests
+   - Example: Changes in `packages/application/src/usecases/` -> Run `vitest run packages/application`
 
-3. **For handler modifications**: Run handler tests plus integration tests if available
-   - Example: Changes in `src/handler/` -> Run `bun test src/handler/`
+3. **For adapter package modifications**: Run adapter package tests plus integration tests
+   - Example: Changes in `packages/adapter/src/persistence/` -> Run `vitest run packages/adapter`
+
+4. **For infrastructure package modifications**: Run infrastructure and integration tests
+   - Example: Changes in `packages/infrastructure/src/server/` -> Run `vitest run packages/infrastructure tests/`
 
 ## Reporting Format
 

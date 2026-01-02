@@ -1,301 +1,560 @@
 # Project Layout Conventions
 
-Modern TypeScript project structure emphasizing clarity, maintainability, and scalability.
+Modern TypeScript project structure following Clean Architecture principles with Bun workspace for monorepo management.
 
-## Directory Structure
+## Clean Architecture Overview
 
-### Single Package (Recommended for this project)
+Clean Architecture organizes code into concentric layers with dependencies pointing inward:
+
+```
++--------------------------------------------------+
+|                 Infrastructure                    |
+|  +--------------------------------------------+  |
+|  |                  Adapter                   |  |
+|  |  +--------------------------------------+  |  |
+|  |  |             Application              |  |  |
+|  |  |  +--------------------------------+  |  |  |
+|  |  |  |            Domain              |  |  |  |
+|  |  |  |   (Entities, Value Objects)    |  |  |  |
+|  |  |  +--------------------------------+  |  |  |
+|  |  |       (Use Cases, Ports)             |  |  |
+|  |  +--------------------------------------+  |  |
+|  |     (Repositories, Mappers, DTOs)          |  |
+|  +--------------------------------------------+  |
+|       (Server, Config, External Services)        |
++--------------------------------------------------+
+```
+
+**Dependency Rule**: Inner layers MUST NOT know about outer layers. Domain cannot import from Application, Application cannot import from Adapter, etc.
+
+## Bun Workspace Layout (Clean Architecture)
+
+This project uses Bun workspaces to organize Clean Architecture layers as separate packages:
 
 ```
 project-root/
-  src/
-    index.ts              # Main entry point, exports public API
-    lib.ts                # Core library code
-    lib.test.ts           # Tests co-located with source
-    types/
-      index.ts            # Shared type definitions
-    utils/
-      index.ts            # Utility functions
-  dist/                   # Compiled output (gitignored)
-  package.json
-  tsconfig.json
-  bunfig.toml             # Bun-specific config (optional)
-```
+  package.json            # Workspace root
+  bun.lockb
+  tsconfig.json           # Base TypeScript config
+  bunfig.toml             # Bun configuration
 
-### Feature-First Organization (For larger projects)
+  packages/
+    domain/               # INNERMOST: Core business logic
+      package.json
+      tsconfig.json
+      src/
+        index.ts          # Public exports
+        entities/
+          index.ts
+          user.ts
+          order.ts
+        value-objects/
+          index.ts
+          email.ts
+          money.ts
+        errors.ts
 
-```
-project-root/
-  src/
-    features/
-      auth/
-        auth.service.ts
-        auth.service.test.ts
-        auth.types.ts
-        auth.errors.ts
-        index.ts          # Public exports for feature
-      users/
-        users.service.ts
-        users.repository.ts
-        users.types.ts
+    application/          # Use cases and ports
+      package.json
+      tsconfig.json
+      src/
         index.ts
-    shared/
-      types/
+        usecases/
+          index.ts
+          create-user.ts
+          create-user.test.ts
+          get-user-by-id.ts
+        ports/
+          index.ts
+          user-repository.ts
+          order-repository.ts
+        dto.ts
+
+    adapter/              # Implementations of ports
+      package.json
+      tsconfig.json
+      src/
         index.ts
-      utils/
-        result.ts
-        validation.ts
+        persistence/
+          index.ts
+          postgres/
+            index.ts
+            user-repository.ts
+            user-repository.test.ts
+          memory/
+            index.ts
+            user-repository.ts
+        mappers/
+          index.ts
+          user-mapper.ts
+
+    infrastructure/       # OUTERMOST: External concerns
+      package.json
+      tsconfig.json
+      src/
         index.ts
-      errors/
-        base-error.ts
+        server/
+          index.ts
+          routes.ts
+          handlers.ts
+        config.ts
+        cli.ts
+
+  apps/                   # Application entry points
+    api/
+      package.json
+      tsconfig.json
+      src/
+        index.ts          # Main entry point
+    cli/
+      package.json
+      tsconfig.json
+      src/
         index.ts
-    index.ts              # Main entry point
+
+  tests/                  # Integration tests
+    api.test.ts
 ```
 
-### Key Principles
+## Workspace Configuration
 
-1. **Feature over layer** - Group by feature (auth, users), not layer (services, repositories)
-2. **Co-located tests** - Keep `*.test.ts` next to source files
-3. **Flat hierarchy** - Maximum 3 levels of nesting
-4. **Explicit exports** - Each directory has `index.ts` with public API
-5. **Shared is thin** - Only truly shared code goes in `shared/`
-
-## File Naming Conventions
-
-### Use kebab-case for files and directories
-
-```
-src/
-  auth-service.ts         # kebab-case
-  user-repository.ts
-  api-client/
-    http-client.ts
-```
-
-Why kebab-case:
-- Avoids case-sensitivity issues across OS (Windows vs Linux/Mac)
-- Consistent with npm package naming
-- URL-friendly
-
-### Suffixes indicate purpose
-
-| Suffix | Purpose |
-|--------|---------|
-| `.ts` | Regular TypeScript source |
-| `.test.ts` | Unit tests |
-| `.spec.ts` | Integration/E2E tests |
-| `.types.ts` | Type definitions only |
-| `.d.ts` | Declaration files |
-
-## Import Organization
-
-### Use absolute imports with path aliases
+### Root package.json
 
 ```json
-// tsconfig.json
 {
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@/features/*": ["src/features/*"],
-      "@/shared/*": ["src/shared/*"]
-    }
+  "name": "my-project",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "vitest run",
+    "build": "bun run --filter '*' build"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/bun": "latest"
   }
 }
 ```
 
-```typescript
-// Instead of:
-import { User } from '../../../shared/types';
+### Domain Package package.json (Minimal Dependencies)
 
-// Use:
-import { User } from '@/shared/types';
+```json
+{
+  "name": "@myproject/domain",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
 ```
 
-### Import order convention
+### Application Package package.json
 
-```typescript
-// 1. Node built-ins
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-
-// 2. External packages
-import { z } from 'zod';
-import { Result, ok, err } from 'neverthrow';
-
-// 3. Internal absolute imports
-import { User } from '@/shared/types';
-import { createLogger } from '@/shared/utils';
-
-// 4. Relative imports (same feature/module)
-import { validateEmail } from './validation';
-import type { AuthConfig } from './auth.types';
+```json
+{
+  "name": "@myproject/application",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@myproject/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
 ```
 
-## Module Exports
+### Adapter Package package.json
 
-### Barrel exports (index.ts)
-
-```typescript
-// src/features/auth/index.ts
-export { AuthService } from './auth.service';
-export type { AuthConfig, AuthResult } from './auth.types';
-// Do NOT export internal implementation details
+```json
+{
+  "name": "@myproject/adapter",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@myproject/domain": "workspace:*",
+    "@myproject/application": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
 ```
 
-### Re-export vs direct export
+### Infrastructure Package package.json
 
-```typescript
-// GOOD: Export only public API
-export { createUser, updateUser } from './user.service';
-export type { User, CreateUserInput } from './user.types';
-
-// BAD: Export everything
-export * from './user.service';      // Exposes internals
-export * from './user.repository';   // Exposes implementation
+```json
+{
+  "name": "@myproject/infrastructure",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@myproject/domain": "workspace:*",
+    "@myproject/application": "workspace:*",
+    "@myproject/adapter": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
 ```
 
-### Type-only exports
+## Layer Responsibilities
+
+### Domain Layer (`packages/domain/`)
+
+Pure business logic with zero external dependencies:
+- Entities with business rules
+- Value objects for type safety
+- Domain-specific error types
 
 ```typescript
-// Separate type exports for tree-shaking
-export type { User, CreateUserInput } from './user.types';
+// packages/domain/src/entities/user.ts
+import type { Email } from "../value-objects/email";
+import { DomainError } from "../errors";
 
-// Or inline
-export { type User, createUser } from './user';
-```
+export interface UserId {
+  readonly value: string;
+  readonly __brand: "UserId";
+}
 
-## Type Organization
-
-### Dedicated types file
-
-```typescript
-// src/features/users/users.types.ts
-
-// Domain entities
 export interface User {
   readonly id: UserId;
   readonly email: Email;
-  name: string;
-  createdAt: Date;
+  readonly name: string;
 }
 
-// Input types
+export function createUser(email: Email, name: string): User {
+  if (name.trim().length === 0) {
+    throw new DomainError("User name cannot be empty");
+  }
+  return {
+    id: { value: crypto.randomUUID(), __brand: "UserId" } as UserId,
+    email,
+    name: name.trim(),
+  };
+}
+```
+
+```typescript
+// packages/domain/src/value-objects/email.ts
+import { DomainError } from "../errors";
+
+export interface Email {
+  readonly value: string;
+  readonly __brand: "Email";
+}
+
+export function parseEmail(value: string): Email {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(value)) {
+    throw new DomainError(`Invalid email format: ${value}`);
+  }
+  return { value, __brand: "Email" } as Email;
+}
+```
+
+### Application Layer (`packages/application/`)
+
+Use case implementations and port definitions:
+
+```typescript
+// packages/application/src/ports/user-repository.ts
+import type { User, UserId } from "@myproject/domain";
+
+export interface UserRepository {
+  findById(id: UserId): Promise<User | null>;
+  save(user: User): Promise<void>;
+  delete(id: UserId): Promise<void>;
+}
+```
+
+```typescript
+// packages/application/src/usecases/create-user.ts
+import { createUser, parseEmail } from "@myproject/domain";
+import type { User } from "@myproject/domain";
+import type { UserRepository } from "../ports/user-repository";
+
 export interface CreateUserInput {
   email: string;
   name: string;
 }
 
-// Output types
-export interface UserSummary {
-  id: string;
-  name: string;
+export interface CreateUserUseCase {
+  execute(input: CreateUserInput): Promise<User>;
 }
 
-// Internal types (not exported from index.ts)
-export interface UserRow {
-  id: string;
-  email: string;
-  name: string;
-  created_at: string;
+export function createCreateUserUseCase(
+  userRepo: UserRepository
+): CreateUserUseCase {
+  return {
+    async execute(input: CreateUserInput): Promise<User> {
+      const email = parseEmail(input.email);
+      const user = createUser(email, input.name);
+      await userRepo.save(user);
+      return user;
+    },
+  };
 }
 ```
 
-### Global types
+### Adapter Layer (`packages/adapter/`)
+
+Concrete implementations of ports:
 
 ```typescript
-// src/shared/types/index.ts
+// packages/adapter/src/persistence/postgres/user-repository.ts
+import type { User, UserId } from "@myproject/domain";
+import type { UserRepository } from "@myproject/application";
+import { userMapper } from "../../mappers/user-mapper";
+import type { Database } from "./database";
 
-// Branded types
-export type Brand<T, B extends string> = T & { readonly __brand: B };
-export type UserId = Brand<string, 'UserId'>;
-export type Email = Brand<string, 'Email'>;
+export function createPostgresUserRepository(db: Database): UserRepository {
+  return {
+    async findById(id: UserId): Promise<User | null> {
+      const row = await db.query("SELECT * FROM users WHERE id = $1", [id.value]);
+      return row ? userMapper.toEntity(row) : null;
+    },
 
-// Utility types
-export type Result<T, E> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+    async save(user: User): Promise<void> {
+      const row = userMapper.toRow(user);
+      await db.query(
+        "INSERT INTO users (id, email, name) VALUES ($1, $2, $3)",
+        [row.id, row.email, row.name]
+      );
+    },
 
-// Common interfaces
-export interface Timestamped {
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
+    async delete(id: UserId): Promise<void> {
+      await db.query("DELETE FROM users WHERE id = $1", [id.value]);
+    },
+  };
 }
 ```
 
-## Configuration Files
+### Infrastructure Layer (`packages/infrastructure/`)
 
-### tsconfig.json structure
+Server setup and external integrations:
+
+```typescript
+// packages/infrastructure/src/server/routes.ts
+import { Hono } from "hono";
+import { createCreateUserUseCase } from "@myproject/application";
+import { createPostgresUserRepository } from "@myproject/adapter";
+import type { Database } from "@myproject/adapter";
+
+export function createRouter(db: Database) {
+  const app = new Hono();
+
+  const userRepo = createPostgresUserRepository(db);
+  const createUser = createCreateUserUseCase(userRepo);
+
+  app.post("/users", async (c) => {
+    const body = await c.req.json();
+    const user = await createUser.execute(body);
+    return c.json(user, 201);
+  });
+
+  return app;
+}
+```
+
+## File Naming Conventions
+
+Use kebab-case for all files and directories:
+
+```
+packages/
+  domain/
+    src/
+      entities/
+        user.ts           # kebab-case
+        order-item.ts
+      value-objects/
+        email.ts
+        money-amount.ts
+  application/
+    src/
+      usecases/
+        create-user.ts
+        create-user.test.ts   # Co-located tests
+        get-user-by-id.ts
+```
+
+## Import Organization
+
+### Use workspace package imports
+
+```typescript
+// In packages/application/src/usecases/create-user.ts
+
+// Import from workspace packages
+import { createUser, parseEmail } from "@myproject/domain";
+import type { User } from "@myproject/domain";
+
+// Relative imports within same package
+import type { UserRepository } from "../ports/user-repository";
+```
+
+### tsconfig.json with paths
 
 ```json
+// packages/application/tsconfig.json
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    // Output
-    "outDir": "./dist",
     "rootDir": "./src",
-
-    // Module
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "target": "ESNext",
-
-    // Strict
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noPropertyAccessFromIndexSignature": true,
-
-    // Paths
-    "baseUrl": ".",
+    "outDir": "./dist",
     "paths": {
-      "@/*": ["src/*"]
+      "@myproject/domain": ["../domain/src"],
+      "@myproject/domain/*": ["../domain/src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"]
 }
+```
+
+## Testing Organization
+
+### Unit Tests (Co-located)
+
+```typescript
+// packages/application/src/usecases/create-user.test.ts
+import { describe, test, expect, mock } from "bun:test";
+import { createCreateUserUseCase } from "./create-user";
+import type { UserRepository } from "../ports/user-repository";
+
+describe("CreateUserUseCase", () => {
+  test("creates user with valid input", async () => {
+    const mockRepo: UserRepository = {
+      findById: mock(() => Promise.resolve(null)),
+      save: mock(() => Promise.resolve()),
+      delete: mock(() => Promise.resolve()),
+    };
+
+    const usecase = createCreateUserUseCase(mockRepo);
+    const user = await usecase.execute({
+      email: "test@example.com",
+      name: "Alice",
+    });
+
+    expect(user.name).toBe("Alice");
+    expect(mockRepo.save).toHaveBeenCalled();
+  });
+});
+```
+
+### Integration Tests
+
+```typescript
+// tests/api.test.ts
+import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { createApp } from "@myproject/infrastructure";
+
+describe("API Integration", () => {
+  let app: ReturnType<typeof createApp>;
+
+  beforeAll(async () => {
+    app = await createApp({ database: "test" });
+  });
+
+  test("POST /users creates a user", async () => {
+    const response = await app.request("/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "test@example.com", name: "Alice" }),
+    });
+
+    expect(response.status).toBe(201);
+  });
+});
 ```
 
 ## Anti-Patterns to Avoid
 
+```typescript
+// BAD: Domain imports from infrastructure
+// packages/domain/src/entities/user.ts
+import { db } from "@myproject/infrastructure";  // NEVER!
+
+// GOOD: Domain has no external dependencies
+// packages/domain/src/entities/user.ts
+export interface User { ... }
 ```
-// BAD: Layer-first organization
+
+```typescript
+// BAD: Use case knows about HTTP
+// packages/application/src/usecases/create-user.ts
+import { Request, Response } from "hono";  // NEVER!
+
+// GOOD: Use plain DTOs
+export interface CreateUserInput {
+  email: string;
+  name: string;
+}
+```
+
+```typescript
+// BAD: Layer-first organization (old style)
 src/
   controllers/
-    user-controller.ts
-    auth-controller.ts
   services/
-    user-service.ts
-    auth-service.ts
   repositories/
-    user-repository.ts
-    auth-repository.ts
 
-// BAD: Deep nesting
-src/
-  modules/
-    core/
-      domain/
-        entities/
-          user/
-            user.entity.ts   // 5 levels deep!
+// GOOD: Clean Architecture with workspaces
+packages/
+  domain/
+  application/
+  adapter/
+  infrastructure/
+```
 
-// BAD: Inconsistent naming
-src/
-  UserService.ts      # PascalCase
-  auth-service.ts     # kebab-case
-  orderService.ts     # camelCase
+## Workspace Commands
 
-// BAD: Mixed test locations
-src/
-  user.ts
-tests/
-  user.test.ts        # Tests far from source
+```bash
+# Install all dependencies
+bun install
+
+# Run typecheck across all packages
+bun run typecheck
+
+# Run tests in specific package
+vitest run --project @myproject/application
+
+# Run all tests
+vitest run
+
+# Build all packages
+bun run build
 ```
 
 ## References
 
+- [Clean Architecture by Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- [Practical Clean Architecture in TypeScript](https://dev.to/msc29/practical-clean-architecture-in-typescript-rust-python-3a6d)
+- [Bun Workspaces](https://bun.sh/docs/install/workspaces)
 - [TypeScript Project References](https://www.typescriptlang.org/docs/handbook/project-references.html)
-- [12 TypeScript Project Layouts That Age Well](https://medium.com/@sparknp1/12-typescript-project-layouts-that-age-well-3159c6510257)
-- [React Folder Structure 2025](https://www.robinwieruch.de/react-folder-structure/)

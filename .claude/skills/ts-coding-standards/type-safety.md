@@ -29,120 +29,86 @@ const first = items.at(0) ?? 'default';
 
 ### `exactOptionalPropertyTypes`
 
-Optional properties and `undefined` are different:
+Optional properties cannot be assigned `undefined` explicitly:
 
 ```typescript
 interface Config {
   name: string;
-  timeout?: number; // May be absent, but if present must be number
+  timeout?: number; // Optional, but NOT number | undefined
 }
 
-// BAD - cannot assign undefined to optional property
+// BAD - explicit undefined not allowed
 const config: Config = {
-  name: 'app',
+  name: 'test',
   timeout: undefined, // Error with exactOptionalPropertyTypes
 };
 
-// GOOD - omit the property entirely
+// GOOD - omit the property
 const config: Config = {
-  name: 'app',
-  // timeout is absent, not undefined
+  name: 'test',
+  // timeout is simply not present
 };
 
-// If undefined is valid, be explicit
+// If you need explicit undefined, declare it:
 interface ConfigWithUndefined {
   name: string;
-  timeout?: number | undefined; // Explicitly allows undefined
+  timeout?: number | undefined; // Now undefined is allowed
 }
 ```
 
 ### `noPropertyAccessFromIndexSignature`
 
-Use bracket notation for index signatures:
+Forces bracket notation for index signature access:
 
 ```typescript
-interface Headers {
-  'content-type': string;
+interface Dictionary {
   [key: string]: string;
+  knownKey: string; // Known property
 }
 
-const headers: Headers = { 'content-type': 'application/json' };
+const dict: Dictionary = { knownKey: 'value' };
 
-// BAD - dot notation for index signature
-const custom = headers.customHeader; // Error
+// BAD - dot notation hides the dynamic nature
+const value = dict.unknownKey; // Error
 
-// GOOD - bracket notation makes dynamic access explicit
-const custom = headers['customHeader'];
+// GOOD - bracket notation makes it explicit
+const value = dict['unknownKey']; // OK, clearly dynamic access
+const known = dict.knownKey; // OK, known property
 ```
 
 ## Branded Types
 
-Prevent mixing structurally identical but semantically different types:
+Prevent mixing up primitive values that represent different things:
 
 ```typescript
-// Define brand types
+// Define branded types
 type Brand<T, B extends string> = T & { readonly __brand: B };
 
 type UserId = Brand<string, 'UserId'>;
 type OrderId = Brand<string, 'OrderId'>;
 type Email = Brand<string, 'Email'>;
 
-// Constructor functions with validation
+// Constructor functions
 function createUserId(id: string): UserId {
-  if (!id.match(/^user_[a-z0-9]+$/)) {
-    throw new Error('Invalid user ID format');
-  }
   return id as UserId;
 }
 
 function createEmail(email: string): Email {
   if (!email.includes('@')) {
-    throw new Error('Invalid email format');
+    throw new Error('Invalid email');
   }
   return email as Email;
 }
 
-// Usage - cannot mix different ID types
+// Usage - compiler prevents mixing
 function getUser(id: UserId): User { /* ... */ }
 function getOrder(id: OrderId): Order { /* ... */ }
 
-const userId = createUserId('user_abc123');
-const orderId = 'order_xyz' as OrderId;
+const userId = createUserId('user-123');
+const orderId = createUserId('order-456') as unknown as OrderId;
 
-getUser(userId);   // OK
-getUser(orderId);  // Error: OrderId not assignable to UserId
-```
-
-## Discriminated Unions
-
-Model state machines and complex types:
-
-```typescript
-// API Response states
-type ApiResponse<T> =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'success'; data: T }
-  | { status: 'error'; error: Error };
-
-function renderResponse<T>(response: ApiResponse<T>): string {
-  switch (response.status) {
-    case 'idle':
-      return 'Ready to fetch';
-    case 'loading':
-      return 'Loading...';
-    case 'success':
-      return `Data: ${JSON.stringify(response.data)}`;
-    case 'error':
-      return `Error: ${response.error.message}`;
-  }
-}
-
-// Form field states
-type FieldState =
-  | { touched: false }
-  | { touched: true; valid: true; value: string }
-  | { touched: true; valid: false; errors: string[] };
+getUser(userId);  // OK
+getUser(orderId); // Error: OrderId not assignable to UserId
 ```
 
 ## Type Guards
@@ -155,121 +121,28 @@ function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
-// Type guard for objects
-function isUser(value: unknown): value is User {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    'name' in value &&
-    typeof (value as User).id === 'string' &&
-    typeof (value as User).name === 'string'
-  );
-}
+// Discriminated union type guard
+type Result<T, E> =
+  | { ok: true; value: T }
+  | { ok: false; error: E };
 
-// Assertion function (throws if invalid)
-function assertNonNull<T>(value: T | null | undefined): asserts value is T {
-  if (value === null || value === undefined) {
-    throw new Error('Value must not be null or undefined');
-  }
+function isOk<T, E>(result: Result<T, E>): result is { ok: true; value: T } {
+  return result.ok;
 }
 
 // Usage
-function processValue(value: unknown): void {
-  if (isUser(value)) {
-    console.log(value.name); // Type: User
+function processResult(result: Result<User, Error>): void {
+  if (isOk(result)) {
+    console.log(result.value.name); // Type narrowed to { ok: true; value: User }
+  } else {
+    console.error(result.error.message); // Type narrowed to { ok: false; error: Error }
   }
-
-  const maybeNull: string | null = getValue();
-  assertNonNull(maybeNull);
-  console.log(maybeNull.length); // Type: string (not null)
-}
-```
-
-## Const Assertions
-
-Create narrow literal types:
-
-```typescript
-// Without const assertion
-const colors = ['red', 'green', 'blue']; // Type: string[]
-
-// With const assertion
-const colors = ['red', 'green', 'blue'] as const; // Type: readonly ['red', 'green', 'blue']
-
-// Derive types from const values
-type Color = (typeof colors)[number]; // Type: 'red' | 'green' | 'blue'
-
-// Object with const assertion
-const config = {
-  endpoint: '/api',
-  timeout: 5000,
-  methods: ['GET', 'POST'],
-} as const;
-
-type Config = typeof config;
-// Type: {
-//   readonly endpoint: '/api';
-//   readonly timeout: 5000;
-//   readonly methods: readonly ['GET', 'POST'];
-// }
-```
-
-## Template Literal Types
-
-Create type-safe string patterns:
-
-```typescript
-// Event names
-type EventName = `on${Capitalize<string>}`;
-const onClick: EventName = 'onClick';    // OK
-const click: EventName = 'click';        // Error
-
-// CSS units
-type CssUnit = 'px' | 'em' | 'rem' | '%';
-type CssValue = `${number}${CssUnit}`;
-const width: CssValue = '100px';  // OK
-const bad: CssValue = '100';      // Error
-
-// API routes
-type ApiRoute = `/api/${string}`;
-type UserRoute = `/api/users/${string}`;
-```
-
-## Mapped Types
-
-Transform existing types:
-
-```typescript
-// Make all properties optional
-type Optional<T> = {
-  [K in keyof T]?: T[K];
-};
-
-// Make all properties readonly
-type Immutable<T> = {
-  readonly [K in keyof T]: T[K] extends object ? Immutable<T[K]> : T[K];
-};
-
-// Extract only function properties
-type Methods<T> = {
-  [K in keyof T as T[K] extends (...args: unknown[]) => unknown ? K : never]: T[K];
-};
-
-// Create validation schema from type
-type ValidationSchema<T> = {
-  [K in keyof T]: (value: T[K]) => boolean;
-};
-
-interface User {
-  name: string;
-  age: number;
 }
 
-const userValidation: ValidationSchema<User> = {
-  name: (v) => v.length > 0,
-  age: (v) => v >= 0,
-};
+// Array type guard with filter
+const items: (string | null)[] = ['a', null, 'b'];
+const strings = items.filter((item): item is string => item !== null);
+// strings is string[], not (string | null)[]
 ```
 
 ## Readonly and Immutability
@@ -277,60 +150,178 @@ const userValidation: ValidationSchema<User> = {
 Prevent accidental mutations:
 
 ```typescript
+// Readonly properties
+interface User {
+  readonly id: string;
+  readonly createdAt: Date;
+  name: string; // Mutable
+}
+
 // Readonly arrays
 function processItems(items: readonly string[]): void {
-  items.push('new'); // Error: push does not exist on readonly
-  const copy = [...items, 'new']; // OK: creates new array
+  items.push('new'); // Error: push does not exist on readonly string[]
 }
 
-// Readonly objects
-interface Config {
-  readonly apiKey: string;
-  readonly endpoints: readonly string[];
-}
-
-// Deep readonly
+// Deep readonly with utility type
 type DeepReadonly<T> = {
-  readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
+  readonly [P in keyof T]: T[P] extends object ? DeepReadonly<T[P]> : T[P];
 };
+
+// Readonly parameter with as const
+const config = {
+  api: {
+    baseUrl: 'https://api.example.com',
+    timeout: 5000,
+  },
+} as const;
+// config.api.baseUrl = 'new'; // Error: readonly
+```
+
+## Discriminated Unions
+
+Model state machines and complex types safely:
+
+```typescript
+// Request state machine
+type RequestState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: Error };
+
+function handleRequest<T>(state: RequestState<T>): string {
+  switch (state.status) {
+    case 'idle':
+      return 'Ready to start';
+    case 'loading':
+      return 'Loading...';
+    case 'success':
+      return `Data: ${JSON.stringify(state.data)}`;
+    case 'error':
+      return `Error: ${state.error.message}`;
+    default:
+      // Exhaustiveness check
+      const _exhaustive: never = state;
+      throw new Error(`Unhandled state: ${_exhaustive}`);
+  }
+}
+```
+
+## Template Literal Types
+
+Create precise string types:
+
+```typescript
+// Event names
+type EventName = `on${Capitalize<'click' | 'focus' | 'blur'>}`;
+// 'onClick' | 'onFocus' | 'onBlur'
+
+// Route paths
+type ApiRoute = `/api/${string}`;
+const route: ApiRoute = '/api/users'; // OK
+const invalid: ApiRoute = '/users'; // Error
+
+// CSS units
+type CSSUnit = `${number}${'px' | 'rem' | 'em' | '%'}`;
+const width: CSSUnit = '100px'; // OK
+const invalid: CSSUnit = '100'; // Error
+```
+
+## Utility Types
+
+Leverage built-in utility types:
+
+```typescript
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+}
+
+// Partial - all properties optional
+type PartialUser = Partial<User>;
+
+// Required - all properties required
+type RequiredUser = Required<PartialUser>;
+
+// Pick - select specific properties
+type UserCredentials = Pick<User, 'email' | 'password'>;
+
+// Omit - exclude specific properties
+type PublicUser = Omit<User, 'password'>;
+
+// Record - dictionary type
+type UserMap = Record<string, User>;
+
+// Extract/Exclude for union types
+type StringOrNumber = string | number | boolean;
+type OnlyStrings = Extract<StringOrNumber, string>; // string
+type NoStrings = Exclude<StringOrNumber, string>; // number | boolean
 ```
 
 ## Anti-Patterns to Avoid
 
 ```typescript
-// BAD: Using 'any'
-function parse(data: any): any { /* ... */ }
+// BAD: Using any
+function process(data: any): void {
+  data.foo.bar.baz(); // No type safety
+}
 
-// GOOD: Use 'unknown' and narrow
-function parse(data: unknown): Result<ParsedData, ParseError> {
-  if (!isValidData(data)) {
-    return err(new ParseError('Invalid data'));
+// GOOD: Use unknown and narrow
+function process(data: unknown): void {
+  if (typeof data === 'object' && data !== null && 'foo' in data) {
+    // Narrowed safely
   }
-  return ok(data as ParsedData);
 }
 
-// BAD: Type assertions without validation
-const user = response.data as User;
+// BAD: Type assertion without validation
+const user = JSON.parse(json) as User; // Unsafe
 
-// GOOD: Validate before asserting
-if (!isUser(response.data)) {
-  throw new Error('Invalid user data');
+// GOOD: Validate at runtime
+import { z } from 'zod';
+const UserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+const user = UserSchema.parse(JSON.parse(json)); // Safe
+
+// BAD: Ignoring null/undefined
+const name = user.profile.name; // Could be undefined
+
+// GOOD: Explicit handling
+const name = user.profile?.name ?? 'Unknown';
+
+// BAD: Non-exhaustive switch
+function getLabel(status: 'active' | 'inactive' | 'pending'): string {
+  switch (status) {
+    case 'active':
+      return 'Active';
+    case 'inactive':
+      return 'Inactive';
+    // Missing 'pending' - no compile error without exhaustive check
+  }
 }
-const user = response.data; // Type already narrowed
 
-// BAD: Non-null assertion without guarantee
-const element = document.querySelector('.item')!;
-
-// GOOD: Handle null case explicitly
-const element = document.querySelector('.item');
-if (!element) {
-  throw new Error('Element not found');
+// GOOD: Exhaustive switch
+function getLabel(status: 'active' | 'inactive' | 'pending'): string {
+  switch (status) {
+    case 'active':
+      return 'Active';
+    case 'inactive':
+      return 'Inactive';
+    case 'pending':
+      return 'Pending';
+    default:
+      const _exhaustive: never = status;
+      throw new Error(`Unhandled status: ${_exhaustive}`);
+  }
 }
-// element is now non-null
 ```
 
 ## References
 
 - [TypeScript Handbook - Narrowing](https://www.typescriptlang.org/docs/handbook/2/narrowing.html)
-- [TypeScript TSConfig Reference](https://www.typescriptlang.org/tsconfig/)
-- [The Strictest TypeScript Config](https://whatislove.dev/articles/the-strictest-typescript-config/)
+- [TypeScript Handbook - Utility Types](https://www.typescriptlang.org/docs/handbook/utility-types.html)
+- [Total TypeScript](https://www.totaltypescript.com/)
+- [Type Challenges](https://github.com/type-challenges/type-challenges)
