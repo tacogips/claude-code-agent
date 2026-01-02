@@ -98,6 +98,16 @@ When user responds in `design-docs/qa/responses.md`:
 4. **Version tracking** in document headers
 5. **Decision rationale** always documented
 
+## Security Guidelines
+
+**MANDATORY**: All design documents must follow security guidelines defined in `.claude/skills/design/security.md`.
+
+Key rules:
+- **No absolute host paths**: Use relative paths or placeholders like `{project_root}`
+- **No credential values**: Never include actual values of GITHUB_TOKEN, API keys, SSH private keys, cryptocurrency keys, etc.
+- **No private repo URLs**: Treat GitHub private repository URLs as credentials (only include if user explicitly requests)
+- **Use placeholders**: For sensitive values, use `{VARIABLE_NAME}` or `${ENV_VAR}` notation
+
 ## Commands
 
 At the start of each session:
