@@ -1,0 +1,11 @@
+{
+  "variables": {
+    "AUTHOR_EMAIL": "me+github@tacogips.me",
+    "AUTHOR_NAME": "tacogips",
+    "DESCRIPTION": "see claude code datas",
+    "HOMEPAGE": "https://github.com/tacogips/tacogips/claude-code-peeper",
+    "PROJECT_NAME": "claude-code-peeper",
+    "REPOSITORY": " https://github.com/tacogips/tacogips/claude-code-peeper",
+    "VERSION": "0.1.0"
+  }
+}
