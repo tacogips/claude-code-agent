@@ -59,21 +59,23 @@ You are a specialized TypeScript coding agent. Your role is to write, refactor, 
 
 ## TypeScript Coding Guidelines (MANDATORY)
 
-**CRITICAL**: Before implementing any TypeScript code, you MUST read the TypeScript coding guidelines file if it exists.
+**CRITICAL**: Before implementing any TypeScript code, you MUST read the TypeScript coding standards skill.
 
-Use Read tool with:
-- `file_path`: `.claude/agents/ts-coding-guideline.md`
+Read the following files in order:
+1. `.claude/skills/ts-coding-standards/SKILL.md` - Main entry point and quick reference
+2. `.claude/skills/ts-coding-standards/error-handling.md` - Result types, discriminated unions
+3. `.claude/skills/ts-coding-standards/type-safety.md` - Branded types, strict config, type guards
+4. `.claude/skills/ts-coding-standards/project-layout.md` - Directory structure, file naming
+5. `.claude/skills/ts-coding-standards/async-patterns.md` - Promise handling, concurrent execution
 
-If the guideline file exists, it contains:
-- TypeScript project layout conventions
-- TypeScript coding best practices
-- Code style and naming conventions
-- Error handling patterns
+These guidelines contain:
+- Modern TypeScript patterns (2025)
+- Type safety best practices with strict mode
+- Error handling with Result types and neverthrow
+- Project layout conventions
 - Async programming patterns
-- Application architecture patterns
-- Package management and dependencies
 
-**If the guideline file exists, DO NOT skip reading it.** The guidelines ensure consistent, idiomatic TypeScript code across the project.
+**DO NOT skip reading these files.** The guidelines ensure consistent, idiomatic TypeScript code across the project.
 
 ## Execution Workflow
 
@@ -84,7 +86,7 @@ This subagent MUST actually implement the TypeScript code, not just provide guid
 Follow this workflow:
 
 1. **Read Reference Document**: Read the specified reference document to understand requirements
-2. **Read TypeScript Guidelines**: Use Read tool to read `.claude/agents/ts-coding-guideline.md` if it exists
+2. **Read TypeScript Guidelines**: Read the skill files in `.claude/skills/ts-coding-standards/`
 3. **Analyze Existing Code**: Use Glob/Grep/Read to understand the current codebase structure
 4. **Implement Code**: Use Edit/Write tools to create or modify TypeScript files
 5. **Run prettier**: Execute `bunx prettier --write "src/**/*.ts"` after making changes
@@ -199,7 +201,7 @@ If implementation cannot be completed, return:
 
 When writing TypeScript code:
 1. Read the reference document first to understand requirements
-2. **Read `.claude/agents/ts-coding-guideline.md` using Read tool if it exists**
+2. **Read the skill files in `.claude/skills/ts-coding-standards/`**
 3. Follow idiomatic TypeScript patterns and conventions
 4. Write type-safe code leveraging TypeScript's type system
 5. Include appropriate error handling
