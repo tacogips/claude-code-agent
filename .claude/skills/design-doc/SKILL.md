@@ -116,6 +116,52 @@ Practical examples:
 See `design-docs/references/README.md` for external references.
 ```
 
+## Code Content Guidelines
+
+Design documents should prioritize readability and conceptual clarity over implementation details.
+
+### General Rule
+
+**Minimize actual code in design documents.** Excessive code reduces readability and shifts focus from design concepts to implementation specifics.
+
+### When Code is Acceptable
+
+Code may be included when it serves a clear design purpose:
+
+| Use Case | Guideline |
+|----------|-----------|
+| Reference implementation | Keep concise; show only essential patterns |
+| Implementation comparison | Show minimal examples highlighting key differences |
+| API signatures | Include type signatures without full implementation |
+| Configuration examples | Show structure, omit boilerplate |
+
+### Best Practices
+
+1. **Prefer pseudocode or diagrams** over actual code when explaining concepts
+2. **Extract only relevant lines** rather than including entire functions/files
+3. **Use comments to highlight key points** in code examples
+4. **Link to source files** instead of copying large code blocks
+5. **Maximum code block length**: aim for 10-20 lines; longer blocks should be split or summarized
+
+### Example: Good vs Verbose
+
+**Verbose (avoid):**
+```typescript
+// Full implementation with all error handling, imports, etc.
+import { Something } from './somewhere';
+import { AnotherThing } from './elsewhere';
+// ... 50+ lines of code
+```
+
+**Concise (preferred):**
+```typescript
+// Key pattern: dependency injection
+class Service {
+  constructor(private repo: Repository) {}
+  async process(data: Input): Promise<Output> { /* ... */ }
+}
+```
+
 ## Quick Reference
 
 ### Main Category Files
