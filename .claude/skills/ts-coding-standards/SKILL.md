@@ -46,6 +46,7 @@ For comprehensive guidance, see:
 - [Type Safety Best Practices](./type-safety.md) - Branded types, strict config, type guards
 - [Project Layout Conventions](./project-layout.md) - Directory structure, file naming, imports
 - [Async Programming Patterns](./async-patterns.md) - Promise handling, concurrent execution
+- [Security Guidelines](./security.md) - Credential protection, path sanitization, sensitive data handling
 
 ## tsconfig.json Strict Mode
 
