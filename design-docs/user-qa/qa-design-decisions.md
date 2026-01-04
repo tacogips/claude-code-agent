@@ -49,21 +49,44 @@ Which JSON query backend should be used for filtering session data?
 
 | Option | Use Case | Trade-off |
 |--------|----------|-----------|
-| **Pure TypeScript** (recommended for MVP) | Simple filtering, no deps | Limited query power |
+| **Pure TypeScript** | Simple filtering, no deps | Limited query power |
 | **jq** (via child process) | CLI scripts, complex filters | External dependency |
 | **DuckDB** (duckdb-async) | Complex SQL, analytics | Large binary (~50MB) |
 | **Hybrid** | TypeScript default, optional jq/DuckDB | Configuration complexity |
 
 ### Recommendation
 
-Start with Pure TypeScript for MVP, add jq/DuckDB as optional enhanced query backends.
+DuckDB bundled via npm package for powerful SQL queries on JSONL files.
 
 ### Decision
 
 - [ ] Pure TypeScript only
 - [ ] jq integration
-- [ ] DuckDB integration
+- [x] DuckDB integration (bundled via `duckdb-async` npm package)
 - [ ] Hybrid (TypeScript + optional backends)
+
+**Decided**: 2026-01-04
+**Rationale**: DuckDB provides powerful SQL queries on JSONL files. Bundled via npm package (no user installation required). Enables Athena-like query experience.
+
+**Architecture Note**: Follow Clean Architecture - abstract query layer behind repository interface to allow swapping database implementation.
+
+```typescript
+// Domain layer - interface
+interface SessionRepository {
+  findAll(filter?: SessionFilter): Promise<Session[]>;
+  findById(id: string): Promise<Session | null>;
+  findByProject(projectPath: string): Promise<Session[]>;
+}
+
+// Infrastructure layer - DuckDB implementation
+class DuckDBSessionRepository implements SessionRepository {
+  // DuckDB-specific implementation
+}
+
+// Future: alternative implementations
+class SQLiteSessionRepository implements SessionRepository { }
+class InMemorySessionRepository implements SessionRepository { }
+```
 
 ---
 
@@ -138,14 +161,17 @@ How should sessions be discovered across multiple projects?
 
 ### Recommendation
 
-Default to current project for focused experience, with `--all-projects` option.
+All options supported simultaneously with priority:
+1. `--project <path>` - explicit project
+2. `--all` - all projects
+3. (default) - current working directory
 
 ### Decision
 
-- [ ] Current project only
-- [ ] All projects
-- [ ] Recent projects
-- [ ] Other: _______________
+- [x] Combined: Current project default + `--all` + `--project <path>` flags
+
+**Decided**: 2026-01-04
+**Rationale**: All three modes are useful and not mutually exclusive. Default to current project for focused experience.
 
 ---
 
@@ -159,14 +185,15 @@ What technology stack should be used for the browser viewer frontend?
 
 | Option | Pros | Cons |
 |--------|------|------|
-| **Vanilla JS** (recommended) | No build step, simple, fast | More boilerplate |
+| **Vanilla JS** | No build step, simple, fast | More boilerplate |
 | **React** | Component reuse with Ink TUI | Build step, larger bundle |
 | **Preact** | Smaller than React, similar API | Still needs build step |
 | **htmx** | Server-rendered, simple | Less dynamic |
+| **SvelteKit** | Full-stack, SSR, small bundle | Build step |
 
 ### Recommendation
 
-Start with vanilla JS for simplicity, no build step required.
+SvelteKit for full-stack framework with SSR and excellent DX.
 
 ### Decision
 
@@ -174,7 +201,10 @@ Start with vanilla JS for simplicity, no build step required.
 - [ ] React
 - [ ] Preact
 - [ ] htmx
-- [ ] Other: _______________
+- [x] Other: SvelteKit
+
+**Decided**: 2026-01-04
+**Rationale**: SvelteKit provides full-stack framework with SSR, file-based routing, and excellent developer experience. Small bundle size after compilation.
 
 ---
 
@@ -221,19 +251,64 @@ How should real-time session updates be implemented?
 
 | Option | Implementation | Trade-off |
 |--------|----------------|-----------|
-| **Polling** (recommended for MVP) | Check file mtime periodically | Simple, cross-platform |
-| **inotify/FSEvents** | OS-level file watching | Platform-specific |
+| **Polling** | Check file mtime periodically | Simple, cross-platform |
+| **fs.watch** | OS-level file watching | Efficient, event-driven |
 | **Hybrid** | Use OS events with polling fallback | More complex |
 
 ### Recommendation
 
-Start with polling for simplicity and cross-platform support.
+fs.watch with robust partial line handling.
 
 ### Decision
 
 - [ ] Polling only
-- [ ] OS file watching only
+- [x] OS file watching (fs.watch)
 - [ ] Hybrid approach
+
+**Decided**: 2026-01-04
+**Rationale**: fs.watch is efficient and event-driven. Must handle edge cases properly.
+
+**Edge Cases to Handle**:
+
+```typescript
+// Partial line handling for JSONL streaming
+class JsonlTailer {
+  private buffer = '';
+  private offset = 0;
+
+  async *tail(filePath: string): AsyncGenerator<object> {
+    const watcher = fs.watch(filePath);
+
+    for await (const event of watcher) {
+      if (event.eventType === 'change') {
+        const content = await this.readNewContent(filePath);
+        this.buffer += content;
+
+        // Split by newline, keep incomplete last line in buffer
+        const lines = this.buffer.split('\n');
+        this.buffer = lines.pop() || ''; // Keep incomplete line
+
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              yield JSON.parse(line);
+            } catch (e) {
+              // Log parse error, skip malformed line
+              console.warn('Malformed JSON line:', line.substring(0, 50));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Considerations**:
+- Buffer incomplete lines until newline received
+- Handle JSON parse errors gracefully (skip malformed)
+- Track file offset to read only new content
+- Handle file truncation/rotation
 
 ---
 
@@ -308,19 +383,22 @@ What CLI command structure should be used?
 
 | Option | Example | Rationale |
 |--------|---------|-----------|
-| **Single command** (recommended) | `claude-peeper --session <id>` | Simple, discoverable |
-| **Subcommands** | `claude-peeper list`, `claude-peeper view <id>` | Git-like, organized |
-| **Verb-first** | `claude-peeper show <id>`, `claude-peeper watch` | Action-oriented |
+| **Single command** | `claude-code-agent --session <id>` | Simple, discoverable |
+| **Subcommands** | `claude-code-agent session list`, `claude-code-agent session show <id>` | Git-like, organized |
+| **Verb-first** | `claude-code-agent show <id>`, `claude-code-agent watch` | Action-oriented |
 
 ### Recommendation
 
-Single command for MVP, subcommands if complexity grows.
+Subcommands for future extensibility and clear entity organization.
 
 ### Decision
 
 - [ ] Single command with flags
-- [ ] Subcommand structure
+- [x] Subcommand structure (Noun-oriented)
 - [ ] Verb-first structure
+
+**Decided**: 2026-01-04
+**Rationale**: Entity-first structure (e.g., `session list`, `agent show`) provides clear organization and scalability for future features
 
 ---
 
@@ -357,16 +435,16 @@ Use existing summary from transcript if present, otherwise first user message.
 | Question | Current Recommendation | Status |
 |----------|------------------------|--------|
 | Q1: TUI Library | Ink | **Decided** |
-| Q2: JSON Query Backend | Pure TypeScript | Pending |
+| Q2: JSON Query Backend | DuckDB (bundled) | **Decided** |
 | Q3: Default Mode | TUI | Pending |
 | Q4: Thinking Display | Hidden by default | Pending |
-| Q5: Session Discovery | Current project | Pending |
-| Q6: Browser Tech | Vanilla JS | Pending |
+| Q5: Session Discovery | Combined (default: current + flags) | **Decided** |
+| Q6: Browser Tech | SvelteKit | **Decided** |
 | Q7: Tool Name | claude-code-agent | **Decided** |
-| Q8: Real-time Updates | Polling | Pending |
+| Q8: Real-time Updates | fs.watch (with partial line handling) | **Decided** |
 | Q9: Cost Display | USD with cents | Pending |
 | Q10: Export Formats | JSON + Markdown (MVP) | Pending |
-| Q11: Command Structure | Single command | Pending |
+| Q11: Command Structure | Subcommands (Noun-oriented) | **Decided** |
 | Q12: Session Summary | Use existing + first message | Pending |
 
 ---

@@ -322,6 +322,8 @@ These are available in files but not shown by any built-in command:
 | Language | TypeScript (strict mode) | Type safety, IDE support |
 | TUI | Ink | React-like component model |
 | HTTP Server | Elysia | Type-safe, ergonomic API, Bun-optimized |
+| Browser Viewer | SvelteKit | Full-stack SSR, file-based routing, small bundle |
+| Query Engine | DuckDB (bundled) | SQL queries on JSONL, Athena-like experience |
 | Testing | Vitest | Fast, compatible with Bun |
 | Packaging | Nix flakes | Reproducible builds |
 | Task Runner | go-task | Simple automation |
