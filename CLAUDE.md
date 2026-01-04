@@ -131,12 +131,51 @@ feat: implement user authentication system
 
 This is claude-code-agent - a TypeScript-based monitoring, visualization, and orchestration tool for Claude Code sessions. Provides external observation of Claude Code task execution, session progress, and agent workflows.
 
-**Key Capabilities**:
+### Purpose
+
+claude-code-agent is an **intermediary** between external applications and Claude Code:
+
+```
+External App  <-->  claude-code-agent  <-->  Claude Code
+                         |
+                         v
+                    - Generates config (CLAUDE_CONFIG_DIR)
+                    - Executes Claude Code subprocess
+                    - Watches transcripts (Claude Code writes these)
+                    - Emits events (external apps consume)
+                    - Provides read-only query interface
+                    - Writes only its own metadata
+```
+
+**claude-code-agent does NOT**:
+- Persist session content to databases (external apps handle this)
+- Modify ~/.claude directly
+- Store auth tokens (only provides override capability)
+
+### Use Cases
+
+| Use Case | Description | How claude-code-agent Helps |
+|----------|-------------|------------------------------|
+| **UC1: Session Monitoring** | Monitor active Claude Code sessions in real-time | TUI/browser viewer, event streaming |
+| **UC2: Multi-Project Orchestration** | Run Claude Code across multiple projects concurrently | Session Groups with dependency management |
+| **UC3: Workflow Engine Integration** | Embed Claude Code execution in external workflows | TypeScript SDK with event callbacks |
+| **UC4: Remote Execution** | Trigger Claude Code from remote web interfaces | Daemon mode with authenticated HTTP API |
+| **UC5: Knowledge Retrieval** | Find and retrieve past sessions/solutions | Bookmarks, search, DuckDB queries |
+
+### Key Capabilities
+
 - Session/agent transcript viewing (TUI and browser)
 - Real-time monitoring of active sessions
 - Session Group orchestration (multi-project, concurrent execution)
 - SDK for programmatic integration
 - Daemon mode for remote execution
+
+### Design Documentation
+
+For detailed design specifications, see `design-docs/`:
+- `DESIGN.md` - Main overview and architecture
+- `spec-*.md` - Detailed specifications by domain
+- `DECISIONS.md` - All design decisions (Q1-Q36)
 
 ## Development Environment
 - **Language**: TypeScript
