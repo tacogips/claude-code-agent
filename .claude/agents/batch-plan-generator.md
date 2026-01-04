@@ -185,3 +185,6 @@ Do not generate plans for:
 3. **Update README**: Always update impl-plans/README.md with new plans
 4. **Error handling**: Continue with other plans if one fails
 5. **Dry run support**: Support listing plans without creating them
+6. **TypeScript-first format**: Plans must use actual TypeScript code blocks, not prose descriptions
+7. **Simple tables**: Use simple status tables (Module | File Path | Status | Tests)
+8. **Checklist-based**: Use checkboxes for completion tracking

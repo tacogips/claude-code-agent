@@ -1,13 +1,13 @@
 ---
 name: plan-from-design
-description: Create implementation plans from design documents. Reads design docs and generates structured implementation plans with deliverables, subtasks, and completion criteria. NO CODE is generated - only specifications.
+description: Create implementation plans from design documents. Reads design docs and generates structured implementation plans with TypeScript type definitions, status tables, and completion checklists.
 ---
 
 # Plan From Design Subagent
 
 ## Overview
 
-This subagent creates implementation plans from design documents. It translates high-level design specifications into actionable implementation plans that can guide multi-session, potentially concurrent implementation work.
+This subagent creates implementation plans from design documents. It translates high-level design specifications into actionable implementation plans with TypeScript type definitions that can guide multi-session implementation work.
 
 ## MANDATORY: Required Information in Task Prompt
 
@@ -71,113 +71,147 @@ Please invoke this subagent again with all required information in the prompt.
 3. **Find related code**: Locate code that this feature will interact with
 4. **Map dependencies**: Identify what the new feature depends on
 
-### Phase 3: Define Deliverables
+### Phase 3: Define TypeScript Types
 
-For each file/module to be created or modified:
+For each module to be created or modified:
 
 1. **Determine file path**: Where the code will live
-2. **Define purpose**: What the file/module does
-3. **Specify exports**: Functions, classes, interfaces with their purposes
-4. **Document signatures**: Function signatures with parameter and return types
-5. **Map dependencies**: What it depends on and what depends on it
+2. **Write TypeScript interfaces**: Actual interface definitions
+3. **Write type aliases**: Actual type definitions
+4. **Write class signatures**: Constructor and public methods
 
-**IMPORTANT**: NO CODE in deliverables. Only specifications:
-- Function names and signatures
-- Interface/type names and properties
-- Class names and public methods
-- Purpose descriptions
-- Dependency relationships
+**IMPORTANT**: Use actual TypeScript code blocks, not prose descriptions.
 
-### Phase 4: Create Subtasks
+**GOOD**:
+```typescript
+interface SessionGroup {
+  id: string;                    // Format: YYYYMMDD-HHMMSS-{slug}
+  name: string;
+  status: GroupStatus;
+  sessions: GroupSession[];
+  config: GroupConfig;
+  createdAt: string;             // ISO timestamp
+}
 
-Break the implementation into parallelizable subtasks:
+type GroupStatus = 'created' | 'running' | 'paused' | 'completed' | 'failed';
+```
 
-1. **Identify independent units**: Find work that can be done in parallel
-2. **Map dependencies**: Note which tasks depend on others
-3. **Define completion criteria**: What marks each task as done
-4. **Estimate effort**: Small/Medium/Large
+**BAD**:
+```
+SessionGroup
+  Purpose: A collection of related sessions
+  Properties:
+    - id: string - Format: YYYYMMDD-HHMMSS-{slug}
+    - name: string - Human-readable name
+  Used by: GroupManager, GroupRepository
+```
 
-Subtask guidelines:
-- Each subtask should be completable in one session
-- Minimize dependencies between subtasks
-- Group related deliverables in the same subtask
-- Tests should be part of the same subtask as implementation
+### Phase 4: Create Status Tables
 
-### Phase 5: Define Completion Criteria
+Create simple tracking tables:
 
-Establish clear criteria for feature completion:
-- All subtasks completed
-- All tests passing
-- Type checking passes
-- Integration verified
-- Documentation updated (if needed)
+```markdown
+| Module | File Path | Status | Tests |
+|--------|-----------|--------|-------|
+| FileSystem interface | `src/interfaces/filesystem.ts` | NOT_STARTED | - |
+| ProcessManager interface | `src/interfaces/process-manager.ts` | NOT_STARTED | - |
+```
+
+### Phase 5: Define Completion Checklists
+
+For each module, create simple checklists:
+
+```markdown
+**Checklist**:
+- [ ] Define FileSystem interface
+- [ ] Define WatchEvent interface
+- [ ] Export from interfaces/index.ts
+- [ ] Unit tests
+```
 
 ### Phase 6: Generate Implementation Plan
 
-Create the plan file following the template structure:
-1. Header with status, references, dates
-2. Design document reference and summary
-3. Implementation overview
-4. Deliverables with specifications
-5. Subtasks with dependencies
-6. Completion criteria
-7. Empty progress log (to be filled during implementation)
+Create the plan file following this structure:
+
+1. **Header**: Status, references, dates
+2. **Design Reference**: Link and summary
+3. **Modules**: TypeScript code blocks with checklists
+4. **Status Table**: Overview of all modules
+5. **Dependencies**: What depends on what
+6. **Completion Criteria**: Overall checklist
+7. **Progress Log**: Empty (to be filled during implementation)
 
 ---
 
-## Output Requirements
+## Output Format
 
-### Plan Content Rules
+### Plan Structure
 
-**MUST include**:
-- File paths for all deliverables
-- Function/method signatures (name, parameters, return type)
-- Interface/type definitions (name, purpose, properties)
-- Class definitions (name, purpose, public methods)
-- Dependency relationships between modules
-- Completion criteria for each subtask
+```markdown
+# <Feature Name> Implementation Plan
 
-**MUST NOT include**:
-- Actual implementation code
-- Algorithm implementations
-- Internal/private method implementations
-- Line-by-line code examples
+**Status**: Ready
+**Design Reference**: design-docs/<file>.md
+**Created**: YYYY-MM-DD
+**Last Updated**: YYYY-MM-DD
 
-### Signature Format Examples
+---
 
-**Function**:
+## Design Document Reference
+
+**Source**: design-docs/<file>.md
+
+### Summary
+Brief description of the feature being implemented.
+
+### Scope
+**Included**: What is being implemented
+**Excluded**: What is NOT part of this implementation
+
+---
+
+## Modules
+
+### 1. <Module Category>
+
+#### src/path/to/file.ts
+
+**Status**: NOT_STARTED
+
+```typescript
+interface Example {
+  property: string;
+  method(): Promise<void>;
+}
 ```
-readFile(path: string): Promise<string>
-  Purpose: Read file content as string
-  Parameters:
-    - path: Absolute path to the file
-  Returns: File content as string
-  Called by: SessionReader.loadSession()
-  Throws: FileNotFoundError if file does not exist
-```
 
-**Interface**:
-```
-FileSystem
-  Purpose: Abstract file system operations for testability
-  Properties:
-    - readFile(path: string): Promise<string>
-    - writeFile(path: string, content: string): Promise<void>
-    - exists(path: string): Promise<boolean>
-    - watch(path: string): AsyncIterable<WatchEvent>
-  Used by: SessionReader, ConfigLoader, TranscriptWatcher
-```
+**Checklist**:
+- [ ] Define Example interface
+- [ ] Unit tests
 
-**Class**:
-```
-SessionManager
-  Purpose: Orchestrates session lifecycle and queries
-  Constructor: (container: Container)
-  Public Methods:
-    - listSessions(filter?: SessionFilter): Promise<Session[]>
-    - getSession(id: string): Promise<Session | null>
-    - watchSession(id: string): AsyncIterable<SessionEvent>
-  Dependencies: FileSystem, SessionRepository, EventEmitter
+---
+
+## Module Status
+
+| Module | File Path | Status | Tests |
+|--------|-----------|--------|-------|
+| Example interface | `src/path/to/file.ts` | NOT_STARTED | - |
+
+## Dependencies
+
+| Feature | Depends On | Status |
+|---------|------------|--------|
+| This feature | Foundation layer | Available |
+
+## Completion Criteria
+
+- [ ] All modules implemented
+- [ ] All tests passing
+- [ ] Type checking passes
+
+## Progress Log
+
+(To be filled during implementation)
 ```
 
 ---
@@ -195,23 +229,17 @@ SessionManager
 ### Summary
 Brief description of the plan created.
 
-### Deliverables Defined
+### Modules Defined
 1. `src/path/to/file1.ts` - Purpose
 2. `src/path/to/file2.ts` - Purpose
 
-### Subtasks Created
-- TASK-001: <name> (Parallelizable: Yes)
-- TASK-002: <name> (Parallelizable: No, depends on TASK-001)
-- TASK-003: <name> (Parallelizable: Yes)
-
-### Dependency Graph
-TASK-001 --> TASK-002 --> TASK-004
-TASK-003 -----------------> TASK-004
+### Dependencies
+- Depends on: Foundation layer
+- Blocks: HTTP API, CLI
 
 ### Next Steps
 1. Review the generated plan
-2. Adjust subtask granularity if needed
-3. Begin implementation with TASK-001 or TASK-003 (parallelizable)
+2. Begin implementation with first module
 ```
 
 ### Failure Response
@@ -233,10 +261,9 @@ What needs to be resolved before retrying.
 
 ## Important Guidelines
 
-1. **Read before planning**: Always read the design document and related code first
-2. **No code generation**: Plans contain specifications, not implementations
-3. **Maximize parallelism**: Design subtasks to be as independent as possible
-4. **Clear boundaries**: Each deliverable should have a single responsibility
-5. **Testable criteria**: Completion criteria should be objectively verifiable
-6. **Session-sized tasks**: Each subtask should be completable in one session
-7. **Follow skill guidelines**: Adhere to `.claude/skills/impl-plan/SKILL.md`
+1. **TypeScript-first**: Always use actual TypeScript code blocks for types, not prose
+2. **Simple tables**: Use simple status tables, not verbose export tables
+3. **Checklist-based**: Use checkboxes for tracking, not prose descriptions
+4. **Scannable format**: Plans should be easy to scan and understand quickly
+5. **Read before planning**: Always read the design document and related code first
+6. **Follow skill guidelines**: Adhere to `.claude/skills/impl-plan/SKILL.md`

@@ -13,9 +13,9 @@ Apply this skill when:
 ## Purpose
 
 Implementation plans bridge the gap between design documents (what to build) and actual implementation (how to build). They provide:
-- Clear deliverables without code
-- Interface and function specifications
-- Dependency mapping for concurrent execution
+- Clear deliverables with TypeScript type definitions
+- Simple status tracking tables
+- Checklist-based completion criteria
 - Progress tracking across sessions
 
 ## Plan Granularity
@@ -77,119 +77,157 @@ Each implementation plan file MUST include:
 - Summary of what is being implemented
 - Scope boundaries (what is NOT included)
 
-### 3. Implementation Overview
-- High-level approach description
-- Key architectural decisions for implementation
-- Dependencies on other features/systems
+### 3. Modules and Types
 
-### 4. Deliverables
+List each module with its TypeScript type definitions. **USE ACTUAL TYPESCRIPT CODE** for interfaces and types - not prose descriptions.
 
-Each deliverable MUST specify:
-- File path (where the code will live)
-- Purpose (what this file/module does)
-- Exports (functions, classes, interfaces with their purposes)
-- Dependencies (what it depends on)
-- Dependents (what depends on it)
-
-**NO CODE in deliverables** - only specifications.
-
-Example:
 ```markdown
-### Deliverable: src/interfaces/filesystem.ts
+## Modules
 
-**Purpose**: Define FileSystem interface for abstracting file operations
+### 1. Core Interfaces
 
-**Exports**:
-| Name | Type | Purpose | Called By |
-|------|------|---------|-----------|
-| `FileSystem` | interface | Abstract file operations | SessionReader, ConfigLoader |
-| `WatchEvent` | interface | Represents a file system event | TranscriptWatcher |
-| `FileStat` | interface | File metadata | FileSystem implementations |
+#### src/interfaces/filesystem.ts
 
-**Dependencies**:
-- None (base interface)
+**Status**: NOT_STARTED
 
-**Dependents**:
-- `src/interfaces/bun-filesystem.ts` - Production implementation
-- `src/test/mocks/filesystem.ts` - Test mock
+```typescript
+interface FileSystem {
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  watch(path: string): AsyncIterable<WatchEvent>;
+}
+
+interface WatchEvent {
+  type: 'create' | 'modify' | 'delete';
+  path: string;
+}
 ```
 
-### 5. Subtasks
+**Checklist**:
+- [ ] Define FileSystem interface
+- [ ] Define WatchEvent interface
+- [ ] Export from interfaces/index.ts
+- [ ] Unit tests
+```
 
-Break implementation into subtasks that can be:
-- Executed independently (for concurrent implementation)
-- Tracked for progress
-- Assigned completion criteria
+### 4. Status Tracking Table
+
+Use simple tables for overview tracking:
 
 ```markdown
-## Subtasks
+## Module Status
 
-### Task 1: Core Interface Implementation
-**ID**: TASK-001
-**Status**: Not Started | In Progress | Completed
-**Parallelizable**: Yes | No (depends on TASK-XXX)
-**Deliverables**: src/interfaces/filesystem.ts
-**Completion Criteria**:
-- [ ] FileSystem interface defined
-- [ ] WatchEvent interface defined
-- [ ] FileStat interface defined
-- [ ] Unit tests written and passing
+| Module | File Path | Status | Tests |
+|--------|-----------|--------|-------|
+| FileSystem interface | `src/interfaces/filesystem.ts` | NOT_STARTED | - |
+| ProcessManager interface | `src/interfaces/process-manager.ts` | NOT_STARTED | - |
+| Mock implementations | `src/test/mocks/*.ts` | NOT_STARTED | - |
+```
+
+### 5. Dependencies
+
+Simple table showing what depends on what:
+
+```markdown
+## Dependencies
+
+| Feature | Depends On | Status |
+|---------|------------|--------|
+| Phase 2: Repository | Phase 1: Interfaces | BLOCKED |
+| Phase 3: Core Services | Phase 1, Phase 2 | BLOCKED |
 ```
 
 ### 6. Completion Criteria
 
-Overall feature completion requirements:
-- All subtasks completed
-- All tests passing
-- Type checking passes
-- Integration verified
-- Documentation updated (if needed)
+Simple checklist:
+
+```markdown
+## Completion Criteria
+
+- [ ] All modules implemented
+- [ ] All tests passing
+- [ ] Type checking passes
+- [ ] Integration verified
+```
 
 ### 7. Progress Log
 
 Track session-by-session progress:
+
 ```markdown
 ## Progress Log
 
 ### Session: YYYY-MM-DD HH:MM
-**Tasks Completed**: TASK-001, TASK-002
-**Tasks In Progress**: TASK-003
+**Tasks Completed**: Module 1, Module 2
+**Tasks In Progress**: Module 3
 **Blockers**: None
 **Notes**: Discovered edge case in variable parsing
 ```
 
 ## Content Guidelines
 
-### What to Include
-- File paths and directory structure
-- Function/method signatures (name, parameters, return type)
-- Interface/type definitions (name, purpose, properties)
-- Class definitions (name, purpose, public methods)
-- Dependency relationships
-- Completion criteria
+### INCLUDE TypeScript Code
 
-### What NOT to Include
-- Actual implementation code
-- Internal implementation details
-- Algorithm implementations
-- Private method implementations
+**ALWAYS** include actual TypeScript code for:
+- Interface definitions
+- Type aliases
+- Class structure (public methods, constructor signature)
+- Function signatures
 
-### Signature Format
+Example:
+```markdown
+```typescript
+interface SessionGroup {
+  id: string;                    // Format: YYYYMMDD-HHMMSS-{slug}
+  name: string;
+  status: GroupStatus;
+  sessions: GroupSession[];
+  config: GroupConfig;
+  createdAt: string;             // ISO timestamp
+}
 
-For functions/methods:
+type GroupStatus = 'created' | 'running' | 'paused' | 'completed' | 'failed';
 ```
-functionName(param1: Type1, param2: Type2): ReturnType
-  Purpose: What this function does
-  Called by: Which modules/functions call this
 ```
 
-For interfaces:
+### DO NOT Include
+
+- Implementation logic (function bodies)
+- Private methods
+- Algorithm details
+- Excessive prose descriptions
+
+### Format Comparison
+
+**GOOD** (TypeScript-first):
+```markdown
+#### src/interfaces/clock.ts
+
+```typescript
+interface Clock {
+  now(): Date;
+  timestamp(): string;
+  sleep(ms: number): Promise<void>;
+}
 ```
-InterfaceName
-  Purpose: What this interface represents
-  Properties:
-    - propertyName: Type - description
-  Used by: Which modules use this interface
+
+**Checklist**:
+- [ ] Define Clock interface
+- [ ] Export from interfaces/index.ts
+```
+
+**BAD** (Prose-heavy):
+```markdown
+**Exports**:
+| Name | Type | Purpose | Called By |
+|------|------|---------|-----------|
+| `Clock` | interface | Time operations | Caching, logging |
+
+**Function Signatures**:
+now(): Date
+  Purpose: Get current date/time
+  Called by: Logger, Cache
 ```
 
 ## Parallelization Rules
@@ -199,26 +237,23 @@ Subtasks can be parallelized when:
 2. No shared file modifications
 3. No order-dependent side effects
 
-Mark dependencies explicitly:
-```markdown
-**Parallelizable**: No (depends on TASK-001, TASK-002)
-```
+Mark dependencies explicitly in the status table.
 
 ## Workflow Integration
 
 ### Creating a Plan
 1. Read the design document
 2. Identify feature boundaries
-3. Break into deliverables
-4. Define subtasks with dependencies
+3. Define TypeScript interfaces and types
+4. List modules with status tracking
 5. Set completion criteria
 6. Create plan file in `impl-plans/active/`
 
 ### During Implementation
-1. Update task status as work progresses
+1. Update module status as work progresses
 2. Add progress log entries per session
 3. Note blockers and decisions
-4. Update completion criteria checkboxes
+4. Check off completion criteria
 
 ### Completing a Plan
 1. Verify all completion criteria met
@@ -228,12 +263,12 @@ Mark dependencies explicitly:
 
 ## Quick Reference
 
-| Section | Required | Purpose |
-|---------|----------|---------|
-| Header | Yes | Status, references, dates |
-| Design Reference | Yes | Link to design doc |
-| Overview | Yes | High-level approach |
-| Deliverables | Yes | File/module specifications |
-| Subtasks | Yes | Parallelizable work units |
-| Completion Criteria | Yes | Definition of done |
-| Progress Log | Yes | Session tracking |
+| Section | Required | Format |
+|---------|----------|--------|
+| Header | Yes | Markdown metadata |
+| Design Reference | Yes | Link + summary |
+| Modules | Yes | TypeScript code blocks + checklist |
+| Status Table | Yes | Simple table |
+| Dependencies | Yes | Simple table |
+| Completion Criteria | Yes | Checklist |
+| Progress Log | Yes | Session entries |
