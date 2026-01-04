@@ -94,7 +94,7 @@
 - `GET /api/tasks` - Current tasks
 - `GET /api/projects` - Available projects
 
-**Technology**: Bun.serve HTTP server
+**Technology**: SvelteKit (full-stack with SSR) + Elysia HTTP server
 
 **Design Status**: Documented, not implemented
 
@@ -214,35 +214,70 @@
 
 ---
 
-## Module Structure (Proposed)
+## Module Structure (Decided)
+
+Based on Q22-Q28 design decisions, the module structure includes SDK, daemon, and repository layers:
 
 ```
 src/
-  cli/
-    main.ts           # CLI entry point, argument parsing
-    commands/
-      view.ts         # Main view command
-  viewer/
-    session-reader.ts # Session/task data loading
-    types.ts          # Shared type definitions
-    tui/
-      index.ts        # TUI entry
-      components/
-        session-list.ts
-        session-detail.ts
-        task-list.ts
-    browser/
-      server.ts       # HTTP server
-      routes/
-        api.ts        # JSON API endpoints
-      static/
-        index.html
-        styles.css
-        app.js
-  polling/
-    watcher.ts        # File watcher
-    parser.ts         # JSONL parser
-    state.ts          # State manager
+├── interfaces/             # Abstractions for testability (all MVP)
+│   ├── filesystem.ts      # FileSystem interface + BunFileSystem
+│   ├── process-manager.ts # ProcessManager interface + BunProcessManager
+│   ├── clock.ts           # Clock interface + SystemClock
+│   └── index.ts           # Re-exports
+│
+├── container.ts           # Dependency injection container
+│
+├── cli/                    # CLI entry point (thin wrapper around SDK)
+│   ├── main.ts
+│   └── commands/
+│       ├── group.ts        # Session group commands
+│       ├── session.ts      # Session commands
+│       ├── bookmark.ts     # Bookmark commands
+│       ├── server.ts       # Browser viewer server
+│       └── daemon.ts       # Daemon mode commands
+│
+├── sdk/                    # Core SDK (TypeScript API)
+│   ├── index.ts           # Public exports
+│   ├── agent.ts           # ClaudeCodeAgent class
+│   ├── session.ts         # Session management
+│   ├── group.ts           # SessionGroup management
+│   ├── bookmarks.ts       # Bookmark functionality
+│   ├── config/            # Configuration
+│   └── events.ts          # Event emitter
+│
+├── viewer/                # UI layer
+│   ├── session-reader.ts  # JSONL parsing
+│   ├── types.ts           # Shared types
+│   ├── tui/              # TUI components (Ink)
+│   │   ├── index.ts
+│   │   └── components/
+│   └── browser/          # Browser viewer (SvelteKit)
+│       ├── server.ts
+│       ├── routes/
+│       └── static/
+│
+├── polling/              # Real-time monitoring
+│   ├── watcher.ts        # File watcher (fs.watch)
+│   ├── parser.ts         # JSONL stream parser
+│   └── state.ts          # State manager
+│
+├── repository/           # Data access layer (Clean Architecture)
+│   ├── session-repository.ts     # Interface
+│   ├── duckdb-impl.ts            # DuckDB implementation
+│   └── in-memory-impl.ts         # For testing
+│
+├── daemon/              # HTTP daemon for remote execution
+│   ├── server.ts        # Elysia HTTP server
+│   ├── routes/          # API endpoints
+│   └── auth.ts          # API key authentication
+│
+└── test/                # Test utilities
+    ├── mocks/           # Mock implementations
+    │   ├── filesystem.ts
+    │   ├── process-manager.ts
+    │   └── clock.ts
+    └── fixtures/        # Sample JSONL files
 ```
 
 ---

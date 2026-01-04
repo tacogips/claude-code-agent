@@ -371,19 +371,22 @@ How should prompt/configuration templates be defined and used?
 
 ### Template Location
 
+Templates are stored in the XDG-compliant config directory:
+
 ```
-~/.claude-code-agent/
-├── templates/
-│   ├── prompts/
-│   │   ├── code-review.md
-│   │   └── implement-feature.md
-│   ├── configs/
-│   │   ├── strict-typescript/
-│   │   │   ├── CLAUDE.md
-│   │   │   └── commands/
-│   │   └── documentation/
-│   └── workflows/
-│       └── feature-implementation.yaml
+~/.config/claude-code-agent/
+├── config.json                          # Global agent config
+└── templates/
+    ├── prompts/
+    │   ├── code-review.md
+    │   └── implement-feature.md
+    ├── configs/
+    │   ├── strict-typescript/
+    │   │   ├── CLAUDE.md
+    │   │   └── commands/
+    │   └── documentation/
+    └── workflows/
+        └── feature-implementation.yaml
 ```
 
 ### Template Format Options

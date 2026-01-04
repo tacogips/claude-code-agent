@@ -129,7 +129,14 @@ feat: implement user authentication system
 
 ## Project Overview
 
-This is claude-code-peeper - a TypeScript project with Bun runtime and Nix flake development environment support.
+This is claude-code-agent - a TypeScript-based monitoring, visualization, and orchestration tool for Claude Code sessions. Provides external observation of Claude Code task execution, session progress, and agent workflows.
+
+**Key Capabilities**:
+- Session/agent transcript viewing (TUI and browser)
+- Real-time monitoring of active sessions
+- Session Group orchestration (multi-project, concurrent execution)
+- SDK for programmatic integration
+- Daemon mode for remote execution
 
 ## Development Environment
 - **Language**: TypeScript

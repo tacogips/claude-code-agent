@@ -99,7 +99,7 @@ No unified configuration system for user preferences and defaults.
 ```typescript
 // src/config/schema.ts
 
-interface PeeperConfig {
+interface AgentConfig {
   // Server settings
   server: {
     port: number;           // default: 3000
@@ -150,10 +150,11 @@ interface PeeperConfig {
 
 | Variable | Config Path | Example |
 |----------|-------------|---------|
-| `CLAUDE_CODE_AGENT_PORT` | `server.port` | `8080` |
-| `CLAUDE_CODE_AGENT_HOST` | `server.host` | `0.0.0.0` |
-| `CLAUDE_CODE_AGENT_MODE` | `display.mode` | `browser` |
-| `CLAUDE_CODE_AGENT_THEME` | `display.theme` | `light` |
+| `CCA_PORT` | `server.port` | `8080` |
+| `CCA_HOST` | `server.host` | `0.0.0.0` |
+| `CCA_MODE` | `display.mode` | `browser` |
+| `CCA_THEME` | `display.theme` | `light` |
+| `CCA_LOG_LEVEL` | `logging.level` | `info` |
 
 ---
 
@@ -589,6 +590,401 @@ const messages = {
 
 ---
 
+## 11. Testability Architecture (Interfaces for Mocking)
+
+### Current Gap
+
+Core components need interface abstractions for unit testing with mocks.
+
+### Design Principle
+
+All external dependencies and I/O operations should be abstracted behind interfaces:
+1. **File System Operations** - Reading/writing files, directory operations
+2. **Repository Layer** - Data access (already defined in Q2/Q22)
+3. **Process Management** - Claude Code subprocess execution
+4. **Time/Clock** - For deterministic testing
+
+### Interface Definitions
+
+#### 11.1 File System Interface
+
+```typescript
+// src/interfaces/filesystem.ts
+
+export interface FileSystem {
+  // File operations
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  appendFile(path: string, content: string): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  stat(path: string): Promise<FileStat>;
+  unlink(path: string): Promise<void>;
+
+  // Directory operations
+  readdir(path: string): Promise<string[]>;
+  mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+  rmdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+
+  // Watch operations
+  watch(path: string): AsyncIterableIterator<WatchEvent>;
+
+  // Path utilities
+  join(...paths: string[]): string;
+  dirname(path: string): string;
+  basename(path: string): string;
+}
+
+export interface FileStat {
+  size: number;
+  mtime: Date;
+  isFile(): boolean;
+  isDirectory(): boolean;
+}
+
+export interface WatchEvent {
+  eventType: 'change' | 'rename';
+  filename: string;
+}
+
+// Production implementation
+export class BunFileSystem implements FileSystem {
+  async readFile(path: string): Promise<string> {
+    return Bun.file(path).text();
+  }
+  // ... other implementations
+}
+
+// Test mock
+export class InMemoryFileSystem implements FileSystem {
+  private files = new Map<string, string>();
+  private directories = new Set<string>();
+
+  async readFile(path: string): Promise<string> {
+    const content = this.files.get(path);
+    if (content === undefined) throw new Error(`ENOENT: ${path}`);
+    return content;
+  }
+  // ... other implementations
+}
+```
+
+#### 11.2 Session Repository Interface
+
+```typescript
+// src/interfaces/session-repository.ts
+
+export interface SessionRepository {
+  // Read operations
+  getSession(id: string): Promise<Session | null>;
+  findSessions(filter: SessionFilter): Promise<Session[]>;
+  findByGroup(groupId: string): Promise<Session[]>;
+  findByProject(projectPath: string): Promise<Session[]>;
+
+  // Search operations
+  search(query: SearchQuery): Promise<SearchResult[]>;
+
+  // SQL query (for DuckDB)
+  query(sql: string, params?: unknown[]): Promise<QueryResult>;
+
+  // Real-time watching
+  watchSession(id: string): AsyncIterableIterator<SessionEvent>;
+}
+
+export interface SessionFilter {
+  status?: SessionStatus[];
+  projectPath?: string;
+  groupId?: string | null;  // null for standalone
+  createdAfter?: Date;
+  createdBefore?: Date;
+  limit?: number;
+  offset?: number;
+}
+
+// Production implementation
+export class DuckDBSessionRepository implements SessionRepository {
+  constructor(private db: DuckDB, private fs: FileSystem) {}
+  // ... implementations
+}
+
+// Test mock
+export class InMemorySessionRepository implements SessionRepository {
+  private sessions = new Map<string, Session>();
+
+  async getSession(id: string): Promise<Session | null> {
+    return this.sessions.get(id) ?? null;
+  }
+  // ... other implementations
+
+  // Test helper methods
+  addSession(session: Session): void {
+    this.sessions.set(session.id, session);
+  }
+}
+```
+
+#### 11.3 Process Manager Interface
+
+```typescript
+// src/interfaces/process-manager.ts
+
+export interface ProcessManager {
+  // Spawn Claude Code process
+  spawn(options: SpawnOptions): Promise<ProcessHandle>;
+
+  // Process control
+  kill(handle: ProcessHandle, signal?: NodeJS.Signals): Promise<void>;
+
+  // Check if process is running
+  isRunning(handle: ProcessHandle): Promise<boolean>;
+}
+
+export interface SpawnOptions {
+  command: string;
+  args: string[];
+  cwd: string;
+  env: Record<string, string>;
+  stdout?: 'pipe' | 'inherit' | 'ignore';
+  stderr?: 'pipe' | 'inherit' | 'ignore';
+}
+
+export interface ProcessHandle {
+  pid: number;
+  stdout: AsyncIterableIterator<Uint8Array> | null;
+  stderr: AsyncIterableIterator<Uint8Array> | null;
+  exitCode: Promise<number>;
+}
+
+// Production implementation
+export class BunProcessManager implements ProcessManager {
+  async spawn(options: SpawnOptions): Promise<ProcessHandle> {
+    const proc = Bun.spawn([options.command, ...options.args], {
+      cwd: options.cwd,
+      env: options.env,
+      stdout: options.stdout,
+      stderr: options.stderr,
+    });
+    return {
+      pid: proc.pid,
+      stdout: proc.stdout ? this.toAsyncIterator(proc.stdout) : null,
+      stderr: proc.stderr ? this.toAsyncIterator(proc.stderr) : null,
+      exitCode: proc.exited,
+    };
+  }
+  // ... other implementations
+}
+
+// Test mock
+export class MockProcessManager implements ProcessManager {
+  private processes = new Map<number, MockProcess>();
+  private nextPid = 1000;
+
+  // Configurable behavior for tests
+  public mockOutputs: string[] = [];
+  public mockExitCode = 0;
+
+  async spawn(options: SpawnOptions): Promise<ProcessHandle> {
+    const pid = this.nextPid++;
+    const process = new MockProcess(pid, this.mockOutputs, this.mockExitCode);
+    this.processes.set(pid, process);
+    return process.handle;
+  }
+  // ... other implementations
+}
+```
+
+#### 11.4 Clock Interface
+
+```typescript
+// src/interfaces/clock.ts
+
+export interface Clock {
+  now(): Date;
+  timestamp(): number;
+  sleep(ms: number): Promise<void>;
+}
+
+// Production implementation
+export class SystemClock implements Clock {
+  now(): Date {
+    return new Date();
+  }
+  timestamp(): number {
+    return Date.now();
+  }
+  async sleep(ms: number): Promise<void> {
+    await Bun.sleep(ms);
+  }
+}
+
+// Test mock
+export class MockClock implements Clock {
+  private currentTime: number;
+
+  constructor(initialTime: Date = new Date('2026-01-04T12:00:00Z')) {
+    this.currentTime = initialTime.getTime();
+  }
+
+  now(): Date {
+    return new Date(this.currentTime);
+  }
+
+  timestamp(): number {
+    return this.currentTime;
+  }
+
+  async sleep(ms: number): Promise<void> {
+    // Advance time immediately in tests
+    this.currentTime += ms;
+  }
+
+  // Test helper
+  advance(ms: number): void {
+    this.currentTime += ms;
+  }
+
+  setTime(date: Date): void {
+    this.currentTime = date.getTime();
+  }
+}
+```
+
+### Dependency Injection Container
+
+```typescript
+// src/container.ts
+
+export interface Container {
+  fileSystem: FileSystem;
+  sessionRepository: SessionRepository;
+  processManager: ProcessManager;
+  clock: Clock;
+  logger: Logger;
+}
+
+// Production container
+export function createProductionContainer(): Container {
+  const fileSystem = new BunFileSystem();
+  const clock = new SystemClock();
+  const logger = createLogger({ level: 'info' });
+
+  return {
+    fileSystem,
+    sessionRepository: new DuckDBSessionRepository(createDuckDB(), fileSystem),
+    processManager: new BunProcessManager(),
+    clock,
+    logger,
+  };
+}
+
+// Test container
+export function createTestContainer(overrides?: Partial<Container>): Container {
+  return {
+    fileSystem: new InMemoryFileSystem(),
+    sessionRepository: new InMemorySessionRepository(),
+    processManager: new MockProcessManager(),
+    clock: new MockClock(),
+    logger: createLogger({ level: 'silent' }),
+    ...overrides,
+  };
+}
+```
+
+### Usage in Components
+
+```typescript
+// src/sdk/agent.ts
+
+export class ClaudeCodeAgent {
+  constructor(private container: Container) {}
+
+  async runSession(options: RunSessionOptions): Promise<Session> {
+    const { fileSystem, processManager, clock } = this.container;
+
+    // Generate config
+    const configPath = await this.generateConfig(options);
+    await fileSystem.writeFile(configPath, JSON.stringify(config));
+
+    // Spawn process
+    const handle = await processManager.spawn({
+      command: 'claude',
+      args: ['-p', '--output-format', 'stream-json', options.prompt],
+      cwd: options.projectPath,
+      env: { CLAUDE_CONFIG_DIR: configPath },
+      stdout: 'pipe',
+    });
+
+    // Track session
+    const session: Session = {
+      id: generateId(),
+      createdAt: clock.now().toISOString(),
+      // ...
+    };
+
+    return session;
+  }
+}
+```
+
+### Unit Test Example
+
+```typescript
+// src/sdk/agent.test.ts
+
+import { describe, it, expect } from 'vitest';
+import { ClaudeCodeAgent } from './agent';
+import { createTestContainer } from '../container';
+
+describe('ClaudeCodeAgent', () => {
+  it('should generate config and spawn process', async () => {
+    const container = createTestContainer();
+    const mockProcess = container.processManager as MockProcessManager;
+    mockProcess.mockOutputs = [
+      '{"type":"assistant","message":"Hello"}',
+      '{"type":"result","cost":0.01}',
+    ];
+    mockProcess.mockExitCode = 0;
+
+    const agent = new ClaudeCodeAgent(container);
+    const session = await agent.runSession({
+      projectPath: '/test/project',
+      prompt: 'Test prompt',
+    });
+
+    expect(session.id).toBeDefined();
+    expect(session.status).toBe('completed');
+
+    // Verify config was written
+    const fs = container.fileSystem as InMemoryFileSystem;
+    expect(await fs.exists('/config/path/.claude.json')).toBe(true);
+  });
+
+  it('should handle process failure', async () => {
+    const container = createTestContainer();
+    const mockProcess = container.processManager as MockProcessManager;
+    mockProcess.mockExitCode = 1;
+
+    const agent = new ClaudeCodeAgent(container);
+
+    await expect(agent.runSession({
+      projectPath: '/test/project',
+      prompt: 'Test prompt',
+    })).rejects.toThrow('Process exited with code 1');
+  });
+});
+```
+
+### Interface Summary
+
+| Interface | Purpose | Production Impl | Test Mock |
+|-----------|---------|-----------------|-----------|
+| `FileSystem` | File/directory I/O | `BunFileSystem` | `InMemoryFileSystem` |
+| `SessionRepository` | Data access | `DuckDBSessionRepository` | `InMemorySessionRepository` |
+| `ProcessManager` | Subprocess control | `BunProcessManager` | `MockProcessManager` |
+| `Clock` | Time operations | `SystemClock` | `MockClock` |
+| `Logger` | Logging | `ConsoleLogger` | `SilentLogger` |
+
+---
+
 ## Priority Matrix
 
 | Component | MVP | Post-MVP | Future |
@@ -599,6 +995,7 @@ const messages = {
 | Caching | Basic | Full | - |
 | Logging | Minimal | Full | - |
 | Testing | Unit | Integration | E2E |
+| **Testability Interfaces** | **All interfaces** | - | - |
 | WebSocket | - | Yes | - |
 | Search | Basic | Full syntax | - |
 | Performance | Basic | Optimized | - |
