@@ -147,63 +147,146 @@ How should Session Groups be structured and identified?
 
 A **Session Group** is:
 - A collection of related sessions working toward a single goal
-- Scoped to a project
-- Has its own isolated Claude Code configuration
+- **NOT scoped to a single project** - can span multiple projects
+- Each session within the group can target a different project
+- Supports concurrent execution across projects
+- Has its own isolated Claude Code configuration per session
 - Original concept for claude-code-agent (not in Claude Code)
 
-### Hierarchy
+### Hierarchy (Multi-Project)
 
 ```
-Project Path (e.g., /g/gits/my-project)
-  └── Session Group (e.g., "feature-user-auth")
-        ├── Generated Config (CLAUDE.md, commands, etc.)
-        ├── Session 1: "research-existing-auth"
-        ├── Session 2: "design-auth-module"
-        └── Session 3: "implement-auth-handlers"
+Session Group (e.g., "cross-project-refactor")
+  ├── Session 1: project-a, "implement auth module"
+  ├── Session 2: project-b, "update shared library"
+  ├── Session 3: project-a, "integrate shared lib"      # concurrent with Session 2
+  └── Session 4: project-c, "update documentation"
 ```
 
-### Session Group Identification
+### Directory Structure
 
-| Option | Example | Trade-off |
-|--------|---------|-----------|
-| **UUID** | `a3bd4eea-e189-4c18-9768` | Unique, not readable |
-| **Slug** | `feature-user-auth` | Readable, may collide |
-| **Timestamp + Slug** | `20260104-feature-user-auth` | Readable, unique |
-| **UUID + Slug** | `a3bd4eea-feature-user-auth` | Both benefits |
+Session Groups are stored independently of projects:
+
+```
+~/.local/claude-code-agent/
+└── session-groups/
+    └── 20260104-143022-cross-project-refactor/   # Timestamp + Slug
+        ├── meta.json
+        ├── sessions/
+        │   ├── 001-uuid-session1/
+        │   │   ├── meta.json           # project: /path/to/project-a
+        │   │   ├── claude-config/      # Generated config for this session
+        │   │   └── transcript.jsonl    # Copied from Claude Code
+        │   ├── 002-uuid-session2/
+        │   │   ├── meta.json           # project: /path/to/project-b
+        │   │   └── ...
+        │   └── 003-uuid-session3/
+        │       └── ...
+        └── shared-config/              # Optional: shared across sessions
+            └── CLAUDE.md
+```
 
 ### Session Group Metadata (meta.json)
 
 ```json
 {
-  "id": "a3bd4eea-e189-4c18-9768",
-  "slug": "feature-user-auth",
-  "projectPath": "/g/gits/my-project",
-  "createdAt": "2026-01-04T10:00:00Z",
-  "updatedAt": "2026-01-04T12:30:00Z",
-  "goal": "Implement user authentication with JWT",
+  "id": "20260104-143022-cross-project-refactor",
+  "name": "Cross-Project Auth Refactor",
+  "description": "Refactor authentication across multiple services",
+  "slug": "cross-project-refactor",
+  "createdAt": "2026-01-04T14:30:22Z",
+  "updatedAt": "2026-01-04T16:45:00Z",
   "status": "in_progress",
   "sessions": [
-    { "id": "uuid-1", "description": "Research existing auth" },
-    { "id": "uuid-2", "description": "Design auth module" }
+    {
+      "id": "001-uuid-session1",
+      "projectPath": "/g/gits/project-a",
+      "description": "Implement auth module",
+      "status": "completed"
+    },
+    {
+      "id": "002-uuid-session2",
+      "projectPath": "/g/gits/project-b",
+      "description": "Update shared library",
+      "status": "in_progress"
+    },
+    {
+      "id": "003-uuid-session3",
+      "projectPath": "/g/gits/project-a",
+      "description": "Integrate shared lib",
+      "status": "pending",
+      "dependsOn": ["002-uuid-session2"]
+    }
   ],
   "config": {
     "model": "opus",
-    "maxBudgetUsd": 5.00
+    "maxBudgetUsd": 10.00,
+    "maxConcurrentSessions": 3
   }
 }
 ```
 
-### Decision
+### Concurrent Execution Model
 
-- [ ] UUID only
-- [ ] Slug only
-- [ ] Timestamp + Slug
-- [ ] UUID + Slug
-- [ ] Other: _______________
+```
++--------------------------------------------------+
+|              Session Group Manager               |
++--------------------------------------------------+
+|                                                  |
+|  +-------------+  +-------------+  +----------+  |
+|  | Worker 1    |  | Worker 2    |  | Worker 3 |  |
+|  | (Session 1) |  | (Session 2) |  | (Idle)   |  |
+|  | project-a   |  | project-b   |  |          |  |
+|  +-------------+  +-------------+  +----------+  |
+|        |               |                         |
+|        v               v                         |
+|  +--------------------------------------------+  |
+|  |         Progress Aggregator                |  |
+|  | - Unified view of all session progress     |  |
+|  | - Real-time updates via fs.watch           |  |
+|  | - Cost/token aggregation                   |  |
+|  +--------------------------------------------+  |
+|                                                  |
++--------------------------------------------------+
+```
+
+### CLI Usage
+
+```bash
+# Create session group (not tied to a project)
+claude-code-agent group create cross-project-refactor \
+  --name "Cross-Project Auth Refactor" \
+  --description "Refactor auth across services"
+
+# Add session with specific project
+claude-code-agent session add \
+  --group cross-project-refactor \
+  --project /g/gits/project-a \
+  --prompt "Implement auth module"
+
+# Add another session (different project)
+claude-code-agent session add \
+  --group cross-project-refactor \
+  --project /g/gits/project-b \
+  --prompt "Update shared library"
+
+# Run sessions concurrently
+claude-code-agent group run cross-project-refactor --concurrent 2
+
+# Watch unified progress
+claude-code-agent group watch cross-project-refactor
+```
+
+### Session Group Identification
+
+- [x] Timestamp + Slug (format: `YYYYMMDD-HHMMSS-{slug}`)
+
+**Decided**: 2026-01-04
+**Rationale**: Human readable, unique, sortable. User-provided name/description stored in meta.json. Session Groups are project-independent and support multi-project workflows.
 
 ---
 
-## Q15: Generated Claude Code Configuration
+## Q16: Generated Claude Code Configuration
 
 ### Question
 
@@ -231,6 +314,35 @@ claude -p \
   "prompt"
 ```
 
+### Per-Session Configuration Strategy
+
+Since Session Groups span multiple projects with different needs:
+
+```
+Session Group Config (defaults)
+    │
+    ├── Session 1 (project-a): inherits defaults + TypeScript template
+    ├── Session 2 (project-b): inherits defaults + custom CLAUDE.md
+    └── Session 3 (project-c): full override with all files
+```
+
+### Implementation
+
+```typescript
+interface SessionConfig {
+  // What to generate
+  generateClaudeMd: boolean;       // default: true
+  generateSettings: boolean;       // default: false
+  generateCommands: boolean;       // default: false
+  generateMcpConfig: boolean;      // default: false
+
+  // Sources
+  claudeMdTemplate?: string;       // template name or path
+  settingsOverride?: object;       // partial settings.json
+  inheritFromGroup: boolean;       // default: true
+}
+```
+
 ### Decision
 
 Files to generate:
@@ -238,11 +350,14 @@ Files to generate:
 - [ ] CLAUDE.md + settings.json
 - [ ] CLAUDE.md + commands/
 - [ ] Full set (CLAUDE.md, settings, commands, MCP)
-- [ ] Configurable per session group
+- [x] Configurable per session (with group-level defaults)
+
+**Decided**: 2026-01-04
+**Rationale**: Multi-project Session Groups require flexibility. Each session may target different project types (TypeScript, Python, etc.) requiring different configurations.
 
 ---
 
-## Q16: Template System
+## Q17: Template System
 
 ### Question
 
@@ -300,17 +415,51 @@ Focus on: {{focus_areas}}
 Provide specific, actionable feedback.
 ```
 
+### Template Resolution
+
+```typescript
+// Template resolution priority
+1. Inline definition in CLI command
+2. Session-specific template reference
+3. Session Group default template
+4. Global template from ~/.config/claude-code-agent/templates/
+```
+
+### Variable Interpolation
+
+Using double-brace syntax `{{variable}}`:
+
+```markdown
+---
+name: cross-project-task
+variables:
+  - name: project_path
+    required: true
+  - name: task_type
+    default: "implementation"
+---
+
+Working on project: {{project_path}}
+
+Task type: {{task_type}}
+
+Follow the project's CLAUDE.md conventions.
+```
+
 ### Decision
 
-- [ ] Markdown + frontmatter (like Claude commands)
+- [x] Markdown + frontmatter (like Claude commands)
 - [ ] Mustache/Handlebars
 - [ ] TypeScript functions
 - [ ] YAML with variables
 - [ ] Other: _______________
 
+**Decided**: 2026-01-04
+**Rationale**: Consistent with Claude Code's existing command format. Simple `{{variable}}` interpolation sufficient for most use cases.
+
 ---
 
-## Q17: Session Group Lifecycle
+## Q18: Session Group Lifecycle
 
 ### Question
 
@@ -324,37 +473,69 @@ created -> active -> completed
                   -> failed
 ```
 
-### Commands
+### Commands (Updated for Multi-Project)
 
 ```bash
-# Create new session group
-claude-code-agent group create "feature-user-auth" --project /path/to/project
+# Create session group (not project-bound)
+claude-code-agent group create "cross-project-refactor" \
+  --name "Cross-Project Auth Refactor" \
+  --description "Refactor auth across all services"
 
 # List session groups
-claude-code-agent group list [--project <path>] [--status active]
+claude-code-agent group list [--status active|completed|archived]
 
-# Show session group details
+# Show session group details (includes all sessions across projects)
 claude-code-agent group show <group-id>
 
-# Add session to group
-claude-code-agent group add-session <group-id> --prompt "Research auth patterns"
+# Add session to group (specify project per session)
+claude-code-agent session add <group-id> \
+  --project /path/to/project-a \
+  --prompt "Implement auth module" \
+  --template typescript-strict
+
+# Add dependent session
+claude-code-agent session add <group-id> \
+  --project /path/to/project-b \
+  --prompt "Update shared library" \
+  --depends-on <session-id>
+
+# Run session group (concurrent execution)
+claude-code-agent group run <group-id> \
+  --concurrent 3 \
+  --respect-dependencies
+
+# Watch unified progress across all sessions
+claude-code-agent group watch <group-id>
 
 # Archive session group
 claude-code-agent group archive <group-id>
 
 # Delete session group
-claude-code-agent group delete <group-id>
+claude-code-agent group delete <group-id> [--force]
+```
+
+### Lifecycle States
+
+```
+created -> running -> completed
+                   -> paused (user intervention)
+                   -> failed (error threshold reached)
+           -> archived
+           -> deleted
 ```
 
 ### Decision
 
 Confirm lifecycle commands:
-- [ ] Approve proposed commands
+- [x] Approve proposed commands (updated for multi-project)
 - [ ] Modifications needed: _______________
+
+**Decided**: 2026-01-04
+**Rationale**: Commands updated to support multi-project Session Groups with dependency management and concurrent execution.
 
 ---
 
-## Q18: Claude Code Invocation Strategy
+## Q19: Claude Code Invocation Strategy
 
 ### Question
 
@@ -395,16 +576,61 @@ const env = {
 spawn('claude', ['-p', '--output-format', 'stream-json', prompt], { env });
 ```
 
+### Per-Session Isolation
+
+Each session within a group gets its own claude-config directory:
+
+```
+session-groups/{group-id}/
+└── sessions/
+    ├── 001-uuid-session1/
+    │   └── claude-config/    <-- CLAUDE_CONFIG_DIR for session 1
+    ├── 002-uuid-session2/
+    │   └── claude-config/    <-- CLAUDE_CONFIG_DIR for session 2
+    └── 003-uuid-session3/
+        └── claude-config/    <-- CLAUDE_CONFIG_DIR for session 3
+```
+
+### Worker Process Model
+
+```typescript
+// Each session runs in isolation
+async function runSession(session: Session): Promise<void> {
+  const env = {
+    ...process.env,
+    CLAUDE_CONFIG_DIR: session.claudeConfigPath,
+  };
+
+  const proc = Bun.spawn(
+    ['claude', '-p', '--output-format', 'stream-json', session.prompt],
+    {
+      env,
+      cwd: session.projectPath,  // Run from target project
+      stdout: 'pipe',
+      stderr: 'pipe',
+    }
+  );
+
+  // Stream stdout for real-time progress
+  for await (const chunk of proc.stdout) {
+    session.handleOutput(chunk);
+  }
+}
+```
+
 ### Decision
 
-- [ ] CLAUDE_CONFIG_DIR (full isolation)
+- [x] CLAUDE_CONFIG_DIR (full isolation)
 - [ ] --mcp-config + --append-system-prompt (partial)
 - [ ] Hybrid (configurable per session group)
 - [ ] Other: _______________
 
+**Decided**: 2026-01-04
+**Rationale**: Full isolation via CLAUDE_CONFIG_DIR enables concurrent execution of multiple sessions across different projects without interference.
+
 ---
 
-## Q19: Session Transcript Storage
+## Q20: Session Transcript Storage
 
 ### Question
 
@@ -419,28 +645,61 @@ Where should session transcripts be stored for a Session Group?
 | **Custom session path** | Use --session-id to control | May not work with CLAUDE_CONFIG_DIR |
 | **Read-only reference** | Just store session ID, read from ~/.claude | Minimal storage, coupled |
 
-### Recommendation
+### Transcript Flow
 
-Copy transcripts to Session Group directory for full isolation:
-
+With `CLAUDE_CONFIG_DIR` isolation, Claude Code writes transcripts to:
 ```
-session-groups/{project-id}/{group-id}/
-├── sessions/
-│   ├── {session-1-uuid}.jsonl
-│   ├── {session-2-uuid}.jsonl
-│   └── agent-{id}.jsonl
+{CLAUDE_CONFIG_DIR}/projects/{project-hash}/{session-id}.jsonl
+```
+
+Agent copies transcripts to its own structure:
+```
+~/.local/claude-code-agent/session-groups/{group-id}/sessions/{session-id}/
+├── meta.json              # Session metadata
+├── claude-config/         # CLAUDE_CONFIG_DIR for this session
+│   └── projects/          # Claude Code writes here
+│       └── {hash}/
+│           └── {id}.jsonl
+└── transcript.jsonl       # Copied/symlinked for easy access
+```
+
+### Implementation
+
+```typescript
+class TranscriptManager {
+  // Watch for new transcript data
+  async watchSession(session: Session): Promise<void> {
+    const transcriptPath = path.join(
+      session.claudeConfigPath,
+      'projects',
+      session.projectHash,
+      `${session.claudeSessionId}.jsonl`
+    );
+
+    // Copy new lines to our normalized location
+    const watcher = fs.watch(transcriptPath);
+    for await (const event of watcher) {
+      if (event.eventType === 'change') {
+        await this.copyNewLines(transcriptPath, session.transcriptPath);
+      }
+    }
+  }
+}
 ```
 
 ### Decision
 
-- [ ] Copy transcripts
+- [x] Copy transcripts (via fs.watch sync)
 - [ ] Symlink to ~/.claude
 - [ ] Read-only reference (store ID only)
 - [ ] Other: _______________
 
+**Decided**: 2026-01-04
+**Rationale**: Copying ensures full isolation and allows Session Groups to be archived/moved independently. fs.watch provides real-time sync.
+
 ---
 
-## Q20: Concurrent Session Management
+## Q21: Concurrent Session Management
 
 ### Question
 
@@ -459,89 +718,172 @@ How should concurrent sessions within a Session Group be managed?
 - Claude Code may have rate limits
 - Concurrent file watching complexity
 - Cost tracking per session
+- Dependency graph management (some sessions depend on others)
+
+### Concurrent Execution Design
+
+```typescript
+interface ConcurrencyConfig {
+  maxConcurrent: number;           // default: 3
+  respectDependencies: boolean;    // default: true
+  pauseOnError: boolean;           // default: true
+  errorThreshold: number;          // default: 2 (pause after N failures)
+}
+
+class SessionGroupRunner {
+  private runningWorkers = new Map<string, Worker>();
+  private pendingQueue: Session[] = [];
+
+  async run(group: SessionGroup, config: ConcurrencyConfig): Promise<void> {
+    // Build dependency graph
+    const graph = this.buildDependencyGraph(group.sessions);
+
+    while (this.hasRunnableSessions(graph)) {
+      // Get sessions with no pending dependencies
+      const ready = this.getReadySessions(graph);
+
+      // Fill worker slots up to maxConcurrent
+      while (
+        this.runningWorkers.size < config.maxConcurrent &&
+        ready.length > 0
+      ) {
+        const session = ready.shift()!;
+        this.startWorker(session);
+      }
+
+      // Wait for any worker to complete
+      await this.waitForCompletion();
+    }
+  }
+}
+```
+
+### Progress Aggregation
+
+```typescript
+interface GroupProgress {
+  totalSessions: number;
+  completed: number;
+  running: number;
+  pending: number;
+  failed: number;
+
+  // Per-session details
+  sessions: SessionProgress[];
+
+  // Aggregated metrics
+  totalCost: number;
+  totalTokens: { input: number; output: number };
+  elapsedTime: number;
+}
+```
 
 ### Decision
 
 - [ ] Sequential only
 - [ ] Parallel allowed (unlimited)
-- [ ] Configurable limit (default: __)
+- [x] Configurable limit (default: 3)
 - [ ] Other: _______________
+
+**Decided**: 2026-01-04
+**Rationale**: Default of 3 concurrent sessions balances throughput with rate limit safety. Dependency graph ensures correct execution order for dependent sessions.
 
 ---
 
 ## Summary of Decisions
 
-| Question | Topic | Status |
-|----------|-------|--------|
-| Q13 | Auth Token Override | **Decided** |
-| Q14 | Agent Directory Structure | **Decided** |
-| Q15 | Session Group Identification | Pending |
-| Q16 | Generated Config Files | Pending |
-| Q17 | Template System Format | Pending |
-| Q18 | Session Group Lifecycle | Pending |
-| Q19 | Claude Code Invocation Strategy | Pending |
-| Q20 | Session Transcript Storage | Pending |
-| Q21 | Concurrent Session Management | Pending |
+| Question | Topic | Decision | Status |
+|----------|-------|----------|--------|
+| Q13 | Auth Token Override | CLI flag/env var (agent doesn't manage tokens) | **Decided** |
+| Q14 | Agent Directory Structure | XDG compliant (~/.config, ~/.local) | **Decided** |
+| Q15 | Session Group Identification | Timestamp + Slug, multi-project support | **Decided** |
+| Q16 | Generated Config Files | Configurable per session | **Decided** |
+| Q17 | Template System Format | Markdown + frontmatter | **Decided** |
+| Q18 | Session Group Lifecycle | Approved with multi-project commands | **Decided** |
+| Q19 | Claude Code Invocation Strategy | CLAUDE_CONFIG_DIR (full isolation) | **Decided** |
+| Q20 | Session Transcript Storage | Copy transcripts via fs.watch | **Decided** |
+| Q21 | Concurrent Session Management | Configurable limit (default: 3) | **Decided** |
+
+**All 9 decisions completed**: 2026-01-04
 
 ---
 
 ## Architecture Diagram
 
 ```
-+------------------------------------------+
-|          claude-code-agent               |
-+------------------------------------------+
-|                                          |
-|  +----------------+  +----------------+  |
-|  | Session Group  |  | Template       |  |
-|  | Manager        |  | Engine         |  |
-|  +----------------+  +----------------+  |
-|          |                   |           |
-|          v                   v           |
-|  +------------------------------------+  |
-|  |        Config Generator            |  |
-|  | (.claude.json, CLAUDE.md, etc.)    |  |
-|  +------------------------------------+  |
-|                    |                     |
-+--------------------+---------------------+
-                     |
-                     v
-+------------------------------------------------+
-| ~/.config/claude-code-agent/  (immutable)      |
-|   ├── config.json                              |
-|   └── templates/                               |
-+------------------------------------------------+
-                     |
-                     v
-+------------------------------------------------+
-| ~/.local/claude-code-agent/   (mutable)        |
-|   └── session-groups/{project}/{group}/        |
-|         ├── meta.json                          |
-|         ├── claude-config/  <-- CLAUDE_CONFIG_DIR
-|         │     ├── .claude.json (with auth)     |
-|         │     ├── CLAUDE.md                    |
-|         │     └── settings.json                |
-|         └── sessions/                          |
-+------------------------------------------------+
-                     |
-                     v
-     +-------------------------------+
-     |    Claude Code (subprocess)   |
-     |    CLAUDE_CONFIG_DIR=         |
-     |    ~/.local/claude-code-agent |
-     |    /session-groups/.../       |
-     |    claude-config              |
-     +-------------------------------+
-                     |
-                     v
-     +-------------------------------+
-     |  ~/.claude/projects/...       |
-     |  (Claude Code's output)       |
-     +-------------------------------+
-                     |
-                     v (copy/watch)
-     +-------------------------------+
-     |  ~/.local/claude-code-agent/  |
-     |  session-groups/.../sessions  |
-     +-------------------------------+
++------------------------------------------------------------------+
+|                      claude-code-agent                            |
++------------------------------------------------------------------+
+|                                                                   |
+|  +-------------------+  +-------------------+  +----------------+ |
+|  | Session Group     |  | Template          |  | Progress       | |
+|  | Manager           |  | Engine            |  | Aggregator     | |
+|  +-------------------+  +-------------------+  +----------------+ |
+|          |                      |                     ^           |
+|          v                      v                     |           |
+|  +----------------------------------------------------+-------+   |
+|  |              Config Generator (per session)                |   |
+|  |  (.claude.json, CLAUDE.md, settings.json, MCP config)      |   |
+|  +------------------------------------------------------------+   |
+|                              |                                    |
+|  +------------------------------------------------------------+   |
+|  |           Session Group Runner (Concurrent)                |   |
+|  |  +-------------+  +-------------+  +-------------+         |   |
+|  |  | Worker 1    |  | Worker 2    |  | Worker 3    |         |   |
+|  |  | project-a   |  | project-b   |  | project-a   |         |   |
+|  |  +-------------+  +-------------+  +-------------+         |   |
+|  +------------------------------------------------------------+   |
+|                                                                   |
++-------------------------------------------------------------------+
+                               |
+        +----------------------+----------------------+
+        |                      |                      |
+        v                      v                      v
++---------------+    +---------------+    +---------------+
+| Session 1     |    | Session 2     |    | Session 3     |
+| project-a     |    | project-b     |    | project-a     |
+| claude-config |    | claude-config |    | claude-config |
++---------------+    +---------------+    +---------------+
+        |                  |                      |
+        v                  v                      v
++---------------+    +---------------+    +---------------+
+| Claude Code   |    | Claude Code   |    | Claude Code   |
+| (subprocess)  |    | (subprocess)  |    | (subprocess)  |
+| cwd=project-a |    | cwd=project-b |    | cwd=project-a |
++---------------+    +---------------+    +---------------+
+        |                  |                      |
+        v                  v                      v
++---------------------------------------------------------------+
+|            Transcript Watcher (fs.watch per session)          |
+|            Copies to session-groups/.../sessions/             |
++---------------------------------------------------------------+
+                               |
+                               v
++---------------------------------------------------------------+
+|                  Storage Structure                            |
++---------------------------------------------------------------+
+|                                                               |
+| ~/.config/claude-code-agent/  (immutable)                     |
+| ├── config.json               # Global config                 |
+| └── templates/                # Prompt/config templates       |
+|                                                               |
+| ~/.local/claude-code-agent/   (mutable)                       |
+| └── session-groups/                                           |
+|     └── 20260104-143022-cross-project-refactor/               |
+|         ├── meta.json         # Group metadata + sessions     |
+|         └── sessions/                                         |
+|             ├── 001-uuid/                                     |
+|             │   ├── meta.json     # project: /path/project-a  |
+|             │   ├── claude-config/ # CLAUDE_CONFIG_DIR        |
+|             │   └── transcript.jsonl                          |
+|             ├── 002-uuid/                                     |
+|             │   ├── meta.json     # project: /path/project-b  |
+|             │   ├── claude-config/                            |
+|             │   └── transcript.jsonl                          |
+|             └── 003-uuid/                                     |
+|                 ├── meta.json     # depends-on: 002-uuid      |
+|                 ├── claude-config/                            |
+|                 └── transcript.jsonl                          |
+|                                                               |
++---------------------------------------------------------------+
 ```
