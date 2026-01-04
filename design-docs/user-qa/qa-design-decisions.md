@@ -204,7 +204,10 @@ What should the CLI tool be named?
 - [ ] claude-viewer
 - [ ] claude-sessions
 - [ ] ccp
-- [ ] Other: _______________
+- [x] Other: claude-code-agent
+
+**Decided**: 2026-01-04
+**Rationale**: Aligns with repository name, broader scope than just "viewing"
 
 ---
 
@@ -359,7 +362,7 @@ Use existing summary from transcript if present, otherwise first user message.
 | Q4: Thinking Display | Hidden by default | Pending |
 | Q5: Session Discovery | Current project | Pending |
 | Q6: Browser Tech | Vanilla JS | Pending |
-| Q7: Tool Name | claude-peeper | Pending |
+| Q7: Tool Name | claude-code-agent | **Decided** |
 | Q8: Real-time Updates | Polling | Pending |
 | Q9: Cost Display | USD with cents | Pending |
 | Q10: Export Formats | JSON + Markdown (MVP) | Pending |

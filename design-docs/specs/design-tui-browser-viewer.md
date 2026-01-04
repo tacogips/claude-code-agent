@@ -27,13 +27,13 @@ This document describes the design for viewing Claude Code sessions and tasks th
 
 ```bash
 # TUI mode (default)
-claude-viewer                     # View current project sessions
-claude-viewer --session <id>      # View specific session
-claude-viewer --tasks             # View task list
+claude-code-agent                     # View current project sessions
+claude-code-agent --session <id>      # View specific session
+claude-code-agent --tasks             # View task list
 
 # Browser mode
-claude-viewer --browser           # Open in default browser
-claude-viewer --browser --port 8080  # Custom port
+claude-code-agent --browser           # Open in default browser
+claude-code-agent --browser --port 8080  # Custom port
 ```
 
 ### Command Options
@@ -51,13 +51,13 @@ claude-viewer --browser --port 8080  # Custom port
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `CLAUDE_VIEWER_PORT` | Default port for HTTP server | 3000 |
-| `CLAUDE_VIEWER_HOST` | Bind host for HTTP server | 127.0.0.1 |
+| `CLAUDE_CODE_AGENT_PORT` | Default port for HTTP server | 3000 |
+| `CLAUDE_CODE_AGENT_HOST` | Bind host for HTTP server | 127.0.0.1 |
 
 ### Port Resolution Priority
 
 1. `--port` CLI argument (highest priority)
-2. `CLAUDE_VIEWER_PORT` environment variable
+2. `CLAUDE_CODE_AGENT_PORT` environment variable
 3. Default value: 3000
 
 ## Architecture
@@ -557,9 +557,9 @@ async function* filterJsonl<T>(
 ### Project Configuration (optional)
 
 ```jsonc
-// .claude-viewer.json or in package.json
+// .claude-code-agent.json or in package.json
 {
-  "viewer": {
+  "agent": {
     "defaultPort": 8080,
     "defaultMode": "tui",  // or "browser"
     "theme": "dark"

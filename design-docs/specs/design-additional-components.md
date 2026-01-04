@@ -26,14 +26,14 @@ No comprehensive error handling strategy documented across components.
 ```typescript
 // src/errors.ts
 
-export class PeeperError extends Error {
+export class AgentError extends Error {
   constructor(
     message: string,
     public readonly code: ErrorCode,
     public readonly cause?: Error
   ) {
     super(message);
-    this.name = 'PeeperError';
+    this.name = 'AgentError';
   }
 }
 
@@ -90,8 +90,8 @@ No unified configuration system for user preferences and defaults.
 
 1. CLI arguments (highest priority)
 2. Environment variables
-3. Project config file (`.claude-peeper.json`)
-4. User config file (`~/.config/claude-peeper/config.json`)
+3. Project config file (`.claude-code-agent.json`)
+4. User config file (`~/.config/claude-code-agent/config.json`)
 5. Default values
 
 #### Configuration Schema
@@ -150,10 +150,10 @@ interface PeeperConfig {
 
 | Variable | Config Path | Example |
 |----------|-------------|---------|
-| `PEEPER_PORT` | `server.port` | `8080` |
-| `PEEPER_HOST` | `server.host` | `0.0.0.0` |
-| `PEEPER_MODE` | `display.mode` | `browser` |
-| `PEEPER_THEME` | `display.theme` | `light` |
+| `CLAUDE_CODE_AGENT_PORT` | `server.port` | `8080` |
+| `CLAUDE_CODE_AGENT_HOST` | `server.host` | `0.0.0.0` |
+| `CLAUDE_CODE_AGENT_MODE` | `display.mode` | `browser` |
+| `CLAUDE_CODE_AGENT_THEME` | `display.theme` | `light` |
 
 ---
 
@@ -305,8 +305,8 @@ interface Logger {
 }
 
 const logger = createLogger({
-  level: process.env.PEEPER_LOG_LEVEL || 'info',
-  format: process.env.PEEPER_LOG_FORMAT || 'text', // or 'json'
+  level: process.env.CLAUDE_CODE_AGENT_LOG_LEVEL || 'info',
+  format: process.env.CLAUDE_CODE_AGENT_LOG_FORMAT || 'text', // or 'json'
 });
 ```
 

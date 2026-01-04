@@ -1,8 +1,8 @@
-# Claude Code Peeper - Feature Summary and Design Status
+# Claude Code Agent - Feature Summary and Design Status
 
 ## Project Overview
 
-**Project Name**: claude-code-peeper (also known as claude-code-agent)
+**Project Name**: claude-code-agent
 
 **Purpose**: A TypeScript-based monitoring and visualization tool for Claude Code sessions. Provides external observation of Claude Code task execution, session progress, and agent workflows by reading transcript files stored in `~/.claude/projects/`.
 
