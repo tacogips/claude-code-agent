@@ -18,6 +18,43 @@ This skill bridges implementation plans (what to build) and actual code implemen
 - Progress tracking and plan updates
 - Completion verification and plan finalization
 
+## Execution Modes
+
+Two execution modes are available:
+
+### Auto Mode (`exec-impl-plan-auto`)
+
+Automatically selects and executes all parallelizable tasks:
+
+```bash
+/exec-impl-plan-auto foundation-and-core
+```
+
+Use this mode when:
+- Starting a new implementation plan
+- Continuing work after completing some tasks
+- You want maximum parallelization
+
+The auto mode:
+1. Analyzes the entire plan
+2. Builds a dependency graph
+3. Selects ALL tasks with satisfied dependencies
+4. Executes them concurrently
+5. Reports newly unblocked tasks
+
+### Specific Mode (`exec-impl-plan-specific`)
+
+Executes specific tasks by ID:
+
+```bash
+/exec-impl-plan-specific foundation-and-core TASK-001 TASK-002
+```
+
+Use this mode when:
+- Re-running a failed task
+- Testing a specific implementation
+- You know exactly which tasks to run
+
 ## Execution Workflow
 
 ### Phase 1: Plan Analysis
@@ -85,6 +122,81 @@ Task tool parameters:
       - <criterion 2 from task>
       - <criterion N from task>
   run_in_background: true  # Only for parallel tasks
+```
+
+### Extracting Task Information
+
+Extract prompt content from the task structure in the implementation plan:
+
+```markdown
+### TASK-001: Core Interfaces
+
+**Status**: Not Started
+**Parallelizable**: Yes
+**Deliverables**:        <- Use for Implementation Target
+- `src/interfaces/filesystem.ts`
+- `src/interfaces/process-manager.ts`
+
+**Description**:         <- Use for Purpose
+Define all core interfaces for abstracting external dependencies.
+
+**Completion Criteria**: <- Use for Completion Criteria
+- [ ] FileSystem interface defined
+- [ ] ProcessManager interface defined
+- [ ] Type checking passes
+```
+
+## Parallel Execution Pattern
+
+**CRITICAL**: Spawn ALL parallelizable tasks in a SINGLE message with multiple Task tool calls.
+
+```
+In a single message, invoke Task tool multiple times:
+
+Task 1:
+  subagent_type: ts-coding
+  prompt: |
+    Purpose: <TASK-001 description>
+    Reference Document: <implementation-plan-path>
+    Implementation Target: <TASK-001 deliverables>
+    Completion Criteria:
+      - <criterion 1>
+      - <criterion 2>
+  run_in_background: true
+
+Task 2:
+  subagent_type: ts-coding
+  prompt: |
+    Purpose: <TASK-002 description>
+    Reference Document: <implementation-plan-path>
+    Implementation Target: <TASK-002 deliverables>
+    Completion Criteria:
+      - <criterion 1>
+      - <criterion 2>
+  run_in_background: true
+```
+
+**All tasks run concurrently** because they are launched in a single message with `run_in_background: true`.
+
+## Result Collection Pattern
+
+After launching background tasks:
+
+1. Use `TaskOutput` tool to wait for each background task
+2. Parse each task's result (success/failure)
+3. For each completed task:
+   - Verify completion criteria are met
+   - Record any issues or partial completion
+
+## Dependency Detection
+
+Parse dependencies from plan:
+```markdown
+**Parallelizable**: No (depends on TASK-001)
+```
+or
+```markdown
+**Parallelizable**: No (depends on TASK-001, TASK-002)
 ```
 
 ## Dependency Resolution
@@ -224,6 +336,57 @@ If only some tasks complete:
 | Collect results | TaskOutput | `task_id: <id>` |
 | Update plan | Edit | Update status, checkboxes, log |
 | Move completed | Bash | `mv impl-plans/active/ impl-plans/completed/` |
+
+## Common Response Formats
+
+### Plan Completed Response
+
+```
+## Implementation Plan Completed
+
+### Plan
+`impl-plans/completed/<plan-name>.md` (moved from active/)
+
+### Final Verification
+- Type checking: Pass
+- Tests: Pass (X/X)
+
+### Plan Finalization
+- Status updated to: Completed
+- Moved to: impl-plans/completed/
+- README.md updated
+
+### Next Steps
+- Review completed implementation
+- Consider integration testing
+- Proceed to next implementation plan
+```
+
+### Partial Failure Response
+
+```
+### Failure Details
+
+**TASK-XXX Failure**:
+- Error: <error type>
+- Details: <specific error message>
+- Files affected: <file paths>
+
+### Recommended Actions
+1. Review failure details
+2. Fix the issue
+3. Re-run with: `/exec-impl-plan-specific <plan-name> TASK-XXX`
+```
+
+## Important Guidelines
+
+1. **Read this skill first**: Always read this skill before execution
+2. **Maximize parallelization**: Select ALL tasks that can run concurrently
+3. **Single message for parallel tasks**: Launch ALL parallel tasks in ONE message
+4. **Update plan immediately**: Update progress after execution completes
+5. **Fail gracefully**: Continue with other tasks if one fails
+6. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
+7. **Move completed plans**: Move to `impl-plans/completed/` when done
 
 ## Integration with Other Skills
 

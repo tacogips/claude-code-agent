@@ -296,28 +296,41 @@ TASK-001 and TASK-003 can be implemented in parallel via separate subtasks.
 
 ### Executing Implementation
 
-Use the `/exec-impl-plan` command or `exec-impl-plan` agent to execute implementation plans:
+Two commands are available for executing implementation plans:
+
+#### Auto Mode (Recommended)
+
+Use `/exec-impl-plan-auto` to automatically select and execute all parallelizable tasks:
 
 ```bash
-# Execute all available tasks from a plan
-/exec-impl-plan foundation-and-core
+# Automatically select and execute all available tasks
+/exec-impl-plan-auto foundation-and-core
 
-# Execute specific tasks
-/exec-impl-plan foundation-and-core TASK-001 TASK-002
-
-# Execute with full path
-/exec-impl-plan impl-plans/active/session-groups.md
+# With full path
+/exec-impl-plan-auto impl-plans/active/session-groups.md
 ```
 
-**Skill Reference**: Refer to `.claude/skills/exec-impl-plan/SKILL.md` for implementation execution guidelines.
-
-The `/exec-impl-plan` command:
-
+This command:
 1. Reads the implementation plan from `impl-plans/active/`
-2. Analyzes task dependencies and parallelization opportunities
-3. Spawns `ts-coding` agents for executable tasks (concurrently when possible)
-4. Updates the plan's progress log and completion criteria
-5. When all tasks complete, moves plan to `impl-plans/completed/`
+2. Builds a dependency graph from task definitions
+3. Selects ALL tasks that can run in parallel (dependencies satisfied, status "Not Started")
+4. Spawns `ts-coding` agents **concurrently** for all selected tasks
+5. Updates the plan's progress log and completion criteria
+6. Reports newly unblocked tasks for the next run
+
+#### Specific Mode
+
+Use `/exec-impl-plan-specific` to execute specific tasks by ID:
+
+```bash
+# Execute specific tasks
+/exec-impl-plan-specific foundation-and-core TASK-001 TASK-002
+
+# Execute single task
+/exec-impl-plan-specific foundation-and-core TASK-005
+```
+
+**Skill Reference**: Refer to `.claude/skills/exec-impl-plan-ref/SKILL.md` for implementation execution guidelines.
 
 **Concurrent Execution**: Tasks marked as "Parallelizable: Yes" with no mutual dependencies are executed concurrently using Claude subtasks for efficiency.
 
