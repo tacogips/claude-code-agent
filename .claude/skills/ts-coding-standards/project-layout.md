@@ -43,13 +43,10 @@ project-root/
       package.json
       tsconfig.json
       src/
-        index.ts          # Public exports
         entities/
-          index.ts
           user.ts
           order.ts
         value-objects/
-          index.ts
           email.ts
           money.ts
         errors.ts
@@ -58,14 +55,11 @@ project-root/
       package.json
       tsconfig.json
       src/
-        index.ts
         usecases/
-          index.ts
           create-user.ts
           create-user.test.ts
           get-user-by-id.ts
         ports/
-          index.ts
           user-repository.ts
           order-repository.ts
         dto.ts
@@ -74,27 +68,20 @@ project-root/
       package.json
       tsconfig.json
       src/
-        index.ts
         persistence/
-          index.ts
           postgres/
-            index.ts
             user-repository.ts
             user-repository.test.ts
           memory/
-            index.ts
             user-repository.ts
         mappers/
-          index.ts
           user-mapper.ts
 
     infrastructure/       # OUTERMOST: External concerns
       package.json
       tsconfig.json
       src/
-        index.ts
         server/
-          index.ts
           routes.ts
           handlers.ts
         config.ts
@@ -105,12 +92,12 @@ project-root/
       package.json
       tsconfig.json
       src/
-        index.ts          # Main entry point
+        main.ts           # Entry point (NOT index.ts)
     cli/
       package.json
       tsconfig.json
       src/
-        index.ts
+        main.ts           # Entry point
 
   tests/                  # Integration tests
     api.test.ts
@@ -140,6 +127,21 @@ project-root/
 }
 ```
 
+### Why NOT index.ts
+
+The `index.ts` convention is a legacy from Node.js/CommonJS era where `require('./dir')` would automatically resolve to `./dir/index.js`. Modern ES modules with explicit `exports` in package.json make this unnecessary.
+
+**Problems with index.ts:**
+- Implicit behavior that obscures actual file structure
+- Multiple `index.ts` files in a project are hard to navigate
+- IDE "Go to file" becomes cluttered with identical names
+- No semantic meaning - `main.ts`, `server.ts`, or `cli.ts` are clearer
+
+**Modern approach:**
+- Use descriptive names like `main.ts` for entry points
+- Use explicit `exports` field in package.json for public API
+- No barrel files needed - import directly from source files
+
 ### Domain Package package.json (Minimal Dependencies)
 
 ```json
@@ -147,7 +149,11 @@ project-root/
   "name": "@myproject/domain",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
+  "exports": {
+    "./entities/*": "./src/entities/*.ts",
+    "./value-objects/*": "./src/value-objects/*.ts",
+    "./errors": "./src/errors.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -165,7 +171,11 @@ project-root/
   "name": "@myproject/application",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
+  "exports": {
+    "./usecases/*": "./src/usecases/*.ts",
+    "./ports/*": "./src/ports/*.ts",
+    "./dto": "./src/dto.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -186,7 +196,11 @@ project-root/
   "name": "@myproject/adapter",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
+  "exports": {
+    "./persistence/postgres/*": "./src/persistence/postgres/*.ts",
+    "./persistence/memory/*": "./src/persistence/memory/*.ts",
+    "./mappers/*": "./src/mappers/*.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -208,7 +222,11 @@ project-root/
   "name": "@myproject/infrastructure",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
+  "exports": {
+    "./server/*": "./src/server/*.ts",
+    "./config": "./src/config.ts",
+    "./cli": "./src/cli.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -285,7 +303,7 @@ Use case implementations and port definitions:
 
 ```typescript
 // packages/application/src/ports/user-repository.ts
-import type { User, UserId } from "@myproject/domain";
+import type { User, UserId } from "@myproject/domain/entities/user";
 
 export interface UserRepository {
   findById(id: UserId): Promise<User | null>;
@@ -296,8 +314,8 @@ export interface UserRepository {
 
 ```typescript
 // packages/application/src/usecases/create-user.ts
-import { createUser, parseEmail } from "@myproject/domain";
-import type { User } from "@myproject/domain";
+import { createUser, type User, type UserId } from "@myproject/domain/entities/user";
+import { parseEmail } from "@myproject/domain/value-objects/email";
 import type { UserRepository } from "../ports/user-repository";
 
 export interface CreateUserInput {
@@ -329,8 +347,8 @@ Concrete implementations of ports:
 
 ```typescript
 // packages/adapter/src/persistence/postgres/user-repository.ts
-import type { User, UserId } from "@myproject/domain";
-import type { UserRepository } from "@myproject/application";
+import type { User, UserId } from "@myproject/domain/entities/user";
+import type { UserRepository } from "@myproject/application/ports/user-repository";
 import { userMapper } from "../../mappers/user-mapper";
 import type { Database } from "./database";
 
@@ -363,9 +381,9 @@ Server setup and external integrations:
 ```typescript
 // packages/infrastructure/src/server/routes.ts
 import { Hono } from "hono";
-import { createCreateUserUseCase } from "@myproject/application";
-import { createPostgresUserRepository } from "@myproject/adapter";
-import type { Database } from "@myproject/adapter";
+import { createCreateUserUseCase } from "@myproject/application/usecases/create-user";
+import { createPostgresUserRepository } from "@myproject/adapter/persistence/postgres/user-repository";
+import type { Database } from "@myproject/adapter/persistence/postgres/database";
 
 export function createRouter(db: Database) {
   const app = new Hono();
@@ -407,14 +425,14 @@ packages/
 
 ## Import Organization
 
-### Use workspace package imports
+### Use explicit workspace package imports
 
 ```typescript
 // In packages/application/src/usecases/create-user.ts
 
-// Import from workspace packages
-import { createUser, parseEmail } from "@myproject/domain";
-import type { User } from "@myproject/domain";
+// Import from workspace packages with explicit paths (NOT barrel imports)
+import { createUser, type User } from "@myproject/domain/entities/user";
+import { parseEmail } from "@myproject/domain/value-objects/email";
 
 // Relative imports within same package
 import type { UserRepository } from "../ports/user-repository";
@@ -430,8 +448,9 @@ import type { UserRepository } from "../ports/user-repository";
     "rootDir": "./src",
     "outDir": "./dist",
     "paths": {
-      "@myproject/domain": ["../domain/src"],
-      "@myproject/domain/*": ["../domain/src/*"]
+      "@myproject/domain/*": ["../domain/src/*"],
+      "@myproject/application/*": ["../application/src/*"],
+      "@myproject/adapter/*": ["../adapter/src/*"]
     }
   },
   "include": ["src/**/*"]
@@ -473,7 +492,7 @@ describe("CreateUserUseCase", () => {
 ```typescript
 // tests/api.test.ts
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { createApp } from "@myproject/infrastructure";
+import { createApp } from "@myproject/infrastructure/server/app";
 
 describe("API Integration", () => {
   let app: ReturnType<typeof createApp>;

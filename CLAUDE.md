@@ -122,14 +122,65 @@ feat: implement user authentication system
    Enables secure user access control across the application
 
 6. Unresolved TODOs:
-   - [ ] src/auth/index.ts:45: Add rate limiting for login attempts
+   - [ ] src/auth/auth.ts:45: Add rate limiting for login attempts
    - [ ] src/routes/auth.ts:78: Implement password reset functionality
    - [ ] tests/: Add integration tests for authentication flow
 ```
 
 ## Project Overview
 
-This is claude-code-peeper - a TypeScript project with Bun runtime and Nix flake development environment support.
+This is claude-code-agent - a TypeScript-based monitoring, visualization, and orchestration tool for Claude Code sessions. Provides external observation of Claude Code task execution, session progress, and agent workflows.
+
+### Purpose
+
+claude-code-agent is an **intermediary** between external applications and Claude Code:
+
+```
+External App  <-->  claude-code-agent  <-->  Claude Code
+                         |
+                         v
+                    - Generates config (CLAUDE_CONFIG_DIR)
+                    - Executes Claude Code subprocess
+                    - Watches transcripts (Claude Code writes these)
+                    - Emits events (external apps consume)
+                    - Provides read-only query interface
+                    - Writes only its own metadata
+```
+
+**claude-code-agent does NOT**:
+- Persist session content to databases (external apps handle this)
+- Modify ~/.claude directly
+- Store auth tokens (only provides override capability)
+
+### Use Cases
+
+| Use Case | Description | How claude-code-agent Helps |
+|----------|-------------|------------------------------|
+| **UC1: Session Monitoring** | Monitor active Claude Code sessions in real-time | TUI/browser viewer, event streaming |
+| **UC2: Multi-Project Orchestration** | Run Claude Code across multiple projects concurrently | Session Groups with dependency management |
+| **UC3: Sequential Prompt Execution** | Queue prompts for sequential execution in single session | Command Queue with TUI management |
+| **UC4: Workflow Engine Integration** | Embed Claude Code execution in external workflows | TypeScript SDK with event callbacks |
+| **UC5: Remote Execution** | Trigger Claude Code from remote web interfaces | Daemon mode with authenticated HTTP API |
+| **UC6: Knowledge Retrieval** | Find and retrieve past sessions/solutions | Bookmarks, search, DuckDB queries |
+
+### Key Capabilities
+
+- Session/agent transcript viewing (TUI and browser)
+- Real-time monitoring of active sessions
+- Session Group orchestration (multi-project, concurrent execution)
+- Command Queue for sequential prompt execution with TUI management
+- Markdown-to-JSON parsing for structured message content
+- SDK for programmatic integration
+- Daemon mode for remote execution
+
+### Design Documentation
+
+For detailed design specifications, see `design-docs/`:
+- `DESIGN.md` - Main overview and architecture
+- `spec-command-queue.md` - Command Queue specification
+- `spec-sdk-api.md` - SDK, daemon, REST API, markdown parsing
+- `spec-*.md` - Other detailed specifications by domain
+- `DECISIONS.md` - All design decisions (Q1-Q36)
 
 ## Development Environment
 - **Language**: TypeScript
@@ -148,7 +199,7 @@ This is claude-code-peeper - a TypeScript project with Bun runtime and Nix flake
 ├── tsconfig.json      # TypeScript configuration (maximum strictness)
 ├── .envrc             # direnv configuration
 ├── src/               # Source code
-│   ├── index.ts       # Entry point
+│   ├── main.ts        # Entry point
 │   ├── lib.ts         # Library code
 │   └── lib.test.ts    # Test files
 └── .gitignore         # Git ignore patterns
@@ -171,6 +222,16 @@ This is claude-code-peeper - a TypeScript project with Bun runtime and Nix flake
 **Coding Standards**: Refer to `.claude/skills/ts-coding-standards/` for TypeScript coding conventions, project layout, error handling, type safety, and async patterns.
 
 **TypeScript Configuration**: This project uses maximum TypeScript strictness. See `tsconfig.json` for the complete strict configuration.
+
+## Design Documentation
+
+**IMPORTANT**: When creating design documents, you (the LLM model) MUST follow the design-doc skill.
+
+**Skill Reference**: Refer to `.claude/skills/design-doc/SKILL.md` for design document guidelines, templates, and naming conventions.
+
+**Output Location**: All design documents MUST be saved to `design-docs/` directory (NOT `docs/`).
+
+**Design References**: See `design-docs/references/README.md` for all external references and design materials.
 
 ## Task Management
 - Use `task` command for build automation
