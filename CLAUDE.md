@@ -296,13 +296,30 @@ TASK-001 and TASK-003 can be implemented in parallel via separate subtasks.
 
 ### Executing Implementation
 
-When implementing from a plan:
+Use the `/do-impl` command or `do-impl` agent to execute implementation plans:
 
-1. Read the implementation plan from `impl-plans/active/`
-2. Select a subtask (consider parallelization and dependencies)
-3. Use the `ts-coding` agent with the deliverable specifications
-4. Update the plan's progress log and completion criteria
-5. When all tasks complete, move plan to `impl-plans/completed/`
+```bash
+# Execute all available tasks from a plan
+/do-impl foundation-and-core
+
+# Execute specific tasks
+/do-impl foundation-and-core TASK-001 TASK-002
+
+# Execute with full path
+/do-impl impl-plans/active/session-groups.md
+```
+
+**Skill Reference**: Refer to `.claude/skills/do-impl/SKILL.md` for implementation execution guidelines.
+
+The `/do-impl` command:
+
+1. Reads the implementation plan from `impl-plans/active/`
+2. Analyzes task dependencies and parallelization opportunities
+3. Spawns `ts-coding` agents for executable tasks (concurrently when possible)
+4. Updates the plan's progress log and completion criteria
+5. When all tasks complete, moves plan to `impl-plans/completed/`
+
+**Concurrent Execution**: Tasks marked as "Parallelizable: Yes" with no mutual dependencies are executed concurrently using Claude subtasks for efficiency.
 
 ## Task Management
 - Use `task` command for build automation
