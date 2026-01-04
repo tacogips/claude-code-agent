@@ -18,6 +18,21 @@ Implementation plans bridge the gap between design documents (what to build) and
 - Dependency mapping for concurrent execution
 - Progress tracking across sessions
 
+## Plan Granularity
+
+**IMPORTANT**: Implementation plans and spec files do NOT need 1:1 mapping.
+
+| Mapping | When to Use |
+|---------|-------------|
+| **1:N** (one spec -> multiple plans) | Large specs should be split into smaller, focused units |
+| **N:1** (multiple specs -> one plan) | Related specs sharing dependencies can be combined |
+| **1:1** (one spec -> one plan) | Well-bounded features with clear scope |
+
+**Recommended granularity**:
+- Each plan should be completable in 1-3 sessions
+- Each plan should have 3-10 subtasks
+- Maximize parallelizable subtasks
+
 ## Output Location
 
 **IMPORTANT**: All implementation plans MUST be stored under `impl-plans/` subdirectories.
