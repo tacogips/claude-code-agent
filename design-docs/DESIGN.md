@@ -17,6 +17,8 @@
 | **Session Viewer** | TUI and browser-based session transcript viewing |
 | **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files |
 | **Session Groups** | Orchestrate multi-project concurrent execution |
+| **Command Queue** | Queue prompts for sequential execution with TUI management |
+| **Markdown Parsing** | Parse message content into structured JSON (sections, paragraphs) |
 | **SDK** | TypeScript API for programmatic integration |
 | **Daemon Mode** | HTTP API for remote execution with authentication |
 | **Bookmarks** | Mark and retrieve important sessions/messages |
@@ -77,6 +79,7 @@ src/
 |   +-- commands/
 |       +-- group.ts        # Session group commands
 |       +-- session.ts      # Session commands
+|       +-- queue.ts        # Command queue commands
 |       +-- bookmark.ts     # Bookmark commands
 |       +-- server.ts       # Browser viewer server
 |       +-- daemon.ts       # Daemon mode commands
@@ -86,6 +89,13 @@ src/
 |   +-- agent.ts           # ClaudeCodeAgent class
 |   +-- session.ts         # Session management
 |   +-- group.ts           # SessionGroup management
+|   +-- queue/             # Command Queue
+|   |   +-- types.ts       # Queue and command interfaces
+|   |   +-- storage.ts     # Queue persistence
+|   |   +-- runner.ts      # Execution engine
+|   +-- markdown-parser/   # Markdown-to-JSON parsing
+|   |   +-- parser.ts      # Core parsing logic
+|   |   +-- types.ts       # ParsedMarkdown interfaces
 |   +-- bookmarks.ts       # Bookmark functionality
 |   +-- config/            # Configuration
 |   +-- events.ts          # Event emitter
@@ -96,6 +106,8 @@ src/
 |   +-- tui/              # TUI components (Ink)
 |   |   +-- index.ts
 |   |   +-- components/
+|   |   +-- queue-list.tsx     # Queue list TUI component
+|   |   +-- queue-detail.tsx   # Queue detail/edit TUI component
 |   +-- browser/          # Browser viewer (SvelteKit)
 |       +-- server.ts
 |       +-- routes/
@@ -178,7 +190,23 @@ src/
 - [ ] SSE for event streaming
 - [ ] Token management
 
-### Phase 6: Enhancements
+### Phase 6: Command Queue
+
+- [ ] Queue data model types
+- [ ] Queue storage/persistence
+- [ ] CLI commands (create, list, run, pause, resume, stop)
+- [ ] Command management (add, edit, remove, move)
+- [ ] Execution runner with --resume
+- [ ] Queue TUI (list and detail views)
+
+### Phase 7: Markdown Parsing
+
+- [ ] Parser implementation
+- [ ] Section and content block types
+- [ ] CLI flag integration (--parse-markdown)
+- [ ] REST API query parameter
+
+### Phase 8: Enhancements
 
 - [ ] Bookmark system
 - [ ] Export functionality (JSON, Markdown)
@@ -194,7 +222,8 @@ src/
 |----------|-------------|
 | [spec-data-storage.md](./spec-data-storage.md) | Claude Code data structures and agent storage |
 | [spec-session-groups.md](./spec-session-groups.md) | Session Group architecture and lifecycle |
-| [spec-sdk-api.md](./spec-sdk-api.md) | SDK, daemon, REST API, authentication |
+| [spec-command-queue.md](./spec-command-queue.md) | Command Queue for sequential prompt execution |
+| [spec-sdk-api.md](./spec-sdk-api.md) | SDK, daemon, REST API, authentication, markdown parsing |
 | [spec-viewers.md](./spec-viewers.md) | TUI, browser viewer, transcript monitoring |
 | [spec-infrastructure.md](./spec-infrastructure.md) | Error handling, testing, caching |
 | [spec-deployment.md](./spec-deployment.md) | Nix packaging |

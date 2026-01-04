@@ -467,3 +467,176 @@ claude-code-agent session list --project /path/to/project
 
 - JSON (programmatic access, backup)
 - Markdown (human-readable)
+
+---
+
+## 10. Markdown-to-JSON Parsing
+
+### 10.1 Overview
+
+Parse markdown content from Claude Code message responses into structured JSON. Splits content by `##` headings and paragraphs into a JSON array of sections.
+
+**Default**: Disabled (returns original markdown)
+**Enable**: Via `--parse-markdown` flag or SDK option
+
+### 10.2 Output Schema
+
+```typescript
+interface ParsedMarkdown {
+  version: "1.0";
+  rawContent: string;                  // Original markdown
+  sections: MarkdownSection[];
+  metadata: {
+    sectionCount: number;
+    headingLevels: number[];
+    hasCodeBlocks: boolean;
+    hasLists: boolean;
+  };
+}
+
+interface MarkdownSection {
+  index: number;
+  heading: {
+    level: number;                     // 1-6 for h1-h6
+    text: string;                      // Heading text without ## markers
+    lineNumber: number;
+  } | null;                            // null for content before first heading
+  content: ContentBlock[];
+}
+
+type ContentBlock =
+  | { type: 'paragraph'; text: string; lineStart: number; lineEnd: number; }
+  | { type: 'code'; code: string; language: string; lineStart: number; lineEnd: number; }
+  | { type: 'list'; listType: 'ordered' | 'unordered'; items: ListItem[]; lineStart: number; }
+  | { type: 'blockquote'; content: ContentBlock[]; lineStart: number; }
+  | { type: 'table'; headers: string[]; rows: string[][]; lineStart: number; };
+
+interface ListItem {
+  text: string;
+  depth: number;
+  checked?: boolean;                   // For task lists
+}
+```
+
+### 10.3 Example
+
+**Input:**
+```markdown
+## Overview
+This is the overview section.
+
+## Implementation
+Here is the implementation details.
+
+- Item 1
+- Item 2
+
+## Conclusion
+Final thoughts.
+```
+
+**Output:**
+```json
+{
+  "version": "1.0",
+  "rawContent": "## Overview\nThis is the overview...",
+  "sections": [
+    {
+      "index": 0,
+      "heading": { "level": 2, "text": "Overview", "lineNumber": 1 },
+      "content": [
+        { "type": "paragraph", "text": "This is the overview section.", "lineStart": 2, "lineEnd": 2 }
+      ]
+    },
+    {
+      "index": 1,
+      "heading": { "level": 2, "text": "Implementation", "lineNumber": 4 },
+      "content": [
+        { "type": "paragraph", "text": "Here is the implementation details.", "lineStart": 5, "lineEnd": 5 },
+        { "type": "list", "listType": "unordered", "items": [
+          { "text": "Item 1", "depth": 0 },
+          { "text": "Item 2", "depth": 0 }
+        ], "lineStart": 7 }
+      ]
+    },
+    {
+      "index": 2,
+      "heading": { "level": 2, "text": "Conclusion", "lineNumber": 10 },
+      "content": [
+        { "type": "paragraph", "text": "Final thoughts.", "lineStart": 11, "lineEnd": 11 }
+      ]
+    }
+  ],
+  "metadata": {
+    "sectionCount": 3,
+    "headingLevels": [2],
+    "hasCodeBlocks": false,
+    "hasLists": true
+  }
+}
+```
+
+### 10.4 Parsing Rules
+
+| Element | Rule |
+|---------|------|
+| Section boundary | Heading of equal or higher level (fewer `#`) |
+| Implicit section | Content before first heading |
+| Code block | Fenced with triple backticks |
+| List | Lines starting with `- `, `* `, `+ `, or `1. ` |
+| Paragraph | Consecutive non-empty lines not matching other patterns |
+
+### 10.5 SDK API
+
+```typescript
+import { parseMarkdown } from 'claude-code-agent';
+
+// Parse markdown string
+const parsed = parseMarkdown(markdownContent);
+
+// With options
+const parsed = parseMarkdown(markdownContent, {
+  includeRawContent: true,             // default: true
+  includeLineNumbers: true,            // default: true
+});
+
+// Session helper
+const session = await agent.getSession(sessionId);
+const messages = await session.getAssistantResponses({
+  parseMarkdown: true,
+});
+```
+
+### 10.6 CLI Usage
+
+```bash
+# Show session with parsed markdown
+claude-code-agent session show <session-id> --parse-markdown
+
+# Export with parsed markdown
+claude-code-agent session export <session-id> --format json --parse-markdown
+
+# Export messages only, parsed
+claude-code-agent session messages <session-id> --format parsed-markdown
+```
+
+### 10.7 REST API
+
+```bash
+# Get messages with parsed markdown
+GET /api/sessions/:id/messages?parseMarkdown=true
+
+# Response includes parsed content
+{
+  "messages": [
+    {
+      "uuid": "...",
+      "type": "assistant",
+      "content": {
+        "original": [...],
+        "parsed": { "version": "1.0", "sections": [...] }
+      }
+    }
+  ]
+}
+```

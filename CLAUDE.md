@@ -158,15 +158,18 @@ External App  <-->  claude-code-agent  <-->  Claude Code
 |----------|-------------|------------------------------|
 | **UC1: Session Monitoring** | Monitor active Claude Code sessions in real-time | TUI/browser viewer, event streaming |
 | **UC2: Multi-Project Orchestration** | Run Claude Code across multiple projects concurrently | Session Groups with dependency management |
-| **UC3: Workflow Engine Integration** | Embed Claude Code execution in external workflows | TypeScript SDK with event callbacks |
-| **UC4: Remote Execution** | Trigger Claude Code from remote web interfaces | Daemon mode with authenticated HTTP API |
-| **UC5: Knowledge Retrieval** | Find and retrieve past sessions/solutions | Bookmarks, search, DuckDB queries |
+| **UC3: Sequential Prompt Execution** | Queue prompts for sequential execution in single session | Command Queue with TUI management |
+| **UC4: Workflow Engine Integration** | Embed Claude Code execution in external workflows | TypeScript SDK with event callbacks |
+| **UC5: Remote Execution** | Trigger Claude Code from remote web interfaces | Daemon mode with authenticated HTTP API |
+| **UC6: Knowledge Retrieval** | Find and retrieve past sessions/solutions | Bookmarks, search, DuckDB queries |
 
 ### Key Capabilities
 
 - Session/agent transcript viewing (TUI and browser)
 - Real-time monitoring of active sessions
 - Session Group orchestration (multi-project, concurrent execution)
+- Command Queue for sequential prompt execution with TUI management
+- Markdown-to-JSON parsing for structured message content
 - SDK for programmatic integration
 - Daemon mode for remote execution
 
@@ -174,7 +177,9 @@ External App  <-->  claude-code-agent  <-->  Claude Code
 
 For detailed design specifications, see `design-docs/`:
 - `DESIGN.md` - Main overview and architecture
-- `spec-*.md` - Detailed specifications by domain
+- `spec-command-queue.md` - Command Queue specification
+- `spec-sdk-api.md` - SDK, daemon, REST API, markdown parsing
+- `spec-*.md` - Other detailed specifications by domain
 - `DECISIONS.md` - All design decisions (Q1-Q36)
 
 ## Development Environment
