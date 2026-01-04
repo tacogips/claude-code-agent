@@ -16,7 +16,7 @@ Apply this skill when:
 ```
 design-docs/
 ├── specs/             # Design specifications (keep file count minimal)
-│   ├── client.md      # Client-side design
+│   ├── command.md     # CLI command interface design
 │   ├── architecture.md # System architecture design
 │   ├── notes.md       # Other notable design items
 │   └── design-*.md    # Detailed supporting documents (if needed)
@@ -42,13 +42,13 @@ Keep file count minimal. Use 3 main category files:
 
 | File | Purpose |
 |------|---------|
-| `client.md` | Client-side design, UI/UX decisions, client patterns |
+| `command.md` | CLI command interface: subcommands, flags, options, environment variables |
 | `architecture.md` | System architecture, infrastructure, technical decisions |
 | `notes.md` | Other notable items, research findings, miscellaneous design notes |
 
 ### Adding Content
 
-1. Determine the appropriate category (client, architecture, or notes)
+1. Determine the appropriate category (command, architecture, or notes)
 2. Add a new section to the corresponding file
 3. For detailed/lengthy content, create a supporting `design-*.md` file and reference it
 
@@ -83,7 +83,7 @@ All external references MUST be stored in `design-docs/references/`.
 ### Adding References
 
 1. Add the reference entry to `design-docs/references/README.md`
-2. For detailed reference materials, create a topic subdirectory (e.g., `references/claude-code/`)
+2. For detailed reference materials, create a topic subdirectory (e.g., `references/typescript/`)
 3. Link to `design-docs/references/` in design documents
 
 ## Document Template
@@ -168,7 +168,7 @@ class Service {
 
 | File | Content |
 |------|---------|
-| `client.md` | Client design, UI patterns, client-side architecture |
+| `command.md` | CLI interface: subcommands, flags, options, env vars, exit codes |
 | `architecture.md` | System design, infrastructure, APIs, data flow |
 | `notes.md` | Research results, investigations, miscellaneous notes |
 

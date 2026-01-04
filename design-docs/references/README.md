@@ -6,6 +6,8 @@ This directory contains reference materials for system design and implementation
 
 | Name | URL | Description |
 |------|-----|-------------|
+| TypeScript Documentation | https://www.typescriptlang.org/docs/ | Official TypeScript documentation |
+| Bun Documentation | https://bun.sh/docs | Official Bun runtime documentation |
 | Claude Code Repository | https://github.com/anthropics/claude-code | Official CLI for Claude - reference implementation for agent-based development tools |
 | Claude Code CLI Reference | https://code.claude.com/docs/en/cli-reference.md | CLI flags and options documentation |
 | Claude Code MCP Docs | https://code.claude.com/docs/en/mcp.md | MCP server configuration documentation |

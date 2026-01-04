@@ -1,56 +1,26 @@
-# User Q&A / Confirmation Items
+# User Q&A
 
-This directory contains items that require user confirmation or clarification.
+This directory contains items requiring user confirmation or decision.
 
 ## Purpose
 
-Store documents for:
-- Questions requiring user decision
-- Ambiguous requirements needing clarification
-- Design choices awaiting approval
-- Implementation alternatives for user selection
+Store questions, pending decisions, and items awaiting user approval.
 
 ## File Naming Convention
 
-| Prefix | Use Case | Example |
-|--------|----------|---------|
-| `qa-` | Questions/confirmation items | `qa-auth-method-selection.md` |
-| `pending-` | Pending decisions | `pending-database-choice.md` |
+| Prefix | Use Case |
+|--------|----------|
+| `qa-` | Questions/confirmation items |
+| `pending-` | Pending decisions |
 
-## Document Template
+## Current Items
 
-```markdown
-# [Topic/Question Title]
+- [qa-example.md](./qa-example.md) - Example: Database Selection (template example)
+- [pending-example.md](./pending-example.md) - Example: CLI Output Format (template example)
 
-**Status**: `Pending` | `Resolved`
-**Created**: YYYY-MM-DD
-**Resolved**: YYYY-MM-DD (if resolved)
+## Adding New Items
 
-## Question/Issue
-
-Clear description of what needs confirmation.
-
-## Options
-
-### Option A: [Name]
-
-Description and implications.
-
-### Option B: [Name]
-
-Description and implications.
-
-## Recommendation
-
-(If applicable) Recommended option with rationale.
-
-## Resolution
-
-(After user decision) Selected option and any additional context.
-```
-
-## Index
-
-| File | Status | Description |
-|------|--------|-------------|
-| (none yet) | - | - |
+1. Create a new file with appropriate prefix (`qa-` or `pending-`)
+2. Include clear description of the question or decision needed
+3. List available options if applicable
+4. Update this README.md with a reference to the new item
