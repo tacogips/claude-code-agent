@@ -201,9 +201,12 @@ src/
 
 ## Browser Mode
 
-### HTTP Server
+### HTTP Server (Elysia)
 
 ```typescript
+import { Elysia } from 'elysia';
+import { staticPlugin } from '@elysiajs/static';
+
 interface ServerConfig {
   port: number;        // Default: 3000 or env
   host: string;        // Default: 127.0.0.1
@@ -211,11 +214,14 @@ interface ServerConfig {
 }
 
 async function startServer(config: ServerConfig): Promise<void> {
-  const server = Bun.serve({
-    port: config.port,
-    hostname: config.host,
-    fetch: handleRequest,
-  });
+  const app = new Elysia()
+    .use(staticPlugin({ prefix: '/', assets: 'static' }))
+    .get('/api/sessions', () => listSessions())
+    .get('/api/sessions/:id', ({ params }) => getSession(params.id))
+    .get('/api/sessions/:id/messages', ({ params }) => getSessionMessages(params.id))
+    .get('/api/tasks', () => getTasks())
+    .get('/api/projects', () => listProjects())
+    .listen({ port: config.port, hostname: config.host });
 
   console.log(`Server running at http://${config.host}:${config.port}`);
 
@@ -534,8 +540,8 @@ async function* filterJsonl<T>(
 
 ### Phase 3: Browser Mode
 
-- HTTP server with Bun.serve
-- API endpoints
+- HTTP server with Elysia
+- API endpoints implementation
 - Static HTML/JS viewer
 - Browser auto-open
 
