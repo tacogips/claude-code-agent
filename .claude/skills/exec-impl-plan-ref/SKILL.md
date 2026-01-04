@@ -24,23 +24,33 @@ Two execution modes are available:
 
 ### Auto Mode (`exec-impl-plan-auto`)
 
-Automatically selects and executes all parallelizable tasks:
+Automatically selects and executes all parallelizable tasks. Supports two sub-modes:
 
+**Cross-Plan Mode** (no argument - recommended):
+```bash
+/exec-impl-plan-auto
+```
+Analyzes ALL active plans and executes tasks across plans based on phase dependencies.
+
+**Single-Plan Mode** (with argument):
 ```bash
 /exec-impl-plan-auto foundation-and-core
 ```
+Focuses on one specific plan only.
 
 Use this mode when:
-- Starting a new implementation plan
+- Starting implementation (cross-plan mode)
 - Continuing work after completing some tasks
-- You want maximum parallelization
+- You want maximum parallelization across the entire project
 
 The auto mode:
-1. Analyzes the entire plan
-2. Builds a dependency graph
-3. Selects ALL tasks with satisfied dependencies
-4. Executes them concurrently
-5. Reports newly unblocked tasks
+1. Reads phase dependencies from `impl-plans/README.md`
+2. Analyzes all active plans (or specified plan)
+3. Determines which phases/plans are eligible
+4. Builds dependency graph(s)
+5. Selects ALL tasks with satisfied dependencies
+6. Executes them concurrently
+7. Reports newly unblocked tasks and phases
 
 ### Specific Mode (`exec-impl-plan-specific`)
 
@@ -387,6 +397,72 @@ If only some tasks complete:
 5. **Fail gracefully**: Continue with other tasks if one fails
 6. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
 7. **Move completed plans**: Move to `impl-plans/completed/` when done
+
+## Cross-Plan Execution
+
+When running `/exec-impl-plan-auto` without arguments, the system analyzes all active plans and respects phase dependencies.
+
+### Phase Dependency Rules
+
+From `impl-plans/README.md`:
+
+```
+Phase 1: foundation-and-core (no dependencies)
+    |
+    v
+Phase 2: session-groups, command-queue, markdown-parser,
+         realtime-monitoring, bookmarks, file-changes
+    |    (can run in parallel with each other)
+    v
+Phase 3: daemon-and-http-api
+    |
+    v
+Phase 4: browser-viewer, cli
+```
+
+### Phase Eligibility Check
+
+```python
+PHASE_DEPS = {
+    1: [],                              # Always eligible
+    2: ["foundation-and-core"],         # Needs Phase 1 complete
+    3: ["session-groups", "command-queue", "markdown-parser",
+        "realtime-monitoring", "bookmarks", "file-changes"],
+    4: ["daemon-and-http-api"],
+}
+
+def is_phase_eligible(phase: int, plan_statuses: dict) -> bool:
+    for dep_plan in PHASE_DEPS.get(phase, []):
+        if plan_statuses.get(dep_plan) != "Completed":
+            return False
+    return True
+```
+
+### Cross-Plan Task Selection
+
+1. Determine which phases are eligible
+2. For each eligible plan, find executable tasks
+3. Combine all executable tasks from all eligible plans
+4. Execute ALL combined tasks in a single parallel batch
+
+### Cross-Plan Progress Tracking
+
+When updating plans after cross-plan execution:
+
+1. Update each affected plan's task statuses
+2. Add progress log to each affected plan
+3. Check if any plan is now complete
+4. If plan completes, check if new phases become eligible
+5. Update `impl-plans/README.md` if plan moves to completed
+
+### Phase Transition Handling
+
+When a phase-gating plan completes (e.g., foundation-and-core):
+
+1. Move plan to `impl-plans/completed/`
+2. Update `impl-plans/README.md` status table
+3. Report newly eligible plans
+4. Suggest running `/exec-impl-plan-auto` again for next phase
 
 ## Integration with Other Skills
 
