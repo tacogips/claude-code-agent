@@ -233,6 +233,77 @@ For detailed design specifications, see `design-docs/`:
 
 **Design References**: See `design-docs/references/README.md` for all external references and design materials.
 
+## Implementation Planning and Execution
+
+**IMPORTANT**: Implementation tasks MUST follow implementation plans. Implementation plans translate design documents into actionable specifications without code.
+
+### Implementation Workflow
+
+```
+Design Document --> Implementation Plan --> Implementation --> Completion
+     |                    |                      |               |
+design-docs/         impl-plans/            ts-coding        Progress
+specs/*.md          active/*.md              agent            Update
+```
+
+### Creating Implementation Plans
+
+Use the `/gen-impl-plan` command or `plan-from-design` agent to create implementation plans:
+
+```bash
+/gen-impl-plan design-docs/spec-session-groups.md
+```
+
+**Skill Reference**: Refer to `.claude/skills/impl-plan/SKILL.md` for implementation plan guidelines.
+
+**Output Location**: All implementation plans MUST be saved to `impl-plans/` directory.
+
+### Implementation Plan Contents
+
+Each implementation plan includes:
+
+1. **Design Reference**: Link to specific design document section
+2. **Deliverables**: File paths, function signatures, interface definitions (NO CODE)
+3. **Subtasks**: Parallelizable work units with dependencies
+4. **Completion Criteria**: Definition of done for each task
+5. **Progress Log**: Session-by-session tracking
+
+### Multi-Session Implementation
+
+Implementation spans multiple sessions with these rules:
+
+- Each subtask should be completable in one session
+- Non-interfering subtasks can be executed concurrently
+- Progress log must be updated after each session
+- Completion criteria checkboxes mark progress
+
+### Concurrent Implementation
+
+Subtasks marked as "Parallelizable: Yes" can be implemented concurrently:
+
+```markdown
+### TASK-001: Core Types
+**Parallelizable**: Yes
+
+### TASK-002: Parser (depends on TASK-001)
+**Parallelizable**: No (depends on TASK-001)
+
+### TASK-003: Validator
+**Parallelizable**: Yes
+```
+
+TASK-001 and TASK-003 can be implemented in parallel via separate subtasks.
+
+### Executing Implementation
+
+When implementing from a plan:
+
+1. Read the implementation plan from `impl-plans/active/`
+2. Select a subtask (consider parallelization and dependencies)
+3. Use the `ts-coding` agent with the deliverable specifications
+4. Update the plan's progress log and completion criteria
+5. When all tasks complete, move plan to `impl-plans/completed/`
+
 ## Task Management
 - Use `task` command for build automation
 - Define tasks in `Taskfile.yml` (to be created as needed)
@@ -244,50 +315,47 @@ For detailed design specifications, see `design-docs/`:
 
 ## Implementation Progress Tracking
 
-Implementation progress is tracked per specification item in `docs/progress/`:
+Implementation progress is tracked within implementation plans in `impl-plans/`:
 
 ### Directory Structure
 ```
-docs/progress/
-├── feature-a.md                 # Feature A implementation status
-├── feature-b.md                 # Feature B implementation status
-└── <feature-name>.md            # One file per major spec item
+impl-plans/
+├── README.md                    # Index of all implementation plans
+├── active/                      # Currently active implementation plans
+│   └── <feature>.md             # One file per feature being implemented
+├── completed/                   # Completed implementation plans (archive)
+│   └── <feature>.md             # Completed plans for reference
+└── templates/                   # Plan templates
+    └── plan-template.md         # Standard plan template
 ```
 
-### Progress File Structure
+### Progress Tracking in Plans
 
-Each feature progress file should include:
+Each implementation plan tracks progress through:
 
-1. **Status**: `Not Started` | `In Progress` | `Completed`
-2. **Spec Reference**: Link to relevant section in spec.md or reference docs
-3. **Implemented**: List of completed sub-features with file paths
-4. **Remaining**: List of sub-features not yet implemented
-5. **Design Decisions**: Notable decisions made during implementation
-6. **Notes**: Issues, considerations, or context for future work
+1. **Status**: `Planning` | `Ready` | `In Progress` | `Completed`
+2. **Subtask Status**: Each subtask has its own status
+3. **Completion Criteria**: Checkboxes for each criterion
+4. **Progress Log**: Session-by-session updates
 
-Example format:
+Example subtask format:
 ```markdown
-# Feature Name
-
+### TASK-001: Core Parser Implementation
 **Status**: In Progress
+**Parallelizable**: Yes
+**Deliverables**: src/parser/variable.ts
 
-## Spec Reference
-- docs/spec.md Section X.X
-- docs/reference/xxx.md
+**Completion Criteria**:
+- [x] parseVariables function implemented
+- [x] Variable interface defined
+- [ ] Unit tests written and passing
+- [ ] Handles edge cases
 
-## Implemented
-- [x] Sub-feature A (`src/pkg/file.ts`)
-- [x] Sub-feature B (`src/pkg/other.ts`)
+## Progress Log
 
-## Remaining
-- [ ] Sub-feature C
-- [ ] Sub-feature D
-
-## Design Decisions
-- Decision 1: rationale
-
-## Notes
-- Any relevant notes
+### Session: 2026-01-04 10:00
+**Tasks Completed**: TASK-001 partially
+**Notes**: Implemented core parsing, tests pending
 ```
 
 ## Notes
