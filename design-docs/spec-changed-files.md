@@ -493,7 +493,7 @@ interface FileIndexEntry {
 ### Index Storage
 
 ```
-~/.claude-code-agent/
+~/.local/claude-code-agent/
   index/
     file-changes.json       # Main index file
     file-changes.db         # (Future) DuckDB for complex queries

@@ -270,7 +270,7 @@ async function* parseJsonlWithRecovery(
     "onBudgetExceeded": "pause"
   },
   "viewer": {
-    "defaultMode": "tui",
+    "defaultMode": "web",
     "port": 3000,
     "theme": "auto",
     "showThinking": false

@@ -223,3 +223,5 @@ Historical Q&A files with full decision rationale are preserved in `archive/`:
 - `archive/qa-agent-architecture.md` - Q13-Q21
 - `archive/qa-use-case-gaps.md` - Q22-Q28
 - `archive/qa-design-review.md` - Q29-Q36
+
+**Note**: Q37 (Command Queue Session Mode) was added after the initial archive was created and is documented in this file only.
