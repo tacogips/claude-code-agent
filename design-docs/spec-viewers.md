@@ -1,10 +1,12 @@
 # Viewers and Monitoring Specification
 
-This document describes the TUI viewer, browser viewer, and real-time monitoring systems.
+This document describes the browser viewer (primary), TUI viewer (future), and real-time monitoring systems.
+
+> **Priority Note**: Web UI (Browser Viewer) is the primary interactive interface. TUI implementation is deferred to future phases as a low-priority feature.
 
 ---
 
-## 1. TUI Viewer
+## 1. TUI Viewer (Future/Low Priority)
 
 ### 1.1 Technology
 
@@ -78,9 +80,11 @@ Library: **Ink** (React-like TUI framework)
 | `y` | Copy selected item |
 | `r` | Refresh |
 
+> **Implementation Note**: TUI features described above are planned for future implementation. Focus initial development on the Browser Viewer below.
+
 ---
 
-## 2. Browser Viewer
+## 2. Browser Viewer (Primary UI)
 
 ### 2.1 Technology
 
@@ -228,7 +232,9 @@ interface SubagentState {
 }
 ```
 
-### 3.5 TUI Output
+### 3.5 TUI Output (Future)
+
+> **Note**: TUI output is planned for future implementation. Use Web UI for real-time monitoring.
 
 ```
 Session: Claude config path specification research

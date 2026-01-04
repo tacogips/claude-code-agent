@@ -12,16 +12,17 @@
 
 ## Key Capabilities
 
-| Capability | Description |
-|------------|-------------|
-| **Session Viewer** | TUI and browser-based session transcript viewing |
-| **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files |
-| **Session Groups** | Orchestrate multi-project concurrent execution |
-| **Command Queue** | Queue prompts for sequential execution with TUI management |
-| **Markdown Parsing** | Parse message content into structured JSON (sections, paragraphs) |
-| **SDK** | TypeScript API for programmatic integration |
-| **Daemon Mode** | HTTP API for remote execution with authentication |
-| **Bookmarks** | Mark and retrieve important sessions/messages |
+| Capability | Description | Priority |
+|------------|-------------|----------|
+| **Session Viewer** | Browser-based session transcript viewing | High |
+| **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files | High |
+| **Session Groups** | Orchestrate multi-project concurrent execution | High |
+| **Command Queue** | Queue prompts for sequential execution with Web UI management | High |
+| **Markdown Parsing** | Parse message content into structured JSON (sections, paragraphs) | High |
+| **SDK** | TypeScript API for programmatic integration | High |
+| **Daemon Mode** | HTTP API for remote execution with authentication | High |
+| **Bookmarks** | Mark and retrieve important sessions/messages | Medium |
+| **TUI Viewer** | Terminal-based session viewing (Ink) | Low (Future) |
 
 ---
 
@@ -103,15 +104,14 @@ src/
 +-- viewer/                # UI layer
 |   +-- session-reader.ts  # JSONL parsing
 |   +-- types.ts           # Shared types
-|   +-- tui/              # TUI components (Ink)
-|   |   +-- index.ts
-|   |   +-- components/
-|   |   +-- queue-list.tsx     # Queue list TUI component
-|   |   +-- queue-detail.tsx   # Queue detail/edit TUI component
-|   +-- browser/          # Browser viewer (SvelteKit)
-|       +-- server.ts
-|       +-- routes/
-|       +-- static/
+|   +-- browser/          # Browser viewer (SvelteKit) - Primary UI
+|   |   +-- server.ts
+|   |   +-- routes/
+|   |   +-- static/
+|   |   +-- queue/        # Queue management UI
+|   +-- tui/              # TUI components (Ink) - Future/Low Priority
+|       +-- index.ts
+|       +-- components/
 |
 +-- polling/              # Real-time monitoring
 |   +-- watcher.ts        # File watcher (fs.watch)
@@ -137,17 +137,17 @@ src/
 
 ## Technology Stack
 
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| Runtime | Bun | Fast TypeScript execution, built-in testing |
-| Language | TypeScript (strict mode) | Type safety, IDE support |
-| TUI | Ink | React-like component model |
-| HTTP Server | Elysia | Type-safe, ergonomic API, Bun-optimized |
-| Browser Viewer | SvelteKit | Full-stack SSR, file-based routing, small bundle |
-| Query Engine | DuckDB (bundled) | SQL queries on JSONL, Athena-like experience |
-| Testing | Vitest | Fast, compatible with Bun |
-| Packaging | Nix flakes | Reproducible builds |
-| Task Runner | go-task | Simple automation |
+| Component | Technology | Rationale | Priority |
+|-----------|------------|-----------|----------|
+| Runtime | Bun | Fast TypeScript execution, built-in testing | Core |
+| Language | TypeScript (strict mode) | Type safety, IDE support | Core |
+| HTTP Server | Elysia | Type-safe, ergonomic API, Bun-optimized | Core |
+| Browser Viewer | SvelteKit | Full-stack SSR, file-based routing, small bundle | High |
+| Query Engine | DuckDB (bundled) | SQL queries on JSONL, Athena-like experience | High |
+| Testing | Vitest | Fast, compatible with Bun | Core |
+| Packaging | Nix flakes | Reproducible builds | Core |
+| Task Runner | go-task | Simple automation | Core |
+| TUI | Ink | React-like component model | Low (Future) |
 
 ---
 
@@ -161,7 +161,54 @@ src/
 - [ ] Basic type definitions
 - [ ] Testability interfaces (FileSystem, ProcessManager, Clock)
 
-### Phase 2: TUI Viewer
+### Phase 2: SDK and Session Groups
+
+- [ ] ClaudeCodeAgent class
+- [ ] Session Group management
+- [ ] Config generation (CLAUDE.md, etc.)
+- [ ] Concurrent session execution
+
+### Phase 3: Browser Viewer (Primary UI)
+
+- [ ] HTTP server with Elysia
+- [ ] API endpoints implementation
+- [ ] SvelteKit viewer
+- [ ] Browser auto-open
+- [ ] Session list with search/filter
+- [ ] Message timeline with syntax highlighting
+
+### Phase 4: Daemon and Remote Execution
+
+- [ ] Daemon mode with authentication
+- [ ] REST API for remote execution
+- [ ] SSE for event streaming
+- [ ] Token management
+
+### Phase 5: Command Queue
+
+- [ ] Queue data model types
+- [ ] Queue storage/persistence
+- [ ] CLI commands (create, list, run, pause, resume, stop)
+- [ ] Command management (add, edit, remove, move)
+- [ ] Execution runner with --resume
+- [ ] Queue Web UI (list and detail views)
+
+### Phase 6: Markdown Parsing
+
+- [ ] Parser implementation
+- [ ] Section and content block types
+- [ ] CLI flag integration (--parse-markdown)
+- [ ] REST API query parameter
+
+### Phase 7: Enhancements
+
+- [ ] Bookmark system
+- [ ] Export functionality (JSON, Markdown)
+- [ ] Theme support
+- [ ] Performance optimization
+- [ ] DuckDB query integration
+
+### Phase 8: TUI Viewer (Future/Low Priority)
 
 - [ ] Session list view (table display)
 - [ ] Session detail view (message timeline)
@@ -169,50 +216,7 @@ src/
 - [ ] Keyboard navigation
 - [ ] Search functionality
 
-### Phase 3: SDK and Session Groups
-
-- [ ] ClaudeCodeAgent class
-- [ ] Session Group management
-- [ ] Config generation (CLAUDE.md, etc.)
-- [ ] Concurrent session execution
-
-### Phase 4: Browser Mode
-
-- [ ] HTTP server with Elysia
-- [ ] API endpoints implementation
-- [ ] SvelteKit viewer
-- [ ] Browser auto-open
-
-### Phase 5: Daemon and Remote Execution
-
-- [ ] Daemon mode with authentication
-- [ ] REST API for remote execution
-- [ ] SSE for event streaming
-- [ ] Token management
-
-### Phase 6: Command Queue
-
-- [ ] Queue data model types
-- [ ] Queue storage/persistence
-- [ ] CLI commands (create, list, run, pause, resume, stop)
-- [ ] Command management (add, edit, remove, move)
-- [ ] Execution runner with --resume
-- [ ] Queue TUI (list and detail views)
-
-### Phase 7: Markdown Parsing
-
-- [ ] Parser implementation
-- [ ] Section and content block types
-- [ ] CLI flag integration (--parse-markdown)
-- [ ] REST API query parameter
-
-### Phase 8: Enhancements
-
-- [ ] Bookmark system
-- [ ] Export functionality (JSON, Markdown)
-- [ ] Theme support
-- [ ] Performance optimization
-- [ ] DuckDB query integration
+> **Note**: TUI implementation is deferred. Web UI is the primary interactive interface.
 
 ---
 
@@ -227,6 +231,7 @@ src/
 | [spec-viewers.md](./spec-viewers.md) | TUI, browser viewer, transcript monitoring |
 | [spec-infrastructure.md](./spec-infrastructure.md) | Error handling, testing, caching |
 | [spec-deployment.md](./spec-deployment.md) | Nix packaging |
+| [spec-changed-files.md](./spec-changed-files.md) | Extracting changed files from session transcripts |
 | [DECISIONS.md](./DECISIONS.md) | Consolidated design decisions (Q1-Q36) |
 
 ---

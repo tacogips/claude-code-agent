@@ -1,6 +1,6 @@
 # Design Decisions
 
-This document consolidates all design decisions (Q1-Q36) made during the design phase.
+This document consolidates all design decisions (Q1-Q37) made during the design phase.
 
 ---
 
@@ -8,9 +8,9 @@ This document consolidates all design decisions (Q1-Q36) made during the design 
 
 | Q# | Topic | Decision | Rationale |
 |----|-------|----------|-----------|
-| Q1 | TUI Library | Ink | Mature ecosystem, TypeScript support |
+| Q1 | TUI Library | Ink (Future) | Mature ecosystem, TypeScript support (Low Priority) |
 | Q2 | JSON Query Backend | DuckDB (bundled) | SQL on JSONL, Clean Architecture |
-| Q3 | Default Viewer Mode | TUI | CLI tool should be terminal-first |
+| Q3 | Default Viewer Mode | Web UI | Browser-based viewer is primary interactive UI |
 | Q4 | Thinking Content | Hidden by default | Verbose, use flag when needed |
 | Q5 | Session Discovery | Combined (default + flags) | Flexible for all use cases |
 | Q6 | Browser Tech | SvelteKit | Full-stack SSR, small bundle |
@@ -44,22 +44,23 @@ This document consolidates all design decisions (Q1-Q36) made during the design 
 | Q34 | Standalone Storage | Unified workspaces/ | Simplified structure |
 | Q35 | Search Scope | Include bookmarks | Unified discovery |
 | Q36 | MVP Features | Session Annotation | Lightweight addition |
+| Q37 | Command Session Mode | Per-command choice | Flexible workflow support |
 
 ---
 
 ## Core Design Decisions (Q1-Q12)
 
 ### Q1: TUI Library Selection
-**Decision**: Ink
-**Rationale**: Mature ecosystem, extensive documentation, first-class TypeScript support, React-like patterns familiar to developers.
+**Decision**: Ink (Future/Low Priority)
+**Rationale**: Mature ecosystem, extensive documentation, first-class TypeScript support, React-like patterns familiar to developers. TUI implementation is deferred; Web UI is the primary interactive interface.
 
 ### Q2: JSON Query Backend
 **Decision**: DuckDB (bundled via `duckdb-async` npm package)
 **Rationale**: Powerful SQL queries on JSONL files. Bundled via npm (no user installation). Enables Athena-like query experience. Clean Architecture with repository interface allows future implementation swapping.
 
 ### Q3: Default Viewer Mode
-**Decision**: TUI default
-**Rationale**: CLI tool should be terminal-first. Use `server start` subcommand for browser mode.
+**Decision**: Web UI default
+**Rationale**: Browser-based viewer is the primary interactive UI. Use `server start` command to launch the web viewer. TUI is deferred to future implementation as a low-priority feature.
 
 ### Q4: Thinking Content Display
 **Decision**: Hidden by default
@@ -204,6 +205,13 @@ This document consolidates all design decisions (Q1-Q36) made during the design 
 ### Q36: New Feature Scope for MVP
 **Decision**: Session Annotation only
 **Rationale**: Lightweight (simple metadata storage) and complements bookmarks. Other features add complexity and are better suited for post-MVP.
+
+### Q37: Command Queue Session Mode
+**Decision**: Per-command session mode choice (`continue` or `new`)
+**Rationale**: Different commands may require different contexts. Related tasks benefit from shared session context (using `--resume`), while independent tasks are better executed in fresh sessions. The default `continue` mode maintains backward compatibility while enabling flexible workflows like:
+- Sequential related tasks in same session (continue context)
+- Independent tasks that need a clean slate (new session)
+- Mixed workflows where some commands share context and others start fresh
 
 ---
 
