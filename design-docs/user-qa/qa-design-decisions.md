@@ -110,9 +110,12 @@ TUI as default, with `--browser` flag for browser mode.
 
 ### Decision
 
-- [ ] TUI default
+- [x] TUI default
 - [ ] Browser default
 - [ ] Auto-detect
+
+**Decided**: 2026-01-04
+**Rationale**: CLI tool should be terminal-first. Use `server start` subcommand for browser mode.
 
 ---
 
@@ -137,10 +140,13 @@ Hidden by default as thinking content is verbose and not always relevant.
 
 ### Decision
 
-- [ ] Hidden by default
+- [x] Hidden by default
 - [ ] Visible by default
 - [ ] Collapsed sections
 - [ ] Separate view
+
+**Decided**: 2026-01-04
+**Rationale**: Thinking content is verbose. Use `--show-thinking` flag when needed.
 
 ---
 
@@ -333,10 +339,13 @@ USD with cents for simplicity, with option to show tokens.
 
 ### Decision
 
-- [ ] USD with cents
+- [x] USD with cents
 - [ ] USD with full precision
 - [ ] Tokens only
 - [ ] Both
+
+**Decided**: 2026-01-04
+**Rationale**: Standard currency format. Token details available in detail view.
 
 ---
 
@@ -363,13 +372,16 @@ JSON and Markdown for MVP, others as post-MVP.
 ### Decision (check all that apply)
 
 MVP:
-- [ ] JSON
-- [ ] Markdown
+- [x] JSON
+- [x] Markdown
 - [ ] HTML
 
 Post-MVP:
 - [ ] CSV
 - [ ] PDF
+
+**Decided**: 2026-01-04
+**Rationale**: JSON for programmatic access, Markdown for human-readable export. Other formats as needed.
 
 ---
 
@@ -412,8 +424,8 @@ Should sessions be automatically summarized for the list view?
 
 | Option | Implementation | Trade-off |
 |--------|----------------|-----------|
-| **No summary** (recommended for MVP) | Show first user message | Simple, fast |
-| **Use existing summary** | Read from transcript `summary` type | Available if present |
+| **No summary** | Show first user message | Simple, fast |
+| **Use existing summary** (recommended) | Read from transcript `summary` type | Available if present |
 | **Generate summary** | LLM-generated summary | Expensive, slow |
 | **First N characters** | Truncate first message | Fast, predictable |
 
@@ -424,28 +436,33 @@ Use existing summary from transcript if present, otherwise first user message.
 ### Decision
 
 - [ ] First user message only
-- [ ] Use existing transcript summary
+- [x] Use existing transcript summary (fallback to first message)
 - [ ] Generate summaries
 - [ ] Truncated first message
 
+**Decided**: 2026-01-04
+**Rationale**: Claude Code already generates session summaries in transcript. Use those, fallback to first user message if not present.
+
 ---
 
-## Summary of Decisions Needed
+## Summary of Decisions
 
-| Question | Current Recommendation | Status |
-|----------|------------------------|--------|
+| Question | Decision | Status |
+|----------|----------|--------|
 | Q1: TUI Library | Ink | **Decided** |
-| Q2: JSON Query Backend | DuckDB (bundled) | **Decided** |
-| Q3: Default Mode | TUI | Pending |
-| Q4: Thinking Display | Hidden by default | Pending |
+| Q2: JSON Query Backend | DuckDB (bundled) + Clean Architecture | **Decided** |
+| Q3: Default Mode | TUI | **Decided** |
+| Q4: Thinking Display | Hidden by default | **Decided** |
 | Q5: Session Discovery | Combined (default: current + flags) | **Decided** |
 | Q6: Browser Tech | SvelteKit | **Decided** |
 | Q7: Tool Name | claude-code-agent | **Decided** |
 | Q8: Real-time Updates | fs.watch (with partial line handling) | **Decided** |
-| Q9: Cost Display | USD with cents | Pending |
-| Q10: Export Formats | JSON + Markdown (MVP) | Pending |
+| Q9: Cost Display | USD with cents | **Decided** |
+| Q10: Export Formats | JSON + Markdown (MVP) | **Decided** |
 | Q11: Command Structure | Subcommands (Noun-oriented) | **Decided** |
-| Q12: Session Summary | Use existing + first message | Pending |
+| Q12: Session Summary | Use existing + first message | **Decided** |
+
+**All 12 decisions completed**: 2026-01-04
 
 ---
 
