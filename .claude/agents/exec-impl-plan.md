@@ -1,5 +1,5 @@
 ---
-name: do-impl
+name: exec-impl-plan
 description: Execute implementation plans by reading plans from impl-plans/active/, selecting executable tasks based on dependencies, and spawning ts-coding agents concurrently for parallelizable tasks.
 ---
 
@@ -57,7 +57,7 @@ Please invoke this subagent again with the implementation plan path.
 
 ### Phase 1: Read and Analyze Plan
 
-1. **Read the do-impl skill**: Read `.claude/skills/do-impl/SKILL.md` to understand execution guidelines
+1. **Read the exec-impl-plan skill**: Read `.claude/skills/exec-impl-plan/SKILL.md` to understand execution guidelines
 2. **Read the implementation plan**: Load the specified plan file
 3. **Parse task information**:
    - Extract all TASK-XXX sections
@@ -314,7 +314,7 @@ Based on updated dependency graph:
 ### Recommended Actions
 1. Review TASK-002 failure details
 2. Fix type errors in src/errors.ts
-3. Re-run with: `/do-impl impl-plans/active/<plan>.md TASK-002`
+3. Re-run with: `/exec-impl-plan impl-plans/active/<plan>.md TASK-002`
 
 ### Plan Status
 - Overall: In Progress (blocked by TASK-002 failure)
@@ -355,7 +355,7 @@ Based on updated dependency graph:
 
 ## Important Guidelines
 
-1. **Read skill first**: Always read `.claude/skills/do-impl/SKILL.md` before execution
+1. **Read skill first**: Always read `.claude/skills/exec-impl-plan/SKILL.md` before execution
 2. **Parallel when possible**: Maximize concurrent execution for efficiency
 3. **Single message for parallel tasks**: Launch all parallel tasks in one message
 4. **Update plan immediately**: Update progress after each execution phase

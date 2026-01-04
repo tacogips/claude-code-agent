@@ -296,22 +296,22 @@ TASK-001 and TASK-003 can be implemented in parallel via separate subtasks.
 
 ### Executing Implementation
 
-Use the `/do-impl` command or `do-impl` agent to execute implementation plans:
+Use the `/exec-impl-plan` command or `exec-impl-plan` agent to execute implementation plans:
 
 ```bash
 # Execute all available tasks from a plan
-/do-impl foundation-and-core
+/exec-impl-plan foundation-and-core
 
 # Execute specific tasks
-/do-impl foundation-and-core TASK-001 TASK-002
+/exec-impl-plan foundation-and-core TASK-001 TASK-002
 
 # Execute with full path
-/do-impl impl-plans/active/session-groups.md
+/exec-impl-plan impl-plans/active/session-groups.md
 ```
 
-**Skill Reference**: Refer to `.claude/skills/do-impl/SKILL.md` for implementation execution guidelines.
+**Skill Reference**: Refer to `.claude/skills/exec-impl-plan/SKILL.md` for implementation execution guidelines.
 
-The `/do-impl` command:
+The `/exec-impl-plan` command:
 
 1. Reads the implementation plan from `impl-plans/active/`
 2. Analyzes task dependencies and parallelization opportunities

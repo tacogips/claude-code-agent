@@ -20,7 +20,7 @@ $ARGUMENTS
 
 ## Instructions
 
-Invoke the `do-impl` subagent using the Task tool.
+Invoke the `exec-impl-plan` subagent using the Task tool.
 
 ### Argument Parsing
 
@@ -48,7 +48,7 @@ Examples:
 
 ```
 Task tool parameters:
-  subagent_type: do-impl
+  subagent_type: exec-impl-plan
   prompt: |
     Implementation Plan: <resolved-plan-path>
     Task Selection: <task-ids or "auto-select based on dependencies and status">
@@ -59,24 +59,24 @@ Task tool parameters:
 
 **Execute all available tasks from a plan**:
 ```
-/do-impl foundation-and-core
+/exec-impl-plan foundation-and-core
 ```
 Auto-selects tasks that are "Not Started" and have dependencies satisfied.
 
 **Execute specific tasks**:
 ```
-/do-impl foundation-and-core TASK-001 TASK-002
+/exec-impl-plan foundation-and-core TASK-001 TASK-002
 ```
 Executes only the specified tasks (in parallel if possible).
 
 **Execute with full path**:
 ```
-/do-impl impl-plans/active/session-groups.md
+/exec-impl-plan impl-plans/active/session-groups.md
 ```
 
 **Execute single task**:
 ```
-/do-impl foundation-and-core TASK-005
+/exec-impl-plan foundation-and-core TASK-005
 ```
 
 ### List Available Plans
@@ -112,17 +112,17 @@ Then display usage instructions.
 
 **If no arguments provided**:
 ```
-Usage: /do-impl <plan-path> [task-ids...]
+Usage: /exec-impl-plan <plan-path> [task-ids...]
 
 Examples:
-  /do-impl foundation-and-core              # Execute all available tasks
-  /do-impl foundation-and-core TASK-001     # Execute specific task
-  /do-impl session-groups TASK-001 TASK-002 # Execute multiple tasks
+  /exec-impl-plan foundation-and-core              # Execute all available tasks
+  /exec-impl-plan foundation-and-core TASK-001     # Execute specific task
+  /exec-impl-plan session-groups TASK-001 TASK-002 # Execute multiple tasks
 
 Available implementation plans:
   (list plans from impl-plans/active/)
 
-Run '/do-impl <plan-name>' to see plan status and available tasks.
+Run '/exec-impl-plan <plan-name>' to see plan status and available tasks.
 ```
 
 **If plan not found**:
@@ -150,7 +150,7 @@ Available tasks in <plan-name>:
 
 To see what would be executed without running:
 ```
-/do-impl foundation-and-core --dry-run
+/exec-impl-plan foundation-and-core --dry-run
 ```
 
 This shows:
