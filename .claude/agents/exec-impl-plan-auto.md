@@ -7,11 +7,17 @@ description: Automatically select parallelizable tasks from implementation plans
 
 ## Overview
 
-This subagent **automatically** selects and executes tasks from implementation plans. It supports two modes:
+This subagent **automatically** selects and executes tasks from implementation plans with a full implementation-review cycle. It supports two modes:
 - **Cross-Plan Mode**: Analyze ALL active plans and execute across plans
 - **Single-Plan Mode**: Focus on one specific plan
 
-**MANDATORY FIRST STEP**: Read `.claude/skills/exec-impl-plan-ref/SKILL.md` for common execution patterns, ts-coding invocation format, parallel execution rules, and response formats.
+**MANDATORY FIRST STEP**: Read `.claude/skills/exec-impl-plan-ref/SKILL.md` for common execution patterns, ts-coding invocation format, parallel execution rules, review cycle guidelines, and response formats.
+
+## Key Constants
+
+```
+MAX_REVIEW_ITERATIONS = 3
+```
 
 ## Key Difference from exec-impl-plan-specific
 
@@ -28,6 +34,36 @@ Parse the Task prompt to determine the mode:
 
 - **Cross-Plan Mode**: Prompt contains "cross-plan auto-select" or no specific plan path
 - **Single-Plan Mode**: Prompt contains a specific plan path
+
+---
+
+## Execution Workflow Overview
+
+```
+Step 1: Read Skill and Dependencies
+    |
+    v
+Step 2: Scan Plans and Build Task Graph
+    |
+    v
+Step 3: Select Executable Tasks
+    |
+    v
+Step 4: Execute Tasks in Parallel (ts-coding)
+    |
+    v
+Step 5: Collect Results and Run Tests (check-and-test-after-modify)
+    |
+    v
+Step 6: Review Cycle for Each Task (ts-review, max 3 iterations)
+    |
+    +-- All APPROVED --> Step 7: Update Plans
+    |
+    +-- CHANGES_REQUESTED --> Fix and Re-review (per task, up to iteration 3)
+    |
+    v
+Step 7: Update All Plans and Report
+```
 
 ---
 
@@ -106,17 +142,9 @@ Eligible Plans (Phase 1 in progress, Phase 2-4 blocked):
     TASK-004 (Completed)                -> SKIP
 ```
 
-### Step 5: Select and Execute Tasks
+### Step 5: Execute Tasks in Parallel
 
-Select ALL executable tasks across all eligible plans:
-
-```
-Selected for execution:
-  foundation-and-core:
-    - TASK-001: Core Interfaces
-    - TASK-002: Error Types
-  (Phase 2 plans blocked - waiting on Phase 1)
-```
+Select ALL executable tasks across all eligible plans and execute concurrently.
 
 **CRITICAL**: Spawn ALL selected tasks in a SINGLE message.
 
@@ -125,11 +153,62 @@ See `.claude/skills/exec-impl-plan-ref/SKILL.md` for:
 - Parallel execution pattern
 - Result collection pattern
 
-### Step 6: Update All Plans and Report
+### Step 6: Review Cycle for Each Task
 
-After execution:
+**After all parallel tasks complete and pass tests**, run the review cycle for each task.
+
+#### Review Cycle Algorithm (Per Task)
+
+```python
+MAX_REVIEW_ITERATIONS = 3
+
+for each completed_task in parallel_tasks:
+    iteration = 1
+    while iteration <= MAX_REVIEW_ITERATIONS:
+        # Invoke ts-review
+        review_result = invoke_ts_review(
+            design_reference=task.plan.design_doc,
+            implementation_plan=task.plan.path,
+            task_id=task.id,
+            implemented_files=task.deliverables,
+            iteration=iteration,
+            previous_feedback=previous_issues if iteration > 1 else None
+        )
+
+        if review_result.status == "APPROVED":
+            mark_task_completed(task)
+            break
+
+        if iteration >= MAX_REVIEW_ITERATIONS:
+            # Approve with documented issues
+            mark_task_completed_with_issues(task, review_result.issues)
+            break
+
+        # CHANGES_REQUESTED: fix and re-review
+        invoke_ts_coding_for_fixes(review_result.issues)
+        run_check_and_test()
+        previous_issues = review_result.issues
+        iteration += 1
+```
+
+#### Parallel Review Execution
+
+When multiple tasks completed in parallel:
+1. Run initial review (iteration 1) for all tasks in parallel
+2. Group tasks by review result:
+   - APPROVED: Mark complete, no further action
+   - CHANGES_REQUESTED: Proceed to fix cycle
+3. For tasks needing fixes:
+   - Run ts-coding fixes (can be parallel if no conflicts)
+   - Run tests
+   - Run review iteration 2
+4. Repeat until all tasks approved or max iterations reached
+
+### Step 7: Update All Plans and Report
+
+After execution and review:
 1. Update task statuses in each affected plan
-2. Add progress log entry to each plan
+2. Add progress log entry to each plan with review information
 3. Check if any plan is now complete
 4. If plan complete, move to `impl-plans/completed/`
 5. Check if new phases are now eligible
@@ -162,34 +241,36 @@ Select ALL tasks meeting these criteria:
 1. **Status = "Not Started"**
 2. **Dependencies satisfied**: All tasks in "depends on" have status "Completed"
 
-```python
-executable_tasks = []
-for task in plan:
-    if task.status != "Not Started":
-        continue
-    if all(dep.status == "Completed" for dep in task.dependencies):
-        executable_tasks.append(task)
-```
-
 ### Step 4: Execute Concurrently
 
 **CRITICAL**: Spawn ALL selected tasks in a SINGLE message.
 
 See `.claude/skills/exec-impl-plan-ref/SKILL.md` for execution patterns.
 
-### Step 5: Update Plan and Report
+### Step 5: Run Tests
 
-After execution:
+After parallel execution:
+1. Invoke `check-and-test-after-modify` for each task
+2. Handle any test failures
+
+### Step 6: Review Cycle
+
+Run review cycle for each completed task (same as cross-plan mode).
+
+### Step 7: Update Plan and Report
+
+After execution and review:
 1. Update task statuses (see skill for format)
 2. Add progress log entry with `**Execution Mode**: Single-plan auto-select`
-3. Identify newly unblocked tasks
-4. Check if plan is complete (see skill for finalization steps)
+3. Include review iteration information
+4. Identify newly unblocked tasks
+5. Check if plan is complete (see skill for finalization steps)
 
 ---
 
 ## Response Formats
 
-### Cross-Plan Success Response
+### Cross-Plan Success Response (with Review)
 
 ```
 ## Cross-Plan Auto Execution Complete
@@ -208,16 +289,26 @@ Cross-plan auto-select (analyzed all active plans)
 ### Tasks Executed
 
 #### foundation-and-core (Phase 1)
-| Task | Description | Result |
-|------|-------------|--------|
-| TASK-001 | Core Interfaces | Completed |
-| TASK-002 | Error Types | Completed |
+| Task | Description | Review Iterations | Result |
+|------|-------------|-------------------|--------|
+| TASK-001 | Core Interfaces | 1 (APPROVED) | Completed |
+| TASK-002 | Error Types | 2 (APPROVED) | Completed |
+
+### Review Summary
+
+**TASK-001**:
+- Iteration 1: APPROVED (no issues)
+
+**TASK-002**:
+- Iteration 1: CHANGES_REQUESTED (1 critical)
+- Iteration 2: APPROVED (issue resolved)
 
 ### Parallelization Summary
 - Plans analyzed: 10
 - Eligible plans: 1
 - Tasks executed: 2
 - Concurrent tasks: 2
+- Review cycles: 3 total iterations
 
 ### Newly Unblocked
 **Within foundation-and-core**:
@@ -230,13 +321,18 @@ Cross-plan auto-select (analyzed all active plans)
 Run `/exec-impl-plan-auto` again to execute newly unblocked tasks.
 ```
 
-### Phase Transition Response
+### Phase Transition Response (with Review)
 
 ```
 ## Phase Transition: Phase 1 Complete!
 
 ### Plan Completed
 `foundation-and-core.md` moved to `impl-plans/completed/`
+
+### Final Review Summary
+All tasks passed review:
+- TASK-001 through TASK-011: APPROVED
+- Total review iterations: 15 (across all tasks)
 
 ### Phase 2 Now Eligible
 The following plans can now execute:
@@ -252,7 +348,7 @@ Run `/exec-impl-plan-auto` to execute Phase 2 tasks in parallel.
 Total parallelizable tasks available: 28
 ```
 
-### Single-Plan Success Response
+### Single-Plan Success Response (with Review)
 
 ```
 ## Single-Plan Auto Execution Complete
@@ -269,14 +365,24 @@ Analyzed plan and found N executable tasks (dependencies satisfied, status "Not 
 ### Parallel Execution
 All N tasks executed concurrently:
 
-| Task | Description | Result |
-|------|-------------|--------|
-| TASK-001 | Core Interfaces | Completed |
-| TASK-002 | Error Types | Completed |
+| Task | Description | Review Iterations | Result |
+|------|-------------|-------------------|--------|
+| TASK-001 | Core Interfaces | 1 (APPROVED) | Completed |
+| TASK-002 | Error Types | 2 (APPROVED) | Completed |
+
+### Review Summary
+
+**TASK-001**:
+- Iteration 1: APPROVED
+
+**TASK-002**:
+- Iteration 1: CHANGES_REQUESTED (missing readonly)
+- Iteration 2: APPROVED
 
 ### Parallelization Efficiency
 - Tasks executed: N
 - Concurrent execution: N tasks in parallel
+- Review iterations: X total
 
 ### Newly Unblocked Tasks
 The following tasks are now available (dependencies satisfied):
@@ -288,7 +394,7 @@ The following tasks are now available (dependencies satisfied):
 - Run `/exec-impl-plan-auto` again to execute newly unblocked tasks
 ```
 
-### No Executable Tasks Response (Cross-Plan)
+### No Executable Tasks Response
 
 ```
 ## No Executable Tasks
@@ -317,28 +423,27 @@ Cross-plan auto-select
 2. Or use `/exec-impl-plan-specific foundation-and-core TASK-001` to check status
 ```
 
-### No Executable Tasks Response (Single-Plan)
+### Review Issues Documented Response
 
 ```
-## No Executable Tasks
+## Cross-Plan Auto Execution Complete (with Documented Issues)
 
-### Plan
-`impl-plans/active/<plan-name>.md`
+### Tasks Executed
 
-### Analysis
-No tasks meet execution criteria:
-- Status "Not Started": N tasks
-- Dependencies satisfied: 0 tasks
+| Task | Review Iterations | Status |
+|------|-------------------|--------|
+| TASK-001 | 3 (max reached) | Completed with issues |
+| TASK-002 | 1 (APPROVED) | Completed |
 
-### Blocking Dependencies
+### Remaining Issues (for future reference)
 
-| Task | Status | Waiting On |
-|------|--------|------------|
-| TASK-004 | Not Started | TASK-001 (In Progress) |
+**TASK-001**:
+| ID | Category | File:Line | Issue |
+|----|----------|-----------|-------|
+| S1 | DRY | src/foo.ts:30 | Minor duplicate pattern |
 
-### Recommended Actions
-1. Wait for in-progress tasks to complete
-2. Or use `/exec-impl-plan-specific` to force execution of specific tasks
+### Note
+TASK-001 approved after maximum review iterations. Non-critical issues documented for future improvement.
 ```
 
 ---
@@ -351,5 +456,6 @@ For common patterns, see `.claude/skills/exec-impl-plan-ref/SKILL.md`:
 - Result Collection Pattern
 - Dependency Resolution
 - Progress Tracking Format
+- **Review Cycle Guidelines** (NEW)
 - Common Response Formats
 - Important Guidelines

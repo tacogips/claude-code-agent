@@ -315,6 +315,132 @@ When a plan is complete:
 3. Move file: `impl-plans/active/<plan>.md` -> `impl-plans/completed/<plan>.md`
 4. Update `impl-plans/README.md`
 
+## Review Cycle
+
+After task implementation and testing, each task goes through a code review cycle using the `ts-review` agent.
+
+### Review Workflow
+
+```
+ts-coding agent (implementation)
+    |
+    v
+check-and-test-after-modify agent (tests pass)
+    |
+    v
+ts-review agent (iteration 1)
+    |
+    +-- APPROVED --> Task complete
+    |
+    +-- CHANGES_REQUESTED --> ts-coding (fixes) --> check-and-test --> ts-review (iteration 2)
+                                                                            |
+                                                                            +-- ... (up to 3 iterations)
+```
+
+### Maximum Iterations
+
+The review cycle is limited to **3 iterations** per task to prevent infinite loops:
+
+| Iteration | Review Scope | Outcome |
+|-----------|--------------|---------|
+| 1 | Full comprehensive review | APPROVED or CHANGES_REQUESTED |
+| 2 | Focus on previous issues + new issues from fixes | APPROVED or CHANGES_REQUESTED |
+| 3 | Critical issues only | APPROVED (with documented remaining issues) |
+
+### Review Agent Invocation
+
+```
+Task tool parameters:
+  subagent_type: ts-review
+  prompt: |
+    Design Reference: <path to design document>
+    Implementation Plan: impl-plans/active/<plan-name>.md
+    Task ID: TASK-XXX
+    Implemented Files:
+      - <file path 1>
+      - <file path 2>
+    Iteration: 1
+```
+
+### Re-Review After Fixes
+
+```
+Task tool parameters:
+  subagent_type: ts-review
+  prompt: |
+    Design Reference: <path to design document>
+    Implementation Plan: impl-plans/active/<plan-name>.md
+    Task ID: TASK-XXX
+    Implemented Files:
+      - <file path 1>
+      - <file path 2>
+    Iteration: 2
+    Previous Feedback:
+      - C1: Missing readonly modifiers
+      - S1: Duplicate validation logic
+    Focus Areas: readonly modifiers, duplicate validation
+```
+
+### Handling Review Results
+
+**If APPROVED**:
+1. Mark task as Completed
+2. Update completion criteria checkboxes
+3. Add review approval to progress log
+
+**If CHANGES_REQUESTED**:
+1. Check current iteration number
+2. If iteration < 3:
+   - Parse issue list from review
+   - Invoke ts-coding with fix instructions
+   - Run check-and-test
+   - Invoke ts-review with iteration + 1
+3. If iteration >= 3:
+   - Mark task as Completed
+   - Document remaining issues in progress log
+   - Note: "Approved after max iterations with documented issues"
+
+### Review Feedback to ts-coding
+
+When re-invoking ts-coding to fix review issues:
+
+```
+Task tool parameters:
+  subagent_type: ts-coding
+  prompt: |
+    Purpose: Fix code review issues for TASK-XXX
+    Reference Document: impl-plans/active/<plan-name>.md
+    Implementation Target: Fix the following review issues
+
+    Issues to Fix:
+    - C1 (Critical): src/foo.ts:25 - Missing required method X
+      Suggested Fix: Add method X per design spec section Y
+    - C2 (Critical): src/bar.ts:42 - Using `any` type
+      Suggested Fix: Replace with `unknown` and add type guard
+    - S1 (Improvement): src/foo.ts:30,45 - Duplicate validation logic
+      Suggested Fix: Extract to shared validateX function
+
+    Completion Criteria:
+      - All critical issues (C1, C2) are resolved
+      - Improvement suggestions addressed where reasonable
+      - Type checking passes
+      - Tests pass
+```
+
+### Progress Log with Review
+
+```markdown
+### Session: 2026-01-04 14:30
+**Tasks Completed**: TASK-001
+**Review Iterations**: 2
+**Review Summary**:
+- Iteration 1: 2 critical issues, 1 improvement suggestion
+- Iteration 2: APPROVED (all issues resolved)
+**Notes**:
+- Fixed missing readonly modifiers
+- Extracted duplicate validation to shared utility
+```
+
 ## Error Handling
 
 ### Task Failure
@@ -396,7 +522,8 @@ If only some tasks complete:
 4. **Update plan immediately**: Update progress after execution completes
 5. **Fail gracefully**: Continue with other tasks if one fails
 6. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
-7. **Move completed plans**: Move to `impl-plans/completed/` when done
+7. **Run review cycle**: After tests pass, invoke `ts-review` for code review (max 3 iterations)
+8. **Move completed plans**: Move to `impl-plans/completed/` when done
 
 ## Cross-Plan Execution
 
@@ -466,8 +593,10 @@ When a phase-gating plan completes (e.g., foundation-and-core):
 
 ## Integration with Other Skills
 
-| Skill | Relationship |
-|-------|--------------|
+| Skill/Agent | Relationship |
+|-------------|--------------|
 | `impl-plan/SKILL.md` | Read plans created by this skill |
 | `ts-coding-standards/` | ts-coding agent follows these |
 | `design-doc/SKILL.md` | Original design reference |
+| `ts-review` agent | Code review after implementation |
+| `check-and-test-after-modify` agent | Test verification before review |
