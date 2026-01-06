@@ -364,21 +364,102 @@ export class TokenManager {
 }
 
 /**
+ * Extended context interface for Elysia with authenticated token.
+ *
+ * Augments Elysia context with token data after successful authentication.
+ */
+export interface AuthContext {
+  readonly token: ApiToken;
+}
+
+/**
  * Authentication middleware for Elysia.
  *
  * Validates Bearer token from Authorization header and attaches
  * token data to request context.
  *
- * This is a placeholder for TASK-003. The actual Elysia integration
- * will be implemented in that task.
+ * Returns 401 for missing/invalid tokens.
+ * Returns 403 for insufficient permissions (if permission check is used).
  *
  * @param tokenManager - TokenManager instance
+ * @returns Elysia middleware plugin
+ */
+export function authMiddleware(tokenManager: TokenManager) {
+  return async (context: {
+    readonly request: Request;
+    readonly set: { status?: number };
+    readonly token?: ApiToken;
+  }): Promise<ApiToken | { readonly error: string; readonly status: number }> => {
+    const authHeader = context.request.headers.get("Authorization");
+
+    // Check for Authorization header
+    if (authHeader === null) {
+      context.set.status = 401;
+      return {
+        error: "Missing Authorization header",
+        status: 401,
+      };
+    }
+
+    // Parse Bearer token format
+    const parts = authHeader.split(" ");
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
+      context.set.status = 401;
+      return {
+        error: "Invalid Authorization header format. Expected: Bearer <token>",
+        status: 401,
+      };
+    }
+
+    const token = parts[1];
+    if (token === undefined) {
+      context.set.status = 401;
+      return {
+        error: "Missing token in Authorization header",
+        status: 401,
+      };
+    }
+
+    // Validate token
+    const validatedToken = await tokenManager.validateToken(token);
+    if (validatedToken === null) {
+      context.set.status = 401;
+      return {
+        error: "Invalid or expired token",
+        status: 401,
+      };
+    }
+
+    // Token is valid, return it to be attached to context
+    return validatedToken;
+  };
+}
+
+/**
+ * Permission check middleware factory.
+ *
+ * Creates a middleware that checks if the authenticated token
+ * has the required permission. Must be used after authMiddleware.
+ *
+ * @param tokenManager - TokenManager instance
+ * @param requiredPermission - Permission to check
  * @returns Middleware function
  */
-export function authMiddleware(tokenManager: TokenManager): (context: unknown) => Promise<void> {
-  return async (context: unknown): Promise<void> => {
-    // Placeholder implementation
-    // TASK-003 will implement full Elysia integration
-    console.log("authMiddleware placeholder called", tokenManager, context);
+export function requirePermission(
+  tokenManager: TokenManager,
+  requiredPermission: Permission
+) {
+  return (context: {
+    readonly token: ApiToken;
+    readonly set: { status?: number };
+  }): { readonly error: string; readonly status: number } | void => {
+    if (!tokenManager.hasPermission(context.token, requiredPermission)) {
+      context.set.status = 403;
+      return {
+        error: `Insufficient permissions. Required: ${requiredPermission}`,
+        status: 403,
+      };
+    }
+    // Permission granted, continue to route handler
   };
 }

@@ -313,7 +313,7 @@ Implement TokenManager for API key authentication.
 
 ### TASK-003: Auth Middleware
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-002)
 **Deliverables**: `src/daemon/auth.ts` (middleware function)
 **Estimated Effort**: Small
@@ -322,13 +322,13 @@ Implement TokenManager for API key authentication.
 Implement Elysia auth middleware for Bearer token validation.
 
 **Completion Criteria**:
-- [ ] Extract Bearer token from Authorization header
-- [ ] Validate token via TokenManager
-- [ ] Attach token data to request context
-- [ ] Return 401 for missing/invalid token
-- [ ] Return 403 for insufficient permissions
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] Extract Bearer token from Authorization header
+- [x] Validate token via TokenManager
+- [x] Attach token data to request context
+- [x] Return 401 for missing/invalid token
+- [x] Return 403 for insufficient permissions
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
@@ -448,6 +448,25 @@ Parallelizable groups:
 - File-based JSON storage with proper error handling and initialization
 - All completion criteria met and verified
 - Type checking passes with strict TypeScript configuration
+
+### Session: 2026-01-07 01:30
+**Tasks Completed**: TASK-003
+**Tasks In Progress**: None
+**Blockers**: None
+**Notes**:
+- Implemented authMiddleware function for Elysia Bearer token validation
+- Extracts Authorization header and validates Bearer token format
+- Validates token via TokenManager and returns validated ApiToken
+- Returns 401 for missing, malformed, invalid, or expired tokens
+- Implemented requirePermission middleware factory for permission checking
+- Returns 403 for insufficient permissions with clear error message
+- Added AuthContext interface for type-safe context augmentation
+- Added 11 new comprehensive unit tests (total 38 tests, all passing)
+- Tests cover all authentication scenarios including edge cases
+- Elysia package installed (v1.4.20) as dependency
+- Type checking passes with strict TypeScript configuration
+- All completion criteria met and verified
+- Ready for integration in TASK-004 (Core Server)
 
 ---
 

@@ -6,10 +6,15 @@
  */
 
 import { describe, test, expect, beforeEach } from "bun:test";
-import { TokenManager } from "./auth";
+import {
+  TokenManager,
+  authMiddleware,
+  requirePermission,
+} from "./auth";
 import { createTestContainer } from "../container";
 import type { Container } from "../container";
 import { MockFileSystem } from "../test/mocks/filesystem";
+import type { ApiToken } from "./types";
 
 describe("TokenManager", () => {
   let container: Container;
@@ -418,6 +423,282 @@ describe("TokenManager", () => {
       const expected = Date.now() + 365 * 24 * 60 * 60 * 1000;
 
       expect(Math.abs(expiresAt - expected)).toBeLessThan(1000);
+    });
+  });
+});
+
+describe("authMiddleware", () => {
+  let container: Container;
+  let tokenManager: TokenManager;
+  let mockFs: MockFileSystem;
+  const tokenFilePath = "/tmp/test-tokens.json";
+  let validToken: string;
+
+  beforeEach(async () => {
+    container = createTestContainer();
+    mockFs = container.fileSystem as MockFileSystem;
+    tokenManager = new TokenManager(container, tokenFilePath);
+    await tokenManager.initialize();
+
+    // Create a valid token for testing
+    validToken = await tokenManager.createToken({
+      name: "Test Token",
+      permissions: ["session:create", "session:read"],
+    });
+  });
+
+  test("returns 401 for missing Authorization header", async () => {
+    const middleware = authMiddleware(tokenManager);
+    const mockRequest = new Request("http://localhost/api/test");
+    const mockContext: { request: Request; set: { status?: number } } = {
+      request: mockRequest,
+      set: {},
+    };
+
+    const result = await middleware(mockContext);
+
+    expect(mockContext.set.status).toBe(401);
+    expect(result).toEqual({
+      error: "Missing Authorization header",
+      status: 401,
+    });
+  });
+
+  test("returns 401 for invalid Authorization header format", async () => {
+    const middleware = authMiddleware(tokenManager);
+    const mockRequest = new Request("http://localhost/api/test", {
+      headers: { Authorization: "InvalidFormat token123" },
+    });
+    const mockContext: { request: Request; set: { status?: number } } = {
+      request: mockRequest,
+      set: {},
+    };
+
+    const result = await middleware(mockContext);
+
+    expect(mockContext.set.status).toBe(401);
+    expect(result).toEqual({
+      error: "Invalid Authorization header format. Expected: Bearer <token>",
+      status: 401,
+    });
+  });
+
+  test("returns 401 for Bearer without token", async () => {
+    const middleware = authMiddleware(tokenManager);
+    const mockRequest = new Request("http://localhost/api/test", {
+      headers: { Authorization: "Bearer" },
+    });
+    const mockContext: { request: Request; set: { status?: number } } = {
+      request: mockRequest,
+      set: {},
+    };
+
+    await middleware(mockContext);
+
+    expect(mockContext.set.status).toBe(401);
+  });
+
+  test("returns 401 for invalid token", async () => {
+    const middleware = authMiddleware(tokenManager);
+    const mockRequest = new Request("http://localhost/api/test", {
+      headers: { Authorization: "Bearer cca_invalid_token_xxx" },
+    });
+    const mockContext: { request: Request; set: { status?: number } } = {
+      request: mockRequest,
+      set: {},
+    };
+
+    const result = await middleware(mockContext);
+
+    expect(mockContext.set.status).toBe(401);
+    expect(result).toEqual({
+      error: "Invalid or expired token",
+      status: 401,
+    });
+  });
+
+  test("returns ApiToken for valid token", async () => {
+    const middleware = authMiddleware(tokenManager);
+    const mockRequest = new Request("http://localhost/api/test", {
+      headers: { Authorization: `Bearer ${validToken}` },
+    });
+    const mockContext: { request: Request; set: { status?: number } } = {
+      request: mockRequest,
+      set: {},
+    };
+
+    const result = await middleware(mockContext);
+
+    // Should return the validated token
+    expect(result).toBeDefined();
+    expect(typeof result).toBe("object");
+    expect((result as ApiToken).name).toBe("Test Token");
+    expect((result as ApiToken).permissions).toContain("session:create");
+    expect((result as ApiToken).permissions).toContain("session:read");
+  });
+
+  test("updates lastUsedAt on successful validation", async () => {
+    const middleware = authMiddleware(tokenManager);
+    const mockRequest = new Request("http://localhost/api/test", {
+      headers: { Authorization: `Bearer ${validToken}` },
+    });
+    const mockContext: { request: Request; set: { status?: number } } = {
+      request: mockRequest,
+      set: {},
+    };
+
+    const before = Date.now();
+    const result = await middleware(mockContext);
+    const after = Date.now();
+
+    expect((result as ApiToken).lastUsedAt).toBeDefined();
+    const lastUsed = new Date((result as ApiToken).lastUsedAt!).getTime();
+    expect(lastUsed).toBeGreaterThanOrEqual(before);
+    expect(lastUsed).toBeLessThanOrEqual(after);
+  });
+
+  test("handles expired token", async () => {
+    // Create a token with expiration
+    const expiredToken = await tokenManager.createToken({
+      name: "Expired Token",
+      permissions: ["session:read"],
+      expiresIn: "1d",
+    });
+
+    // Manually expire it
+    const tokens = await tokenManager.listTokens();
+    const stored = tokens.find((t) => t.name === "Expired Token");
+    const pastDate = new Date(Date.now() - 1000).toISOString();
+
+    await mockFs.writeFile(
+      tokenFilePath,
+      JSON.stringify({
+        tokens: [{ ...stored, expiresAt: pastDate }],
+      })
+    );
+
+    // Reload tokens
+    const newManager = new TokenManager(container, tokenFilePath);
+    await newManager.initialize();
+
+    const middleware = authMiddleware(newManager);
+    const mockRequest = new Request("http://localhost/api/test", {
+      headers: { Authorization: `Bearer ${expiredToken}` },
+    });
+    const mockContext: { request: Request; set: { status?: number } } = {
+      request: mockRequest,
+      set: {},
+    };
+
+    const result = await middleware(mockContext);
+
+    expect(mockContext.set.status).toBe(401);
+    expect(result).toEqual({
+      error: "Invalid or expired token",
+      status: 401,
+    });
+  });
+});
+
+describe("requirePermission", () => {
+  let container: Container;
+  let tokenManager: TokenManager;
+  const tokenFilePath = "/tmp/test-tokens.json";
+
+  beforeEach(async () => {
+    container = createTestContainer();
+    tokenManager = new TokenManager(container, tokenFilePath);
+    await tokenManager.initialize();
+  });
+
+  test("allows access with required permission", async () => {
+    const token = await tokenManager.createToken({
+      name: "Test Token",
+      permissions: ["session:create", "session:read"],
+    });
+
+    const validated = await tokenManager.validateToken(token);
+    expect(validated).not.toBeNull();
+
+    const middleware = requirePermission(tokenManager, "session:create");
+    const mockContext: { token: ApiToken; set: { status?: number } } = {
+      token: validated!,
+      set: {},
+    };
+
+    const result = middleware(mockContext);
+
+    // Should return void (no error)
+    expect(result).toBeUndefined();
+    expect(mockContext.set.status).toBeUndefined();
+  });
+
+  test("returns 403 for missing permission", async () => {
+    const token = await tokenManager.createToken({
+      name: "Limited Token",
+      permissions: ["session:read"],
+    });
+
+    const validated = await tokenManager.validateToken(token);
+    expect(validated).not.toBeNull();
+
+    const middleware = requirePermission(tokenManager, "session:create");
+    const mockContext: { token: ApiToken; set: { status?: number } } = {
+      token: validated!,
+      set: {},
+    };
+
+    const result = middleware(mockContext);
+
+    expect(mockContext.set.status).toBe(403);
+    expect(result).toEqual({
+      error: "Insufficient permissions. Required: session:create",
+      status: 403,
+    });
+  });
+
+  test("allows access with wildcard permission", async () => {
+    const token = await tokenManager.createToken({
+      name: "Admin Token",
+      permissions: ["bookmark:*"],
+    });
+
+    const validated = await tokenManager.validateToken(token);
+    expect(validated).not.toBeNull();
+
+    const middleware = requirePermission(tokenManager, "bookmark:*");
+    const mockContext: { token: ApiToken; set: { status?: number } } = {
+      token: validated!,
+      set: {},
+    };
+
+    const result = middleware(mockContext);
+
+    expect(result).toBeUndefined();
+    expect(mockContext.set.status).toBeUndefined();
+  });
+
+  test("denies access when wildcard does not match", async () => {
+    const token = await tokenManager.createToken({
+      name: "Limited Token",
+      permissions: ["session:read"],
+    });
+
+    const validated = await tokenManager.validateToken(token);
+    expect(validated).not.toBeNull();
+
+    const middleware = requirePermission(tokenManager, "group:create");
+    const mockContext: { token: ApiToken; set: { status?: number } } = {
+      token: validated!,
+      set: {},
+    };
+
+    const result = middleware(mockContext);
+
+    expect(mockContext.set.status).toBe(403);
+    expect(result).toEqual({
+      error: "Insufficient permissions. Required: group:create",
+      status: 403,
     });
   });
 });
