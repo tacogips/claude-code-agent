@@ -17,6 +17,7 @@ import type {
 import type { EventEmitter } from "../events/emitter";
 import type { SessionGroup, GroupSession, GroupConfig } from "./types";
 import { DEFAULT_GROUP_CONFIG } from "./types";
+import slugify from "slugify";
 
 const logger = createTaggedLogger("group-manager");
 
@@ -559,10 +560,10 @@ export class GroupManager {
    * @returns URL-safe slug
    */
   private generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
+    // Pre-process to replace special characters with hyphens
+    // This ensures consistent behavior: special chars become separators
+    const cleaned = name.replace(/[^a-z0-9\s]+/gi, "-");
+    return slugify(cleaned, { lower: true, strict: true })
       .slice(0, 20)
       .replace(/-+$/g, ""); // Remove trailing hyphens after truncation
   }

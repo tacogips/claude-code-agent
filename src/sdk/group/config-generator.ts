@@ -11,6 +11,7 @@ import type { Container } from "../../container";
 import type { SessionGroup, GroupSession } from "./types";
 import { Result, ok, err } from "../../result";
 import { createTaggedLogger } from "../../logger";
+import Mustache from "mustache";
 
 const logger = createTaggedLogger("config-generator");
 
@@ -143,15 +144,59 @@ export class ConfigGenerator {
     template: string,
     variables: Record<string, string>,
   ): string {
-    let content = template;
+    // Use Mustache for template rendering with custom behavior:
+    // 1. Disable HTML escaping (preserve paths like /tmp/test)
+    // 2. Preserve unmatched variables as-is (e.g., {{unknown}} stays {{unknown}})
 
-    // Substitute all {{variable}} patterns
-    for (const [key, value] of Object.entries(variables)) {
-      const pattern = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
-      content = content.replace(pattern, value);
+    // Store original escape function and override with no-op
+    const originalEscape = Mustache.escape;
+    Mustache.escape = (text: string) => text;
+
+    try {
+      // Parse template to identify all variables
+      const parsed = Mustache.parse(template);
+      const allVariableNames = new Set<string>();
+
+      // Extract variable names from parsed template
+      const extractVariables = (tokens: unknown[]): void => {
+        for (const token of tokens) {
+          if (Array.isArray(token)) {
+            const [type, name, _start, _end, children] = token as [
+              string,
+              string,
+              number,
+              number,
+              unknown[]?,
+            ];
+            // Type 'name' or '&' means a variable reference
+            if (type === "name" || type === "&") {
+              allVariableNames.add(name);
+            }
+            // Recursively process nested tokens (like in sections)
+            if (children !== undefined) {
+              extractVariables(children);
+            }
+          }
+        }
+      };
+
+      extractVariables(parsed);
+
+      // Create extended variables object that preserves unknowns
+      const extendedVariables: Record<string, string> = { ...variables };
+      for (const varName of allVariableNames) {
+        if (!(varName in variables)) {
+          // Preserve unmatched variables by providing them as {{varName}}
+          extendedVariables[varName] = `{{${varName}}}`;
+        }
+      }
+
+      // Render with Mustache
+      return Mustache.render(template, extendedVariables);
+    } finally {
+      // Restore original escape function
+      Mustache.escape = originalEscape;
     }
-
-    return content;
   }
 
   /**

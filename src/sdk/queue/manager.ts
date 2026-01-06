@@ -19,6 +19,7 @@ import type {
 } from "../../repository/queue-repository";
 import type { SessionMode } from "./types";
 import { createTaggedLogger } from "../../logger";
+import slugify from "slugify";
 
 const logger = createTaggedLogger("queue-manager");
 
@@ -609,10 +610,11 @@ export class QueueManager {
    * @returns URL-safe slug
    */
   private generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 20);
+    // Pre-process to replace special characters with hyphens
+    // This ensures consistent behavior: special chars become separators
+    const cleaned = name.replace(/[^a-z0-9\s]+/gi, "-");
+    return slugify(cleaned, { lower: true, strict: true })
+      .slice(0, 20)
+      .replace(/-+$/g, ""); // Remove trailing hyphens after truncation
   }
 }

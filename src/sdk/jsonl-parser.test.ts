@@ -254,7 +254,7 @@ describe("parseJsonlStream", () => {
         for await (const obj of parseJsonlStream<{ id: number }>(lines())) {
           results.push(obj);
         }
-      })()
+      })(),
     ).rejects.toThrow(ParseError);
   });
 

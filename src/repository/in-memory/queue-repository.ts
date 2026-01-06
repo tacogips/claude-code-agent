@@ -7,6 +7,7 @@
  * @module repository/in-memory/queue-repository
  */
 
+import { nanoid } from "nanoid";
 import type {
   CommandQueue,
   QueueCommand,
@@ -130,7 +131,7 @@ export class InMemoryQueueRepository implements QueueRepository {
     }
 
     // Generate command ID
-    const commandId = `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const commandId = `cmd-${nanoid(12)}`;
 
     const newCommand: QueueCommand = {
       id: commandId,

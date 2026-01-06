@@ -305,7 +305,9 @@ export class FileChangeExtractor {
     switch (toolName) {
       case "Edit":
       case "Write":
-        return typeof input["file_path"] === "string" ? input["file_path"] : null;
+        return typeof input["file_path"] === "string"
+          ? input["file_path"]
+          : null;
 
       case "NotebookEdit":
         return typeof input["notebook_path"] === "string"
@@ -357,7 +359,8 @@ export class FileChangeExtractor {
     filePath: string,
     options?: ExtractOptions | undefined,
   ): FileChange {
-    const toolUseId = typeof toolUse["id"] === "string" ? toolUse["id"] : "unknown";
+    const toolUseId =
+      typeof toolUse["id"] === "string" ? toolUse["id"] : "unknown";
 
     // Extract content based on tool type
     let oldContent: string | undefined;
@@ -367,27 +370,33 @@ export class FileChangeExtractor {
       switch (tool) {
         case "Edit":
           oldContent =
-            typeof input["old_string"] === "string" ? input["old_string"] : undefined;
+            typeof input["old_string"] === "string"
+              ? input["old_string"]
+              : undefined;
           newContent =
             typeof input["new_string"] === "string" ? input["new_string"] : "";
           break;
 
         case "Write":
           oldContent = undefined;
-          newContent = typeof input["content"] === "string" ? input["content"] : "";
+          newContent =
+            typeof input["content"] === "string" ? input["content"] : "";
           break;
 
         case "MultiEdit":
           // For individual MultiEdit entry
           oldContent =
-            typeof input["old_string"] === "string" ? input["old_string"] : undefined;
+            typeof input["old_string"] === "string"
+              ? input["old_string"]
+              : undefined;
           newContent =
             typeof input["new_string"] === "string" ? input["new_string"] : "";
           break;
 
         case "NotebookEdit":
           // For notebooks, we could extract cell content
-          newContent = typeof input["content"] === "string" ? input["content"] : "";
+          newContent =
+            typeof input["content"] === "string" ? input["content"] : "";
           break;
       }
     }
@@ -531,7 +540,10 @@ export class FileChangeExtractor {
       return;
     }
 
-    const backups = snapshotData["trackedFileBackups"] as Record<string, unknown>;
+    const backups = snapshotData["trackedFileBackups"] as Record<
+      string,
+      unknown
+    >;
 
     for (const [filePath, backup] of Object.entries(backups)) {
       const existing = fileMap.get(filePath);
@@ -677,8 +689,10 @@ export class FileChangeExtractor {
   private parseEntry(raw: object): TranscriptEntry {
     const record = raw as Record<string, unknown>;
 
-    const type = typeof record["type"] === "string" ? record["type"] : "unknown";
-    const uuid = typeof record["uuid"] === "string" ? record["uuid"] : undefined;
+    const type =
+      typeof record["type"] === "string" ? record["type"] : "unknown";
+    const uuid =
+      typeof record["uuid"] === "string" ? record["uuid"] : undefined;
     const timestamp =
       typeof record["timestamp"] === "string" ? record["timestamp"] : undefined;
     const content = "content" in record ? record["content"] : undefined;

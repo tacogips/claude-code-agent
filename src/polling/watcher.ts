@@ -8,6 +8,7 @@
  * @module polling/watcher
  */
 
+import { debounce } from "perfect-debounce";
 import type { Container } from "../container";
 import type { FileSystem, WatchEvent } from "../interfaces/filesystem";
 
@@ -41,8 +42,8 @@ interface WatchedFile {
   readonly iterator: AsyncIterator<WatchEvent>;
   /** Current file offset (number of bytes read) */
   offset: number;
-  /** Pending timer for debouncing */
-  debounceTimer: ReturnType<typeof setTimeout> | null;
+  /** Debounced function for processing changes */
+  debouncedProcess: () => void;
   /** Whether this watcher is stopped */
   stopped: boolean;
 }
@@ -120,69 +121,65 @@ export class TranscriptWatcher {
     const stat = await this.fileSystem.stat(transcriptPath);
     const initialOffset = this.config.includeExisting ? stat.size : stat.size;
 
+    // Create a queue for debounced events
+    const eventQueue: FileChange[] = [];
+    let queueResolver: ((value: IteratorResult<FileChange>) => void) | null =
+      null;
+
+    // Initialize watched file state (will be populated below)
     const watchedFile: WatchedFile = {
       iterator,
       offset: initialOffset,
-      debounceTimer: null,
+      debouncedProcess: () => {}, // Placeholder, will be replaced
       stopped: false,
     };
+
+    // Process watch events
+    const processChange = async (): Promise<void> => {
+      if (watchedFile.stopped) return;
+
+      try {
+        const newContent = await this.readNewContent(
+          transcriptPath,
+          watchedFile,
+        );
+
+        if (newContent.length > 0) {
+          const change: FileChange = {
+            path: transcriptPath,
+            content: newContent,
+            timestamp: new Date().toISOString(),
+          };
+
+          // If someone is waiting, resolve immediately
+          if (queueResolver !== null) {
+            const resolver = queueResolver;
+            queueResolver = null;
+            resolver({ value: change, done: false });
+          } else {
+            // Otherwise queue the event
+            eventQueue.push(change);
+          }
+        }
+      } catch (error) {
+        // File might have been deleted or truncated
+        // Reset offset and continue watching
+        watchedFile.offset = 0;
+      }
+    };
+
+    // Create debounced function and assign to watchedFile
+    watchedFile.debouncedProcess = debounce(() => {
+      void processChange();
+    }, this.config.debounceMs);
 
     this.watchers.set(transcriptPath, watchedFile);
 
     try {
-      // Create a queue for debounced events
-      const eventQueue: FileChange[] = [];
-      let queueResolver: ((value: IteratorResult<FileChange>) => void) | null =
-        null;
-
-      // Process watch events
-      const processChange = async (): Promise<void> => {
-        if (watchedFile.stopped) return;
-
-        try {
-          const newContent = await this.readNewContent(
-            transcriptPath,
-            watchedFile,
-          );
-
-          if (newContent.length > 0) {
-            const change: FileChange = {
-              path: transcriptPath,
-              content: newContent,
-              timestamp: new Date().toISOString(),
-            };
-
-            // If someone is waiting, resolve immediately
-            if (queueResolver !== null) {
-              const resolver = queueResolver;
-              queueResolver = null;
-              resolver({ value: change, done: false });
-            } else {
-              // Otherwise queue the event
-              eventQueue.push(change);
-            }
-          }
-        } catch (error) {
-          // File might have been deleted or truncated
-          // Reset offset and continue watching
-          watchedFile.offset = 0;
-        }
-      };
-
       // Watch event handler with debouncing
       const handleWatchEvent = (): void => {
         if (watchedFile.stopped) return;
-
-        // Clear existing timer
-        if (watchedFile.debounceTimer !== null) {
-          clearTimeout(watchedFile.debounceTimer);
-        }
-
-        // Set new debounce timer
-        watchedFile.debounceTimer = setTimeout(() => {
-          watchedFile.debounceTimer = null;
-          void processChange();
-        }, this.config.debounceMs);
+        watchedFile.debouncedProcess();
       };
 
       // Start consuming watch events in background
@@ -298,12 +295,6 @@ export class TranscriptWatcher {
   stop(): void {
     for (const [path, watchedFile] of this.watchers.entries()) {
       watchedFile.stopped = true;
-
-      if (watchedFile.debounceTimer !== null) {
-        clearTimeout(watchedFile.debounceTimer);
-        watchedFile.debounceTimer = null;
-      }
-
       void this.cleanupWatcher(path, watchedFile);
     }
 
@@ -373,10 +364,6 @@ export class TranscriptWatcher {
     path: string,
     watchedFile: WatchedFile,
   ): Promise<void> {
-    if (watchedFile.debounceTimer !== null) {
-      clearTimeout(watchedFile.debounceTimer);
-    }
-
     // Call return() on the iterator to clean up
     if (watchedFile.iterator.return !== undefined) {
       await watchedFile.iterator.return();
