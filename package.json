@@ -49,7 +49,6 @@
     "mitt": "3.0.1",
     "mustache": "4.2.0",
     "nanoid": "5.1.6",
-    "ndjson": "2.0.0",
     "neverthrow": "8.2.0",
     "perfect-debounce": "2.0.0",
     "slugify": "1.6.6"
