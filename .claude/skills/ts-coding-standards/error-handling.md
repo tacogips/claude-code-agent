@@ -33,6 +33,8 @@ if (result.ok) {
 
 ### With neverthrow Library
 
+> **Project Note**: This project uses neverthrow via `src/result.ts`. Import from `"../result"` or `"./result"` rather than `"neverthrow"` directly. The wrapper provides backward-compatible standalone functions, though native methods are preferred for new code (e.g., `result.isOk()` instead of `isOk(result)`).
+
 For production use, consider [neverthrow](https://github.com/supermacro/neverthrow):
 
 ```typescript
@@ -230,8 +232,35 @@ return err(new Error('Something went wrong'));
 return err(new ValidationError('Email format invalid', { email: ['Must be valid email'] }));
 ```
 
+## Logging
+
+This project uses [consola](https://github.com/unjs/consola) for structured logging via `src/logger.ts`:
+
+```typescript
+import { logger, createTaggedLogger } from "./logger";
+
+// Basic logging
+logger.info("Server started");
+logger.debug("Debug info", { details });
+logger.error("Error occurred", error);
+
+// Tagged logging for specific modules
+const sdkLogger = createTaggedLogger("sdk");
+sdkLogger.info("SDK initialized"); // Output: [sdk] SDK initialized
+```
+
+Log levels are configured via environment:
+- `LOG_LEVEL` environment variable (explicit override)
+- `NODE_ENV=production`: info level
+- `NODE_ENV=test`: warn level (quieter tests)
+- Default: debug level
+
+Available log levels (from least to most verbose):
+`silent` < `fatal` < `error` < `warn` < `log` < `info` < `success` < `debug` < `trace` < `verbose`
+
 ## References
 
 - [neverthrow](https://github.com/supermacro/neverthrow) - Type-Safe Errors for JS & TypeScript
+- [consola](https://github.com/unjs/consola) - Elegant Console Logger for Node.js and Browser
 - [Effect.ts](https://effect.website/) - Comprehensive functional programming library
 - [Error Handling Comparison](https://devalade.me/blog/error-handling-in-typescript-neverthrow-try-catch-and-alternative-like-effec-ts.mdx)

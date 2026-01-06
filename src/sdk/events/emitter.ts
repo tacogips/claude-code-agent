@@ -3,11 +3,25 @@
  *
  * Provides a type-safe event emitter that ensures event types
  * and their payloads are correctly matched at compile time.
+ * Built on top of mitt for a lightweight, battle-tested implementation.
  *
  * @module sdk/events/emitter
  */
 
+import mitt from "mitt";
+
+import { createTaggedLogger } from "../../logger";
 import type { EventMap, EventType } from "./types";
+
+const logger = createTaggedLogger("events");
+
+// Internal type for mitt compatibility - uses string index
+type MittEvents = {
+  [K in EventType]: EventMap[K];
+};
+
+// Internal handler type for mitt
+type InternalHandler = (event: unknown) => void;
 
 /**
  * Handler function type for event callbacks.
@@ -48,13 +62,14 @@ export interface Subscription {
  * ```
  */
 export class EventEmitter {
-  /** Map of event types to arrays of handlers */
-  private readonly handlers: Map<EventType, Set<EventHandler<EventType>>> =
-    new Map();
+  /** Underlying mitt emitter - uses internal type */
+  private readonly emitter = mitt<MittEvents>();
 
-  /** Map of one-time handlers */
-  private readonly onceHandlers: Map<EventType, Set<EventHandler<EventType>>> =
-    new Map();
+  /** Map of one-time handlers to their wrapper functions */
+  private readonly onceWrappers: Map<
+    EventType,
+    Map<InternalHandler, InternalHandler>
+  > = new Map();
 
   /**
    * Subscribe to an event.
@@ -66,15 +81,7 @@ export class EventEmitter {
    * @returns Subscription handle for unsubscribing
    */
   on<E extends EventType>(event: E, handler: EventHandler<E>): Subscription {
-    let handlerSet = this.handlers.get(event);
-    if (handlerSet === undefined) {
-      handlerSet = new Set();
-      this.handlers.set(event, handlerSet);
-    }
-
-    // Cast is safe because we're using the correct event type
-    const typedHandler = handler as EventHandler<EventType>;
-    handlerSet.add(typedHandler);
+    this.emitter.on(event, handler as InternalHandler);
 
     return {
       unsubscribe: () => {
@@ -92,19 +99,18 @@ export class EventEmitter {
    * @param handler - Handler function to remove
    */
   off<E extends EventType>(event: E, handler: EventHandler<E>): void {
-    const handlerSet = this.handlers.get(event);
-    if (handlerSet !== undefined) {
-      handlerSet.delete(handler as EventHandler<EventType>);
-      if (handlerSet.size === 0) {
-        this.handlers.delete(event);
-      }
-    }
+    this.emitter.off(event, handler as InternalHandler);
 
-    const onceSet = this.onceHandlers.get(event);
-    if (onceSet !== undefined) {
-      onceSet.delete(handler as EventHandler<EventType>);
-      if (onceSet.size === 0) {
-        this.onceHandlers.delete(event);
+    // Also remove from once handlers if present
+    const eventOnceWrappers = this.onceWrappers.get(event);
+    if (eventOnceWrappers !== undefined) {
+      const wrapper = eventOnceWrappers.get(handler as InternalHandler);
+      if (wrapper !== undefined) {
+        this.emitter.off(event, wrapper);
+        eventOnceWrappers.delete(handler as InternalHandler);
+        if (eventOnceWrappers.size === 0) {
+          this.onceWrappers.delete(event);
+        }
       }
     }
   }
@@ -120,14 +126,39 @@ export class EventEmitter {
    * @returns Subscription handle for early unsubscription
    */
   once<E extends EventType>(event: E, handler: EventHandler<E>): Subscription {
-    let onceSet = this.onceHandlers.get(event);
-    if (onceSet === undefined) {
-      onceSet = new Set();
-      this.onceHandlers.set(event, onceSet);
-    }
+    const wrapper: InternalHandler = (data) => {
+      // Remove the wrapper first
+      this.emitter.off(event, wrapper);
 
-    const typedHandler = handler as EventHandler<EventType>;
-    onceSet.add(typedHandler);
+      // Remove from tracking map
+      const eventOnceWrappers = this.onceWrappers.get(event);
+      if (eventOnceWrappers !== undefined) {
+        eventOnceWrappers.delete(handler as InternalHandler);
+        if (eventOnceWrappers.size === 0) {
+          this.onceWrappers.delete(event);
+        }
+      }
+
+      // Call the handler with error protection
+      try {
+        handler(data as EventMap[E]);
+      } catch (error: unknown) {
+        logger.error(
+          `Error in once handler for ${event}:`,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    };
+
+    // Track the wrapper so we can remove it via off()
+    let eventOnceWrappers = this.onceWrappers.get(event);
+    if (eventOnceWrappers === undefined) {
+      eventOnceWrappers = new Map();
+      this.onceWrappers.set(event, eventOnceWrappers);
+    }
+    eventOnceWrappers.set(handler as InternalHandler, wrapper);
+
+    this.emitter.on(event, wrapper);
 
     return {
       unsubscribe: () => {
@@ -146,35 +177,19 @@ export class EventEmitter {
    * @param data - Event payload
    */
   emit<E extends EventType>(event: E, data: EventMap[E]): void {
-    // Call regular handlers
-    const handlerSet = this.handlers.get(event);
-    if (handlerSet !== undefined) {
-      for (const handler of handlerSet) {
+    // Get the handlers before emitting (for error handling)
+    const handlers = this.emitter.all.get(event) as
+      | InternalHandler[]
+      | undefined;
+
+    if (handlers !== undefined && handlers.length > 0) {
+      // Call handlers with error protection
+      for (const handler of [...handlers]) {
         try {
           handler(data);
         } catch (error: unknown) {
-          // Log but don't throw - one handler error shouldn't affect others
-          console.error(
+          logger.error(
             `Error in event handler for ${event}:`,
-            error instanceof Error ? error.message : String(error),
-          );
-        }
-      }
-    }
-
-    // Call and remove once handlers
-    const onceSet = this.onceHandlers.get(event);
-    if (onceSet !== undefined) {
-      // Create a copy to iterate since we're modifying the set
-      const handlers = Array.from(onceSet);
-      this.onceHandlers.delete(event);
-
-      for (const handler of handlers) {
-        try {
-          handler(data);
-        } catch (error: unknown) {
-          console.error(
-            `Error in once handler for ${event}:`,
             error instanceof Error ? error.message : String(error),
           );
         }
@@ -189,9 +204,8 @@ export class EventEmitter {
    * @returns Number of registered handlers
    */
   listenerCount(event: EventType): number {
-    const regularCount = this.handlers.get(event)?.size ?? 0;
-    const onceCount = this.onceHandlers.get(event)?.size ?? 0;
-    return regularCount + onceCount;
+    const handlers = this.emitter.all.get(event);
+    return handlers?.length ?? 0;
   }
 
   /**
@@ -201,11 +215,18 @@ export class EventEmitter {
    */
   removeAllListeners(event?: EventType): void {
     if (event !== undefined) {
-      this.handlers.delete(event);
-      this.onceHandlers.delete(event);
+      // Remove all handlers for the specific event
+      const handlers = this.emitter.all.get(event);
+      if (handlers !== undefined) {
+        // Clear the handlers array
+        handlers.length = 0;
+      }
+      // Also clear once wrappers for this event
+      this.onceWrappers.delete(event);
     } else {
-      this.handlers.clear();
-      this.onceHandlers.clear();
+      // Remove all handlers for all events
+      this.emitter.all.clear();
+      this.onceWrappers.clear();
     }
   }
 

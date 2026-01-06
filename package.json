@@ -31,7 +31,6 @@
     "type": "git",
     "url": "https://github.com/user/repo"
   },
-
   "license": "MIT",
   "trustedDependencies": [],
   "devDependencies": {
@@ -40,5 +39,10 @@
     "typescript": "5.7.2",
     "prettier": "3.4.2",
     "vitest": "2.1.8"
+  },
+  "dependencies": {
+    "consola": "3.4.2",
+    "mitt": "3.0.1",
+    "neverthrow": "8.2.0"
   }
 }

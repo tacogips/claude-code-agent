@@ -272,37 +272,45 @@ BudgetExceededError extends AgentError
 
 **Purpose**: Result type for error handling without exceptions
 
+**Implementation Note**: This module re-exports from `neverthrow` library with backward-compatible wrapper functions. Native neverthrow methods are preferred for new code (e.g., `result.isOk()` instead of `isOk(result)`).
+
 **Exports**:
 
 | Name | Type | Purpose | Called By |
 |------|------|---------|-----------|
-| `Result<T, E>` | type | Success or error result | All SDK functions |
-| `ok<T>` | function | Create success result | SDK functions |
-| `err<E>` | function | Create error result | SDK functions |
-| `isOk` | function | Type guard for success | Error handling |
-| `isErr` | function | Type guard for error | Error handling |
+| `Result<T, E>` | type (re-export from neverthrow) | Success or error result | All SDK functions |
+| `ResultAsync<T, E>` | type (re-export from neverthrow) | Async success or error result | Async SDK functions |
+| `ok<T>` | function (re-export from neverthrow) | Create success result | SDK functions |
+| `err<E>` | function (re-export from neverthrow) | Create error result | SDK functions |
+| `isOk` | function (@deprecated) | Type guard for success | Legacy code |
+| `isErr` | function (@deprecated) | Type guard for error | Legacy code |
+| `map` | function (@deprecated) | Map success value | Legacy code |
+| `mapErr` | function (@deprecated) | Map error value | Legacy code |
+| `flatMap` | function (@deprecated) | Chain result operations | Legacy code |
+| `unwrap` | function | Unwrap or throw | Program boundaries |
+| `unwrapOr` | function (@deprecated) | Unwrap with default | Legacy code |
+| `all` | function | Combine multiple results | Batch operations |
+| `tryCatch` | function | Wrap throwing functions | Error boundaries |
 
-**Function Signatures**:
+**Preferred Usage (neverthrow native methods)**:
 
 ```
-ok<T>(value: T): Result<T, never>
-  Purpose: Create a success result
-  Called by: Any function returning Result
+// Create results
+const success = ok(value);
+const failure = err(error);
 
-err<E>(error: E): Result<never, E>
-  Purpose: Create an error result
-  Called by: Any function returning Result
+// Check results
+if (result.isOk()) { ... }
+if (result.isErr()) { ... }
 
-isOk<T, E>(result: Result<T, E>): result is { ok: true; value: T }
-  Purpose: Type guard for success
-  Called by: Result consumers
-
-isErr<T, E>(result: Result<T, E>): result is { ok: false; error: E }
-  Purpose: Type guard for error
-  Called by: Result consumers
+// Transform results
+result.map(fn)
+result.mapErr(fn)
+result.andThen(fn)
+result.unwrapOr(defaultValue)
 ```
 
-**Dependencies**: None
+**Dependencies**: neverthrow (npm package)
 
 **Dependents**: All SDK modules
 
@@ -1019,6 +1027,28 @@ Parallelizable groups:
 - TASK-005 (Container and Test Helpers) - was waiting on TASK-001, TASK-004 (both now completed)
 - TASK-008 (In-Memory Repositories) - was waiting on TASK-007 (now completed)
 - TASK-010 (Session Reader) - was waiting on TASK-001, TASK-009 (both now completed)
+
+---
+
+### Session: 2026-01-06 (Library Migration)
+**Type**: Refactoring / Library Replacement
+**Changes**:
+- **Result type**: Replaced custom implementation with `neverthrow` library
+  - `src/result.ts` now re-exports from neverthrow with backward-compatible wrappers
+  - Standalone functions (`isOk`, `isErr`, `map`, `mapErr`, `flatMap`, `unwrapOr`) marked `@deprecated`
+  - New code should use native neverthrow methods: `result.isOk()`, `result.map()`, `result.andThen()`
+  - `ResultAsync` now available for async operations
+- **EventEmitter**: Replaced custom implementation with `mitt` library
+  - `src/sdk/events/emitter.ts` wraps mitt for type-safe event handling
+  - Maintains same public API (on/off/once/emit)
+- **Logger**: Added centralized logging with `consola`
+  - `src/logger.ts` provides configured consola instance
+  - `createTaggedLogger()` for module-specific logging
+  - Environment-based log levels (LOG_LEVEL, NODE_ENV)
+**Notes**:
+- All existing tests continue to pass
+- Backward compatibility maintained through wrapper functions
+- Migration to native methods recommended for new code
 
 ---
 

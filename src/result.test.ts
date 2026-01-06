@@ -1,5 +1,11 @@
 /**
  * Tests for Result type utilities.
+ *
+ * These tests verify the backward-compatible wrapper functions
+ * around the neverthrow library.
+ *
+ * NOTE: Tests demonstrate both native method chaining (preferred)
+ * and wrapper functions (backward compatible, deprecated).
  */
 
 import { describe, it, expect } from "vitest";
@@ -24,7 +30,8 @@ describe("Result", () => {
   describe("ok", () => {
     it("creates a successful result", () => {
       const result = ok(42);
-      expect(result.ok).toBe(true);
+      // Native method (preferred)
+      expect(result.isOk()).toBe(true);
       expect(result.value).toBe(42);
     });
 
@@ -38,7 +45,8 @@ describe("Result", () => {
   describe("err", () => {
     it("creates a failed result", () => {
       const result = err("error");
-      expect(result.ok).toBe(false);
+      // Native method (preferred)
+      expect(result.isErr()).toBe(true);
       expect(result.error).toBe("error");
     });
 
@@ -49,90 +57,148 @@ describe("Result", () => {
   });
 
   describe("isOk", () => {
-    it("returns true for Ok results", () => {
+    it("returns true for Ok results - native method preferred", () => {
+      // Native method chaining (preferred)
+      expect(ok(42).isOk()).toBe(true);
+      // Wrapper function (backward compatible, deprecated)
       expect(isOk(ok(42))).toBe(true);
     });
 
-    it("returns false for Err results", () => {
+    it("returns false for Err results - native method preferred", () => {
+      // Native method chaining (preferred)
+      expect(err("error").isOk()).toBe(false);
+      // Wrapper function (backward compatible, deprecated)
       expect(isOk(err("error"))).toBe(false);
     });
   });
 
   describe("isErr", () => {
-    it("returns true for Err results", () => {
+    it("returns true for Err results - native method preferred", () => {
+      // Native method chaining (preferred)
+      expect(err("error").isErr()).toBe(true);
+      // Wrapper function (backward compatible, deprecated)
       expect(isErr(err("error"))).toBe(true);
     });
 
-    it("returns false for Ok results", () => {
+    it("returns false for Ok results - native method preferred", () => {
+      // Native method chaining (preferred)
+      expect(ok(42).isErr()).toBe(false);
+      // Wrapper function (backward compatible, deprecated)
       expect(isErr(ok(42))).toBe(false);
     });
   });
 
   describe("map", () => {
-    it("transforms successful values", () => {
-      const result = map(ok(2), (x) => x * 3);
-      expect(isOk(result)).toBe(true);
-      if (isOk(result)) {
+    it("transforms successful values - native method preferred", () => {
+      // Native method chaining (preferred)
+      const result = ok(2).map((x) => x * 3);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBe(6);
+      }
+
+      // Wrapper function (backward compatible, deprecated)
+      const result2 = map(ok(2), (x) => x * 3);
+      expect(result2.isOk()).toBe(true);
+      if (result2.isOk()) {
+        expect(result2.value).toBe(6);
       }
     });
 
-    it("passes through errors unchanged", () => {
-      const result = map(err("error"), (x: number) => x * 3);
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+    it("passes through errors unchanged - native method preferred", () => {
+      // Native method chaining (preferred)
+      const result = err<number, string>("error").map((x) => x * 3);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error).toBe("error");
       }
+
+      // Wrapper function (backward compatible, deprecated)
+      const result2 = map(err("error"), (_x: number) => _x * 3);
+      expect(result2.isErr()).toBe(true);
     });
   });
 
   describe("mapErr", () => {
-    it("transforms error values", () => {
-      const result = mapErr(err("error"), (e) => e.toUpperCase());
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+    it("transforms error values - native method preferred", () => {
+      // Native method chaining (preferred)
+      const result = err("error").mapErr((e) => e.toUpperCase());
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error).toBe("ERROR");
+      }
+
+      // Wrapper function (backward compatible, deprecated)
+      const result2 = mapErr(err("error"), (e) => e.toUpperCase());
+      expect(result2.isErr()).toBe(true);
+      if (result2.isErr()) {
+        expect(result2.error).toBe("ERROR");
       }
     });
 
-    it("passes through successful values unchanged", () => {
-      const result = mapErr(ok(42), (e: string) => e.toUpperCase());
-      expect(isOk(result)).toBe(true);
-      if (isOk(result)) {
+    it("passes through successful values unchanged - native method preferred", () => {
+      // Native method chaining (preferred)
+      const result = ok<number, string>(42).mapErr((e) => e.toUpperCase());
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBe(42);
       }
+
+      // Wrapper function (backward compatible, deprecated)
+      const result2 = mapErr(ok<number, string>(42), (e) => e.toUpperCase());
+      expect(result2.isOk()).toBe(true);
     });
   });
 
-  describe("flatMap", () => {
-    it("chains successful operations", () => {
+  describe("flatMap / andThen", () => {
+    it("chains successful operations - native method preferred", () => {
       const divide = (n: number, d: number) =>
         d === 0 ? err("division by zero") : ok(n / d);
 
-      const result = flatMap(ok(10), (x) => divide(x, 2));
-      expect(isOk(result)).toBe(true);
-      if (isOk(result)) {
+      // Native method chaining (preferred) - uses andThen
+      const result = ok(10).andThen((x) => divide(x, 2));
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBe(5);
       }
+
+      // Wrapper function (backward compatible, deprecated)
+      const result2 = flatMap(ok(10), (x) => divide(x, 2));
+      expect(result2.isOk()).toBe(true);
+      if (result2.isOk()) {
+        expect(result2.value).toBe(5);
+      }
     });
 
-    it("short-circuits on first error", () => {
+    it("short-circuits on first error - native method preferred", () => {
       const divide = (n: number, d: number) =>
         d === 0 ? err("division by zero") : ok(n / d);
 
-      const result = flatMap(ok(10), (x) => divide(x, 0));
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+      // Native method chaining (preferred)
+      const result = ok(10).andThen((x) => divide(x, 0));
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error).toBe("division by zero");
       }
+
+      // Wrapper function (backward compatible, deprecated)
+      const result2 = flatMap(ok(10), (x) => divide(x, 0));
+      expect(result2.isErr()).toBe(true);
     });
 
-    it("passes through initial error", () => {
-      const result = flatMap(err("initial error"), () => ok(42));
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+    it("passes through initial error - native method preferred", () => {
+      // Native method chaining (preferred)
+      const result = err<number, string>("initial error").andThen((_x) =>
+        ok(42),
+      );
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error).toBe("initial error");
       }
+
+      // Wrapper function (backward compatible, deprecated)
+      const result2 = flatMap(err("initial error"), (_x: number) => ok(42));
+      expect(result2.isErr()).toBe(true);
     });
   });
 
@@ -142,8 +208,8 @@ describe("Result", () => {
         d === 0 ? err("division by zero") : ok(n / d);
 
       const result = await flatMapAsync(ok(10), (x) => asyncDivide(x, 2));
-      expect(isOk(result)).toBe(true);
-      if (isOk(result)) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBe(5);
       }
     });
@@ -151,7 +217,7 @@ describe("Result", () => {
     it("short-circuits on error", async () => {
       const asyncOp = async () => ok(42);
       const result = await flatMapAsync(err("error"), asyncOp);
-      expect(isErr(result)).toBe(true);
+      expect(result.isErr()).toBe(true);
     });
   });
 
@@ -172,11 +238,17 @@ describe("Result", () => {
   });
 
   describe("unwrapOr", () => {
-    it("returns value for Ok", () => {
+    it("returns value for Ok - native method preferred", () => {
+      // Native method chaining (preferred)
+      expect(ok(42).unwrapOr(0)).toBe(42);
+      // Wrapper function (backward compatible, deprecated)
       expect(unwrapOr(ok(42), 0)).toBe(42);
     });
 
-    it("returns default for Err", () => {
+    it("returns default for Err - native method preferred", () => {
+      // Native method chaining (preferred)
+      expect(err<number, string>("error").unwrapOr(0)).toBe(0);
+      // Wrapper function (backward compatible, deprecated)
       expect(unwrapOr(err("error"), 0)).toBe(0);
     });
   });
@@ -196,8 +268,8 @@ describe("Result", () => {
     it("combines all Ok results", () => {
       const results = [ok(1), ok(2), ok(3)];
       const combined = all(results);
-      expect(isOk(combined)).toBe(true);
-      if (isOk(combined)) {
+      expect(combined.isOk()).toBe(true);
+      if (combined.isOk()) {
         expect(combined.value).toEqual([1, 2, 3]);
       }
     });
@@ -205,16 +277,16 @@ describe("Result", () => {
     it("returns first Err", () => {
       const results = [ok(1), err("error1"), err("error2")];
       const combined = all(results);
-      expect(isErr(combined)).toBe(true);
-      if (isErr(combined)) {
+      expect(combined.isErr()).toBe(true);
+      if (combined.isErr()) {
         expect(combined.error).toBe("error1");
       }
     });
 
     it("handles empty array", () => {
       const combined = all([]);
-      expect(isOk(combined)).toBe(true);
-      if (isOk(combined)) {
+      expect(combined.isOk()).toBe(true);
+      if (combined.isOk()) {
         expect(combined.value).toEqual([]);
       }
     });
@@ -223,8 +295,8 @@ describe("Result", () => {
   describe("tryCatch", () => {
     it("wraps successful function in Ok", () => {
       const result = tryCatch(() => 42);
-      expect(isOk(result)).toBe(true);
-      if (isOk(result)) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBe(42);
       }
     });
@@ -233,8 +305,8 @@ describe("Result", () => {
       const result = tryCatch(() => {
         throw new Error("oops");
       });
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error).toBeInstanceOf(Error);
       }
     });
@@ -243,8 +315,8 @@ describe("Result", () => {
   describe("tryCatchAsync", () => {
     it("wraps successful async function in Ok", async () => {
       const result = await tryCatchAsync(async () => 42);
-      expect(isOk(result)).toBe(true);
-      if (isOk(result)) {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
         expect(result.value).toBe(42);
       }
     });
@@ -253,8 +325,8 @@ describe("Result", () => {
       const result = await tryCatchAsync(async () => {
         throw new Error("async oops");
       });
-      expect(isErr(result)).toBe(true);
-      if (isErr(result)) {
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
         expect(result.error).toBeInstanceOf(Error);
       }
     });

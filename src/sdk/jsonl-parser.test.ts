@@ -14,7 +14,6 @@ import {
   toJsonLine,
 } from "./jsonl-parser";
 import { ParseError } from "../errors";
-import { isOk, isErr } from "../result";
 
 interface TestObject {
   id: number;
@@ -29,8 +28,8 @@ describe("parseJsonl", () => {
 
     const result = parseJsonl<TestObject>(content);
 
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value.length).toBe(3);
       expect(result.value[0]).toEqual({ id: 1, name: "Alice" });
       expect(result.value[1]).toEqual({ id: 2, name: "Bob" });
@@ -47,8 +46,8 @@ describe("parseJsonl", () => {
 
     const result = parseJsonl<{ id: number }>(content);
 
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value.length).toBe(2);
     }
   });
@@ -60,8 +59,8 @@ describe("parseJsonl", () => {
 
     const result = parseJsonl<{ id: number }>(content);
 
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value.length).toBe(2);
     }
   });
@@ -73,8 +72,8 @@ describe("parseJsonl", () => {
 
     const result = parseJsonl<{ id: number }>(content, "test.jsonl");
 
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
       expect(result.error).toBeInstanceOf(ParseError);
       expect(result.error.file).toBe("test.jsonl");
       expect(result.error.line).toBe(2);
@@ -84,8 +83,8 @@ describe("parseJsonl", () => {
   it("should handle empty content", () => {
     const result = parseJsonl<{ id: number }>("");
 
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value.length).toBe(0);
     }
   });
@@ -93,8 +92,8 @@ describe("parseJsonl", () => {
   it("should parse single line", () => {
     const result = parseJsonl<{ id: number }>('{"id": 42}');
 
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value.length).toBe(1);
       expect(result.value[0]).toEqual({ id: 42 });
     }
@@ -103,8 +102,8 @@ describe("parseJsonl", () => {
   it("should use default filename if not provided", () => {
     const result = parseJsonl<{ id: number }>("{invalid}");
 
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
       expect(result.error.file).toBe("unknown");
     }
   });
@@ -167,8 +166,8 @@ describe("parseJsonLine", () => {
   it("should parse valid JSON line", () => {
     const result = parseJsonLine<{ id: number }>('{"id": 42}');
 
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value).toEqual({ id: 42 });
     }
   });
@@ -176,8 +175,8 @@ describe("parseJsonLine", () => {
   it("should handle leading/trailing whitespace", () => {
     const result = parseJsonLine<{ id: number }>('  {"id": 42}  ');
 
-    expect(isOk(result)).toBe(true);
-    if (isOk(result)) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
       expect(result.value).toEqual({ id: 42 });
     }
   });
@@ -185,8 +184,8 @@ describe("parseJsonLine", () => {
   it("should return error for empty line", () => {
     const result = parseJsonLine<{ id: number }>("   ");
 
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
       expect(result.error.details).toBe("Empty line");
     }
   });
@@ -198,8 +197,8 @@ describe("parseJsonLine", () => {
       "test.jsonl",
     );
 
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
       expect(result.error).toBeInstanceOf(ParseError);
       expect(result.error.line).toBe(5);
       expect(result.error.file).toBe("test.jsonl");
@@ -327,8 +326,8 @@ describe("toJsonl", () => {
     const jsonl = toJsonl(objects);
     const parsed = parseJsonl<{ id: number }>(jsonl);
 
-    expect(isOk(parsed)).toBe(true);
-    if (isOk(parsed)) {
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
       expect(parsed.value).toEqual(objects);
     }
   });

@@ -1,82 +1,31 @@
 /**
  * Result type for error handling without exceptions.
  *
- * The Result pattern provides explicit error handling at the type level,
- * forcing callers to handle both success and error cases.
+ * Re-exports neverthrow Result type with additional utility functions
+ * for backward compatibility.
  *
  * @module result
  */
 
-/**
- * A successful result containing a value.
- */
-export interface Ok<T> {
-  readonly ok: true;
-  readonly value: T;
-}
+import { Result, ok, err, ResultAsync } from "neverthrow";
 
-/**
- * A failed result containing an error.
- */
-export interface Err<E> {
-  readonly ok: false;
-  readonly error: E;
-}
+// Re-export core types and constructors from neverthrow
+export { Result, ok, err, ResultAsync };
 
-/**
- * Result type representing either success (Ok) or failure (Err).
- *
- * Use this instead of throwing exceptions for expected error conditions.
- *
- * @example
- * ```typescript
- * function divide(a: number, b: number): Result<number, string> {
- *   if (b === 0) {
- *     return err("Division by zero");
- *   }
- *   return ok(a / b);
- * }
- *
- * const result = divide(10, 2);
- * if (isOk(result)) {
- *   console.log(result.value); // 5
- * } else {
- *   console.error(result.error);
- * }
- * ```
- */
-export type Result<T, E> = Ok<T> | Err<E>;
-
-/**
- * Create a successful result.
- *
- * @param value - The success value
- * @returns An Ok result containing the value
- */
-export function ok<T>(value: T): Ok<T> {
-  return { ok: true, value };
-}
-
-/**
- * Create a failed result.
- *
- * @param error - The error value
- * @returns An Err result containing the error
- */
-export function err<E>(error: E): Err<E> {
-  return { ok: false, error };
-}
+// Export the Ok and Err types for type annotations
+export type { Ok, Err } from "neverthrow";
 
 /**
  * Type guard to check if a result is successful.
  *
  * Use this to narrow the type and access the value.
  *
+ * @deprecated Use result.isOk() method directly instead.
  * @param result - The result to check
  * @returns True if the result is Ok
  */
-export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
-  return result.ok;
+export function isOk<T, E>(result: Result<T, E>): boolean {
+  return result.isOk();
 }
 
 /**
@@ -84,11 +33,12 @@ export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
  *
  * Use this to narrow the type and access the error.
  *
+ * @deprecated Use result.isErr() method directly instead.
  * @param result - The result to check
  * @returns True if the result is Err
  */
-export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
-  return !result.ok;
+export function isErr<T, E>(result: Result<T, E>): boolean {
+  return result.isErr();
 }
 
 /**
@@ -96,6 +46,7 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
  *
  * If the result is an error, it is passed through unchanged.
  *
+ * @deprecated Use result.map(fn) method directly instead.
  * @param result - The result to map
  * @param fn - Function to apply to the success value
  * @returns A new result with the mapped value
@@ -104,10 +55,7 @@ export function map<T, U, E>(
   result: Result<T, E>,
   fn: (value: T) => U,
 ): Result<U, E> {
-  if (isOk(result)) {
-    return ok(fn(result.value));
-  }
-  return result;
+  return result.map(fn);
 }
 
 /**
@@ -115,6 +63,7 @@ export function map<T, U, E>(
  *
  * If the result is successful, it is passed through unchanged.
  *
+ * @deprecated Use result.mapErr(fn) method directly instead.
  * @param result - The result to map
  * @param fn - Function to apply to the error
  * @returns A new result with the mapped error
@@ -123,10 +72,7 @@ export function mapErr<T, E, F>(
   result: Result<T, E>,
   fn: (error: E) => F,
 ): Result<T, F> {
-  if (isErr(result)) {
-    return err(fn(result.error));
-  }
-  return result;
+  return result.mapErr(fn);
 }
 
 /**
@@ -135,6 +81,7 @@ export function mapErr<T, E, F>(
  * If the result is an error, the function is not called
  * and the error is passed through.
  *
+ * @deprecated Use result.andThen(fn) method directly instead.
  * @param result - The result to chain
  * @param fn - Function that returns a new result
  * @returns The result of fn, or the original error
@@ -143,10 +90,7 @@ export function flatMap<T, U, E>(
   result: Result<T, E>,
   fn: (value: T) => Result<U, E>,
 ): Result<U, E> {
-  if (isOk(result)) {
-    return fn(result.value);
-  }
-  return result;
+  return result.andThen(fn);
 }
 
 /**
@@ -160,10 +104,10 @@ export async function flatMapAsync<T, U, E>(
   result: Result<T, E>,
   fn: (value: T) => Promise<Result<U, E>>,
 ): Promise<Result<U, E>> {
-  if (isOk(result)) {
-    return fn(result.value);
+  if (result.isErr()) {
+    return err(result.error);
   }
-  return result;
+  return fn(result.value);
 }
 
 /**
@@ -178,7 +122,7 @@ export async function flatMapAsync<T, U, E>(
  * @throws Error if the result is Err
  */
 export function unwrap<T, E>(result: Result<T, E>, message?: string): T {
-  if (isOk(result)) {
+  if (result.isOk()) {
     return result.value;
   }
   const errorMessage = message ?? `Unwrap failed: ${String(result.error)}`;
@@ -188,15 +132,13 @@ export function unwrap<T, E>(result: Result<T, E>, message?: string): T {
 /**
  * Get the success value or a default.
  *
+ * @deprecated Use result.unwrapOr(defaultValue) method directly instead.
  * @param result - The result to unwrap
  * @param defaultValue - Value to return if result is Err
  * @returns The success value or default
  */
 export function unwrapOr<T, E>(result: Result<T, E>, defaultValue: T): T {
-  if (isOk(result)) {
-    return result.value;
-  }
-  return defaultValue;
+  return result.unwrapOr(defaultValue);
 }
 
 /**
@@ -210,7 +152,7 @@ export function unwrapOrElse<T, E>(
   result: Result<T, E>,
   fn: (error: E) => T,
 ): T {
-  if (isOk(result)) {
+  if (result.isOk()) {
     return result.value;
   }
   return fn(result.error);
@@ -228,14 +170,8 @@ export function unwrapOrElse<T, E>(
 export function all<T, E>(
   results: readonly Result<T, E>[],
 ): Result<readonly T[], E> {
-  const values: T[] = [];
-  for (const result of results) {
-    if (isErr(result)) {
-      return result;
-    }
-    values.push(result.value);
-  }
-  return ok(values);
+  // Use Result.combine for combining results
+  return Result.combine(results as Result<T, E>[]);
 }
 
 /**

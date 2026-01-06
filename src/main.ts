@@ -5,10 +5,11 @@
  */
 
 import { greet } from "./lib";
+import { logger } from "./logger";
 
 function main(): void {
   const message = greet("World");
-  console.log(message);
+  logger.log(message);
 }
 
 main();
