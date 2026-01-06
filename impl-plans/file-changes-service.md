@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Previous**: `impl-plans/active/file-changes-types.md` (Types and Extractor)
+- **Previous**: `impl-plans/file-changes-types.md` (Types and Extractor)
 - **Depends On**: `file-changes-types.md`, `foundation-and-core` (completed)
 
 ---

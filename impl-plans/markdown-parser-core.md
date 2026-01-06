@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Previous**: `impl-plans/active/markdown-parser-types.md` (Types and Detectors)
+- **Previous**: `impl-plans/markdown-parser-types.md` (Types and Detectors)
 - **Depends On**: `markdown-parser-types.md`
 
 ---

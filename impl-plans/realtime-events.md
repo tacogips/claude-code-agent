@@ -10,7 +10,7 @@
 ## Related Plans
 
 This plan is part of the real-time monitoring system. See also:
-- `impl-plans/active/realtime-watcher.md` - File watching and JSONL parsing
+- `impl-plans/realtime-watcher.md` - File watching and JSONL parsing
 
 ---
 

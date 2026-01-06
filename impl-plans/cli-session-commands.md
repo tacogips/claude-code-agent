@@ -10,9 +10,9 @@
 ## Related Plans
 
 This plan is part of the complete CLI implementation, split for maintainability:
-- `impl-plans/active/cli-core.md` - Core CLI framework, argument parsing, command structure
-- `impl-plans/active/cli-session-commands.md` (this file) - Session-related commands
-- `impl-plans/active/cli-group-commands.md` - Group, queue, bookmark, server, daemon, token, and files commands
+- `impl-plans/cli-core.md` - Core CLI framework, argument parsing, command structure
+- `impl-plans/cli-session-commands.md` (this file) - Session-related commands
+- `impl-plans/cli-group-commands.md` - Group, queue, bookmark, server, daemon, token, and files commands
 
 ---
 

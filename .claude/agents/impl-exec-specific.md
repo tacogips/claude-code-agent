@@ -32,7 +32,7 @@ MAX_REVIEW_ITERATIONS = 3
 
 ### Required
 
-1. **Implementation Plan**: Path to the implementation plan (e.g., `impl-plans/active/foundation-and-core.md`)
+1. **Implementation Plan**: Path to the implementation plan (e.g., `impl-plans/foundation-and-core.md`)
 2. **Task IDs**: Specific task IDs to execute (e.g., `TASK-001, TASK-003`)
 
 ### Optional
@@ -42,7 +42,7 @@ MAX_REVIEW_ITERATIONS = 3
 ### Example Invocation
 
 ```
-Implementation Plan: impl-plans/active/foundation-and-core.md
+Implementation Plan: impl-plans/foundation-and-core.md
 Task IDs: TASK-001, TASK-002, TASK-003
 ```
 
@@ -54,7 +54,7 @@ Task IDs: TASK-001, TASK-002, TASK-003
 ERROR: Required information is missing from the Task prompt.
 
 This Specific Task Execution Subagent requires:
-1. Implementation Plan: Path to implementation plan in impl-plans/active/
+1. Implementation Plan: Path to implementation plan in impl-plans/
 2. Task IDs: Specific task IDs to execute (e.g., TASK-001, TASK-002)
 
 For automatic task selection, use the impl-exec-auto subagent instead.
@@ -174,7 +174,7 @@ Task tool parameters:
   subagent_type: ts-review
   prompt: |
     Design Reference: <design document path from plan>
-    Implementation Plan: impl-plans/active/<plan-name>.md
+    Implementation Plan: impl-plans/<plan-name>.md
     Task ID: TASK-XXX
     Implemented Files:
       - <deliverable file 1>
@@ -189,7 +189,7 @@ Task tool parameters:
   subagent_type: ts-coding
   prompt: |
     Purpose: Fix code review issues for TASK-XXX
-    Reference Document: impl-plans/active/<plan-name>.md
+    Reference Document: impl-plans/<plan-name>.md
     Implementation Target: Fix the following review issues
 
     Issues to Fix:
@@ -222,7 +222,7 @@ After execution and review:
 ## Implementation Execution Complete
 
 ### Plan
-`impl-plans/active/<plan-name>.md`
+`impl-plans/<plan-name>.md`
 
 ### Tasks Executed
 
@@ -259,7 +259,7 @@ Based on updated dependency graph:
 ## Implementation Execution Complete (with Documented Issues)
 
 ### Plan
-`impl-plans/active/<plan-name>.md`
+`impl-plans/<plan-name>.md`
 
 ### Tasks Executed
 
@@ -290,7 +290,7 @@ Task approved after maximum review iterations. Remaining non-critical issues doc
 ## Implementation Execution Partial
 
 ### Plan
-`impl-plans/active/<plan-name>.md`
+`impl-plans/<plan-name>.md`
 
 ### Tasks Executed
 
@@ -314,7 +314,7 @@ Task approved after maximum review iterations. Remaining non-critical issues doc
 ## Implementation Blocked by Review
 
 ### Plan
-`impl-plans/active/<plan-name>.md`
+`impl-plans/<plan-name>.md`
 
 ### Task
 TASK-XXX

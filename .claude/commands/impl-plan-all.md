@@ -36,7 +36,7 @@ Task tool parameters:
   subagent_type: impl-plan-all
   prompt: |
     Design Directory: design-docs/
-    Output Directory: impl-plans/active/
+    Output Directory: impl-plans/
     Dry Run: <true if --dry-run flag present>
     Force: <true if --force flag present>
 ```

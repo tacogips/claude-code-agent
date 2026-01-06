@@ -19,7 +19,7 @@ This subagent generates all implementation plans from design documents by spawni
 ### Required Information
 
 1. **Design Directory**: Path to the design documents directory (default: `design-docs/`)
-2. **Output Directory**: Where to save implementation plans (default: `impl-plans/active/`)
+2. **Output Directory**: Where to save implementation plans (default: `impl-plans/`)
 
 ### Optional Information
 
@@ -33,7 +33,7 @@ This subagent generates all implementation plans from design documents by spawni
 Task tool prompt parameter should include:
 
 Design Directory: design-docs/
-Output Directory: impl-plans/active/
+Output Directory: impl-plans/
 Features: (auto-detect from design documents)
 ```
 
@@ -76,8 +76,8 @@ Example mapping for this project:
 
 ### Phase 3: Check Existing Plans
 
-1. **Read impl-plans/active/**: List existing plans
-2. **Read impl-plans/completed/**: List completed plans
+1. **Read impl-plans/**: List existing plans
+2. **Read PROGRESS.json**: Check plan statuses
 3. **Skip existing**: Do not regenerate plans that already exist
 
 ### Phase 4: Spawn Parallel Subtasks
@@ -91,7 +91,7 @@ For each feature in features_to_generate:
     prompt: |
       Design Document: <design-doc-path>
       Feature Scope: <feature-description>
-      Output Path: impl-plans/active/<feature-name>.md
+      Output Path: impl-plans/<feature-name>.md
     run_in_background: true
   )
 ```
@@ -156,9 +156,9 @@ Extract features from implementation phases:
 ### Skip If Exists
 
 Do not generate plans for:
-- Features with existing plans in `impl-plans/active/`
-- Features with completed plans in `impl-plans/completed/`
-- Foundation layer (already covered by `foundation-and-core.md`)
+- Features with existing plans in `impl-plans/`
+- Features already tracked in PROGRESS.json
+- Foundation layer (already covered by `foundation-*.md` plans)
 
 ---
 
@@ -203,7 +203,7 @@ Do not generate plans for:
 - Errors: 0
 
 ### Next Steps
-1. Review generated plans in impl-plans/active/
+1. Review generated plans in impl-plans/
 2. Run `/impl-exec-auto` to begin implementation
 3. Monitor progress via PROGRESS.json
 ```

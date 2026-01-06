@@ -42,7 +42,7 @@ Returns structured feedback with specific, actionable items for iterative improv
 Task tool prompt parameter should include:
 
 Design Reference: design-docs/spec-session-groups.md
-Implementation Plan: impl-plans/active/foundation-and-core.md
+Implementation Plan: impl-plans/foundation-and-core.md
 Task ID: TASK-001
 Implemented Files:
   - src/interfaces/filesystem.ts
@@ -56,7 +56,7 @@ Iteration: 1
 
 ```
 Design Reference: design-docs/spec-session-groups.md
-Implementation Plan: impl-plans/active/foundation-and-core.md
+Implementation Plan: impl-plans/foundation-and-core.md
 Task ID: TASK-001
 Implemented Files:
   - src/interfaces/filesystem.ts

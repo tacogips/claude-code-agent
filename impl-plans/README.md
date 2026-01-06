@@ -15,14 +15,14 @@ Implementation plans bridge design documents (what to build) and actual code (ho
 ```
 impl-plans/
 ├── README.md              # This file
-├── PROGRESS.json          # Task status index (CRITICAL for impl-exec-auto)
-├── active/                # Currently active implementation plans
-│   └── <feature>.md       # One file per feature being implemented
-├── completed/             # Completed implementation plans (archive)
-│   └── <feature>.md       # Completed plans for reference
+├── PROGRESS.json          # Task status index (single source of truth)
+├── <feature>.md           # Implementation plan files
+├── <feature>-types.md     # Split plans use consistent naming
 └── templates/             # Plan templates
     └── plan-template.md   # Standard plan template
 ```
+
+**Note**: Plan status is tracked in PROGRESS.json, not by file location. All plans remain in `impl-plans/` regardless of completion status.
 
 ## PROGRESS.json (Task Status Index)
 
@@ -75,64 +75,72 @@ After ANY task status change:
 
 Large features are split into multiple related plans with cross-references.
 
-## Active Plans
+## Plans by Feature
+
+### Foundation (Completed)
+| Plan | Status | Scope |
+|------|--------|-------|
+| [foundation-interfaces.md](foundation-interfaces.md) | Completed | Core interfaces |
+| [foundation-types.md](foundation-types.md) | Completed | Type definitions |
+| [foundation-mocks.md](foundation-mocks.md) | Completed | Mock implementations |
+| [foundation-services.md](foundation-services.md) | Completed | Core services |
 
 ### Session Groups
 | Plan | Status | Scope |
 |------|--------|-------|
-| [session-groups-types.md](active/session-groups-types.md) | Ready | Types, interfaces |
-| [session-groups-runner.md](active/session-groups-runner.md) | Ready | Manager, runner, SDK |
+| [session-groups-types.md](session-groups-types.md) | Ready | Types, interfaces |
+| [session-groups-runner.md](session-groups-runner.md) | Completed | Manager, runner, SDK |
 
 ### Command Queue
 | Plan | Status | Scope |
 |------|--------|-------|
-| [command-queue-types.md](active/command-queue-types.md) | Ready | Types, events |
-| [command-queue-core.md](active/command-queue-core.md) | Ready | Manager, runner, repository, SDK |
+| [command-queue-types.md](command-queue-types.md) | Ready | Types, events |
+| [command-queue-core.md](command-queue-core.md) | Ready | Manager, runner, repository, SDK |
 
 ### Markdown Parser
 | Plan | Status | Scope |
 |------|--------|-------|
-| [markdown-parser-types.md](active/markdown-parser-types.md) | Ready | Types, detectors |
-| [markdown-parser-core.md](active/markdown-parser-core.md) | Ready | Core parser, exports |
+| [markdown-parser-types.md](markdown-parser-types.md) | Ready | Types, detectors |
+| [markdown-parser-core.md](markdown-parser-core.md) | Ready | Core parser, exports |
 
 ### Real-time Monitoring
 | Plan | Status | Scope |
 |------|--------|-------|
-| [realtime-watcher.md](active/realtime-watcher.md) | Ready | File watcher, JSONL parser |
-| [realtime-events.md](active/realtime-events.md) | Ready | Event emission, state management |
+| [realtime-watcher.md](realtime-watcher.md) | Ready | File watcher, JSONL parser |
+| [realtime-events.md](realtime-events.md) | Ready | Event emission, state management |
 
 ### Bookmarks
 | Plan | Status | Scope |
 |------|--------|-------|
-| [bookmarks-types.md](active/bookmarks-types.md) | Ready | Types, repository |
-| [bookmarks-manager.md](active/bookmarks-manager.md) | Ready | Search, manager, exports |
+| [bookmarks-types.md](bookmarks-types.md) | Completed | Types, repository |
+| [bookmarks-manager.md](bookmarks-manager.md) | Ready | Search, manager, exports |
 
 ### File Changes
 | Plan | Status | Scope |
 |------|--------|-------|
-| [file-changes-types.md](active/file-changes-types.md) | Ready | Types, extractor |
-| [file-changes-service.md](active/file-changes-service.md) | Ready | Index, service, exports |
+| [file-changes-types.md](file-changes-types.md) | Ready | Types, extractor |
+| [file-changes-service.md](file-changes-service.md) | Ready | Index, service, exports |
 
 ### Daemon and HTTP API
 | Plan | Status | Scope |
 |------|--------|-------|
-| [daemon-core.md](active/daemon-core.md) | Ready | Core daemon, authentication |
-| [http-api.md](active/http-api.md) | Ready | REST API endpoints |
-| [sse-events.md](active/sse-events.md) | Ready | SSE event streaming |
+| [daemon-core.md](daemon-core.md) | Ready | Core daemon, authentication |
+| [http-api.md](http-api.md) | Ready | REST API endpoints |
+| [sse-events.md](sse-events.md) | Ready | SSE event streaming |
 
 ### Browser Viewer
 | Plan | Status | Scope |
 |------|--------|-------|
-| [browser-viewer-server.md](active/browser-viewer-server.md) | Ready | Server, API routes, WebSocket |
-| [browser-viewer-ui.md](active/browser-viewer-ui.md) | Ready | SvelteKit UI, pages, clients |
+| [browser-viewer-server.md](browser-viewer-server.md) | Ready | Server, API routes, WebSocket |
+| [browser-viewer-ui.md](browser-viewer-ui.md) | Ready | SvelteKit UI, pages, clients |
 
 ### CLI
 | Plan | Status | Scope |
 |------|--------|-------|
-| [cli-core.md](active/cli-core.md) | Ready | Core CLI framework |
-| [cli-session-commands.md](active/cli-session-commands.md) | Ready | Session commands |
-| [cli-group-queue.md](active/cli-group-queue.md) | Ready | Group and queue commands |
-| [cli-other.md](active/cli-other.md) | Ready | Server, file, bookmark commands |
+| [cli-core.md](cli-core.md) | Ready | Core CLI framework |
+| [cli-session-commands.md](cli-session-commands.md) | Ready | Session commands |
+| [cli-group-queue.md](cli-group-queue.md) | Ready | Group and queue commands |
+| [cli-other.md](cli-other.md) | Ready | Server, file, bookmark commands |
 
 ## Phase Dependencies (for impl-exec-auto)
 
@@ -152,7 +160,12 @@ Only plans from eligible phases should be read to minimize context loading.
 
 ```
 PHASE_TO_PLANS = {
-  1: [],  # COMPLETED - files in impl-plans/completed/
+  1: [  # COMPLETED
+    "foundation-interfaces.md",
+    "foundation-types.md",
+    "foundation-mocks.md",
+    "foundation-services.md"
+  ],
   2: [
     "session-groups-types.md",
     "session-groups-runner.md",
@@ -186,7 +199,6 @@ PHASE_TO_PLANS = {
 ## Implementation Order
 
 ### Phase 1: Foundation - COMPLETED
-Completed plans in `impl-plans/completed/`:
 - foundation-interfaces.md, foundation-types.md, foundation-mocks.md, foundation-services.md
 
 ### Phase 2: Core Features (Current - READY)
@@ -200,39 +212,34 @@ Can be implemented in parallel:
 ### Phase 4: User Interface (BLOCKED - waiting on Phase 3)
 - browser-viewer-*.md, cli-*.md
 
-## Completed Plans
-
-| Plan | Completed | Design Reference |
-|------|-----------|------------------|
-| [foundation-interfaces.md](completed/foundation-interfaces.md) | 2026-01-06 | DESIGN.md |
-| [foundation-types.md](completed/foundation-types.md) | 2026-01-06 | DESIGN.md |
-| [foundation-mocks.md](completed/foundation-mocks.md) | 2026-01-06 | DESIGN.md |
-| [foundation-services.md](completed/foundation-services.md) | 2026-01-06 | DESIGN.md |
-
 ## Workflow
 
 ### Creating a New Plan
 
 1. Use the `/impl-plan` command with a design document reference
 2. Or manually create a plan using `templates/plan-template.md`
-3. Save to `active/<feature-name>.md`
-4. Update this README with the new plan entry
-5. **IMPORTANT**: If plan exceeds 400 lines, split into multiple files
+3. Save to `impl-plans/<feature-name>.md`
+4. Update PROGRESS.json with new plan and tasks
+5. Update this README with the new plan entry
+6. **IMPORTANT**: If plan exceeds 400 lines, split into multiple files
 
 ### Working on a Plan
 
-1. Read the active plan
+1. Read the plan file
 2. Select a subtask to work on (consider parallelization)
 3. Implement following the deliverable specifications
-4. Update task status and progress log
-5. Mark completion criteria as done
+4. Update task status in PROGRESS.json
+5. Update task status in plan file progress log
+6. Mark completion criteria as done
 
 ### Completing a Plan
 
 1. Verify all completion criteria are met
-2. Update status to "Completed"
-3. Move file from `active/` to `completed/`
-4. Update this README
+2. Update plan status to "Completed" in PROGRESS.json
+3. Update plan file header status to "Completed"
+4. Update this README if needed
+
+**Note**: No file move is required. PROGRESS.json is the single source of truth for plan status.
 
 ## Guidelines
 

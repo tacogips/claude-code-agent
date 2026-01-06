@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Previous**: `impl-plans/active/browser-viewer-server.md` (Server, API, WebSocket)
+- **Previous**: `impl-plans/browser-viewer-server.md` (Server, API, WebSocket)
 - **Depends On**: `browser-viewer-server.md`, `foundation-and-core` (completed)
 
 ---

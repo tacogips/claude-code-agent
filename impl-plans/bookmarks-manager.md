@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Previous**: `impl-plans/active/bookmarks-types.md` (Types and Repository)
+- **Previous**: `impl-plans/bookmarks-types.md` (Types and Repository)
 - **Depends On**: `bookmarks-types.md`, `foundation-and-core` (completed)
 
 ---

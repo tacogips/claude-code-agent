@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Next**: `impl-plans/active/command-queue-core.md` (Manager, Runner, SDK)
+- **Next**: `impl-plans/command-queue-core.md` (Manager, Runner, SDK)
 - **Depends On**: `foundation-and-core` (completed)
 
 ---

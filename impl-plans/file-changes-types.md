@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Next**: `impl-plans/active/file-changes-service.md` (Index, Service, Exports)
+- **Next**: `impl-plans/file-changes-service.md` (Index, Service, Exports)
 - **Depends On**: `foundation-and-core` (completed)
 
 ---
@@ -256,7 +256,7 @@ TASK-002 (Extractor)
 **Status**: COMPLETED
 **Files Modified**:
 - `src/sdk/file-changes/types.ts` (already existed and fully implemented)
-- `impl-plans/active/file-changes-types.md` (updated status)
+- `impl-plans/file-changes-types.md` (updated status)
 
 **Notes**:
 The file change types were already fully implemented with all required interfaces and types. Verified implementation against TypeScript coding standards:
@@ -278,7 +278,7 @@ TASK-002 (File Change Extractor) is now unblocked and ready for implementation.
 **Files Modified**:
 - `src/sdk/file-changes/extractor.ts` (created, 781 lines)
 - `src/sdk/file-changes/extractor.test.ts` (created, 11 test cases)
-- `impl-plans/active/file-changes-types.md` (updated status)
+- `impl-plans/file-changes-types.md` (updated status)
 
 **Implementation Details**:
 - Implemented FileChangeExtractor class with full transcript parsing

@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Next**: `impl-plans/active/markdown-parser-core.md` (Core Parser, Exports)
+- **Next**: `impl-plans/markdown-parser-core.md` (Core Parser, Exports)
 - **Depends On**: None (standalone parser)
 
 ---

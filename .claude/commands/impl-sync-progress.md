@@ -127,7 +127,7 @@ Only if completion criteria unavailable:
 
 **If plan file not found**:
 ```
-Warning: Plan file not found: impl-plans/active/foo.md
+Warning: Plan file not found: impl-plans/foo.md
 Skipping plan 'foo' in sync
 ```
 

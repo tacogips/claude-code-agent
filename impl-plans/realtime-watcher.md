@@ -10,7 +10,7 @@
 ## Related Plans
 
 This plan is part of the real-time monitoring system. See also:
-- `impl-plans/active/realtime-events.md` - Event emission, state management
+- `impl-plans/realtime-events.md` - Event emission, state management
 
 ---
 

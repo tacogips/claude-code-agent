@@ -64,13 +64,13 @@ Split a plan into multiple files when ANY of these conditions are met:
 
 ```
 BEFORE (one large plan):
-impl-plans/active/foundation-and-core.md (1100+ lines)
+impl-plans/foundation-and-core.md (1100+ lines)
 
 AFTER (split by phase):
-impl-plans/active/foundation-interfaces.md (~200 lines)
-impl-plans/active/foundation-mocks.md (~150 lines)
-impl-plans/active/foundation-types.md (~150 lines)
-impl-plans/active/foundation-core-services.md (~200 lines)
+impl-plans/foundation-interfaces.md (~200 lines)
+impl-plans/foundation-mocks.md (~150 lines)
+impl-plans/foundation-types.md (~150 lines)
+impl-plans/foundation-core-services.md (~200 lines)
 ```
 
 ### Split Plan Naming Convention
@@ -89,33 +89,34 @@ Example:
 Each split plan MUST include:
 ```markdown
 ## Related Plans
-- **Previous**: `impl-plans/active/foundation-interfaces.md` (Phase 1)
-- **Next**: `impl-plans/active/foundation-core-services.md` (Phase 3)
+- **Previous**: `impl-plans/foundation-interfaces.md` (Phase 1)
+- **Next**: `impl-plans/foundation-core-services.md` (Phase 3)
 - **Depends On**: `foundation-interfaces.md`, `foundation-types.md`
 ```
 
 ## Output Location
 
-**IMPORTANT**: All implementation plans MUST be stored under `impl-plans/` subdirectories.
+**IMPORTANT**: All implementation plans MUST be stored directly under `impl-plans/`.
 
 ```
 impl-plans/
 ├── README.md              # Index of all implementation plans
-├── active/                # Currently active implementation plans
-│   └── <feature>.md       # One file per feature being implemented
-├── completed/             # Completed implementation plans (archive)
-│   └── <feature>.md       # Completed plans for reference
+├── PROGRESS.json          # Task status index (single source of truth)
+├── <feature>.md           # Implementation plan files
+├── <feature>-types.md     # Split plans use consistent naming
 └── templates/             # Plan templates
     └── plan-template.md   # Standard plan template
 ```
 
 ## Directory Rules
 
-| Directory | Purpose |
-|-----------|---------|
-| `impl-plans/active/` | Implementation plans currently in progress |
-| `impl-plans/completed/` | Archived completed plans for reference |
+| Location | Purpose |
+|----------|---------|
+| `impl-plans/*.md` | All implementation plan files (no subdirectories) |
+| `impl-plans/PROGRESS.json` | Single source of truth for plan/task status |
 | `impl-plans/templates/` | Plan templates and examples |
+
+**Plan status is tracked in PROGRESS.json, not by file location.**
 
 **DO NOT** create implementation plan files outside `impl-plans/`.
 
@@ -472,21 +473,24 @@ rm -f impl-plans/.progress.lock
 4. Define tasks with explicit IDs and dependencies
 5. List modules with status tracking
 6. Set completion criteria
-7. Create plan file in `impl-plans/active/`
+7. Create plan file in `impl-plans/<feature>.md`
 8. **Update PROGRESS.json with new plan and tasks**
 9. **Update impl-plans/README.md with new plan entry**
 
 ### During Implementation
-1. Update module status as work progresses
-2. Add progress log entries per session
-3. Note blockers and decisions
-4. Check off completion criteria
+1. Update task status in PROGRESS.json as work progresses
+2. Update module status in plan file
+3. Add progress log entries per session
+4. Note blockers and decisions
+5. Check off completion criteria
 
 ### Completing a Plan
 1. Verify all completion criteria met
-2. Update status to Completed
-3. Add final progress log entry
-4. Move file to `impl-plans/completed/`
+2. Update plan status to "Completed" in PROGRESS.json
+3. Update plan file header status to "Completed"
+4. Add final progress log entry
+
+**Note**: No file move is required. PROGRESS.json is the single source of truth for plan status.
 
 ## Quick Reference
 

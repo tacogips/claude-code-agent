@@ -29,8 +29,8 @@ Invoke the `impl-exec-specific` subagent using the Task tool.
 Parse `$ARGUMENTS` to extract:
 
 1. **Plan Path** (required): Path to implementation plan
-   - Can be relative: `impl-plans/active/foundation-and-core.md`
-   - Can be short name: `foundation-and-core` (auto-resolves to `impl-plans/active/foundation-and-core.md`)
+   - Can be relative: `impl-plans/foundation-and-core.md`
+   - Can be short name: `foundation-and-core` (auto-resolves to `impl-plans/foundation-and-core.md`)
 
 2. **Task IDs** (required): Specific tasks to execute
    - Space-separated: `TASK-001 TASK-002 TASK-003`
@@ -39,11 +39,11 @@ Parse `$ARGUMENTS` to extract:
 
 If plan path does not contain `/`:
 - Assume it's a short name
-- Resolve to: `impl-plans/active/<name>.md`
+- Resolve to: `impl-plans/<name>.md`
 
 Examples:
-- `foundation-and-core` -> `impl-plans/active/foundation-and-core.md`
-- `impl-plans/active/session-groups.md` -> use as-is
+- `foundation-and-core` -> `impl-plans/foundation-and-core.md`
+- `impl-plans/session-groups.md` -> use as-is
 
 ### Invoke Subagent
 
@@ -71,7 +71,7 @@ Executes only the specified tasks (in parallel if possible).
 
 **Execute with full path**:
 ```
-/impl-exec-specific impl-plans/active/session-groups.md TASK-001
+/impl-exec-specific impl-plans/session-groups.md TASK-001
 ```
 
 ### Error Handling
@@ -95,12 +95,12 @@ For automatic task selection, use:
 Error: Implementation plan not found: <plan-path>
 
 Searched locations:
-  - impl-plans/active/<plan-path>
-  - impl-plans/active/<plan-path>.md
+  - impl-plans/<plan-path>
+  - impl-plans/<plan-path>.md
   - <plan-path>
 
 Available plans:
-  (list plans from impl-plans/active/)
+  (list plans from impl-plans/)
 ```
 
 **If task not found**:
@@ -129,5 +129,5 @@ Available tasks in <plan-name>:
    - Release lock: `rm -f impl-plans/.progress.lock`
 
 4. If plan completed:
-   - Confirm plan moved to `impl-plans/completed/`
+   - Confirm plan status updated to "Completed" in PROGRESS.json
    - Suggest next implementation plan

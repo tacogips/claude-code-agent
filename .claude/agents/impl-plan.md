@@ -20,7 +20,7 @@ This subagent creates implementation plans from design documents. It translates 
 
 1. **Design Document**: Path to the design document or section to plan from
 2. **Feature Scope**: What feature or component to create a plan for
-3. **Output Path**: Where to save the implementation plan (must be under `impl-plans/active/`)
+3. **Output Path**: Where to save the implementation plan (must be under `impl-plans/`)
 
 ### Optional Information
 
@@ -35,7 +35,7 @@ Task tool prompt parameter should include:
 
 Design Document: design-docs/DESIGN.md#session-groups
 Feature Scope: Session Group orchestration with dependency management
-Output Path: impl-plans/active/session-groups.md
+Output Path: impl-plans/session-groups.md
 Constraints: Must use existing interface abstractions, support concurrent execution
 ```
 
@@ -51,7 +51,7 @@ The caller MUST include in the Task tool prompt:
 
 1. Design Document: Path to design document or section
 2. Feature Scope: What feature/component to plan
-3. Output Path: Where to save the plan (under impl-plans/active/)
+3. Output Path: Where to save the plan (under impl-plans/)
 
 Please invoke this subagent again with all required information in the prompt.
 ```
@@ -304,7 +304,7 @@ interface Example {
 ## Implementation Plan Created
 
 ### Plan File
-`impl-plans/active/<feature-name>.md`
+`impl-plans/<feature-name>.md`
 
 ### Summary
 Brief description of the plan created.

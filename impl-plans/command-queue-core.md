@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Previous**: `impl-plans/active/command-queue-types.md` (Types and Events)
+- **Previous**: `impl-plans/command-queue-types.md` (Types and Events)
 - **Depends On**: `command-queue-types.md`, `foundation-and-core` (completed)
 
 ---

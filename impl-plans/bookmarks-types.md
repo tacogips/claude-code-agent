@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Next**: `impl-plans/active/bookmarks-manager.md` (Search, Manager, Exports)
+- **Next**: `impl-plans/bookmarks-manager.md` (Search, Manager, Exports)
 - **Depends On**: `foundation-and-core` (completed)
 
 ---

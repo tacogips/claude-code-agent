@@ -37,7 +37,7 @@ Parse `$ARGUMENTS` to extract:
 ### Determine Output Path
 
 Generate the output path based on feature name:
-- If feature name provided: `impl-plans/active/<feature-name>.md`
+- If feature name provided: `impl-plans/<feature-name>.md`
 - If not provided: Derive from design document path
 
 ### Invoke Subagent
@@ -57,19 +57,19 @@ Task tool parameters:
 ```
 /impl-plan design-docs/spec-session-groups.md
 ```
-Creates: `impl-plans/active/session-groups.md`
+Creates: `impl-plans/session-groups.md`
 
 **With explicit feature name**:
 ```
 /impl-plan design-docs/DESIGN.md foundation-layer
 ```
-Creates: `impl-plans/active/foundation-layer.md`
+Creates: `impl-plans/foundation-layer.md`
 
 **With section reference**:
 ```
 /impl-plan design-docs/spec-infrastructure.md#testability testability
 ```
-Creates: `impl-plans/active/testability.md`
+Creates: `impl-plans/testability.md`
 
 ### After Subagent Completes
 

@@ -36,20 +36,20 @@ Parse `$ARGUMENTS`:
 
 1. **If no argument provided**: Analyze ALL active plans and auto-select executable tasks across plans
 2. **If plan path provided**: Focus on that specific plan only
-   - Can be relative: `impl-plans/active/foundation-and-core.md`
-   - Can be short name: `foundation-and-core` (auto-resolves to `impl-plans/active/foundation-and-core.md`)
+   - Can be relative: `impl-plans/foundation-and-core.md`
+   - Can be short name: `foundation-and-core` (auto-resolves to `impl-plans/foundation-and-core.md`)
 3. **If `--dry-run` flag present**: Analyze and report but do not execute
 
 ### Path Resolution
 
 If plan path does not contain `/`:
 - Assume it's a short name
-- Resolve to: `impl-plans/active/<name>.md`
+- Resolve to: `impl-plans/<name>.md`
 
 Examples:
-- `foundation-and-core` -> `impl-plans/active/foundation-and-core.md`
-- `impl-plans/active/session-groups.md` -> use as-is
-- (no argument) -> analyze all plans in `impl-plans/active/`
+- `foundation-and-core` -> `impl-plans/foundation-and-core.md`
+- `impl-plans/session-groups.md` -> use as-is
+- (no argument) -> analyze all plans via `impl-plans/PROGRESS.json`
 
 ### Invoke Subagent
 
@@ -59,8 +59,8 @@ Task tool parameters:
   subagent_type: impl-exec-auto
   prompt: |
     Mode: cross-plan auto-select
-    Analyze ALL plans in impl-plans/active/
-    Respect cross-plan dependencies from impl-plans/README.md
+    Analyze ALL plans via impl-plans/PROGRESS.json
+    Respect cross-plan dependencies from PROGRESS.json phases
 ```
 
 **When plan path provided (single-plan mode)**:
@@ -197,7 +197,7 @@ Recommended Actions:
    - List next executable tasks/plans
    - Suggest re-running `/impl-exec-auto`
 7. **If a plan completed**:
-   - Confirm plan moved to `impl-plans/completed/`
+   - Confirm plan status updated to "Completed" in PROGRESS.json
    - Note newly unblocked plans
 8. **If all plans completed**:
    - Report implementation completion

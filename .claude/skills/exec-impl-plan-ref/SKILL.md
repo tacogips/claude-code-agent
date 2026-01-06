@@ -11,7 +11,7 @@ This skill provides guidelines for executing implementation plans created by the
 ## When to Apply
 
 Apply this skill when:
-- Executing tasks from an implementation plan in `impl-plans/active/`
+- Executing tasks from an implementation plan in `impl-plans/`
 - Tracking progress during multi-session implementation work
 - Coordinating sequential execution of tasks
 - Updating implementation plan status and progress logs
@@ -165,7 +165,7 @@ Use this mode when:
 
 ### Phase 1: Plan Analysis
 
-1. **Read the implementation plan**: Load from `impl-plans/active/<plan-name>.md`
+1. **Read the implementation plan**: Load from `impl-plans/<plan-name>.md`
 2. **Parse task status**: Identify tasks by status (Not Started, In Progress, Completed)
 3. **Build dependency graph**: Understand which tasks depend on others
 4. **Select executable tasks**: Tasks with status "Not Started" and all dependencies satisfied
@@ -222,9 +222,11 @@ After task execution (within impl-exec-specific):
 
 3. **Check completion criteria** for the overall plan
 
-4. **Move to completed** if all tasks done: `impl-plans/active/` -> `impl-plans/completed/`
+4. **Update plan status** in PROGRESS.json if all tasks done (set to "Completed")
 
 **NOTE**: PROGRESS.json is updated by **main conversation** after impl-exec-specific completes. See "Main Conversation Orchestration Protocol" section for details.
+
+**No file move is required.** PROGRESS.json is the single source of truth for plan status.
 
 ## Task Invocation Format
 
@@ -235,7 +237,7 @@ Task tool parameters:
   subagent_type: ts-coding
   prompt: |
     Purpose: <task description from implementation plan>
-    Reference Document: impl-plans/active/<plan-name>.md
+    Reference Document: impl-plans/<plan-name>.md
     Implementation Target: <deliverables list>
     Completion Criteria:
       - <criterion 1 from task>
@@ -428,10 +430,12 @@ A plan is complete when:
 
 When a plan is complete:
 
-1. Update status header to "Completed"
-2. Add final progress log entry
-3. Move file: `impl-plans/active/<plan>.md` -> `impl-plans/completed/<plan>.md`
-4. Update `impl-plans/README.md`
+1. Update status header to "Completed" in plan file
+2. Update plan status to "Completed" in PROGRESS.json
+3. Add final progress log entry
+4. Update `impl-plans/README.md` (move plan entry to Completed section if applicable)
+
+**No file move is required.** PROGRESS.json tracks plan completion status.
 
 ## Review Cycle
 
@@ -472,7 +476,7 @@ Task tool parameters:
   subagent_type: ts-review
   prompt: |
     Design Reference: <path to design document>
-    Implementation Plan: impl-plans/active/<plan-name>.md
+    Implementation Plan: impl-plans/<plan-name>.md
     Task ID: TASK-XXX
     Implemented Files:
       - <file path 1>
@@ -487,7 +491,7 @@ Task tool parameters:
   subagent_type: ts-review
   prompt: |
     Design Reference: <path to design document>
-    Implementation Plan: impl-plans/active/<plan-name>.md
+    Implementation Plan: impl-plans/<plan-name>.md
     Task ID: TASK-XXX
     Implemented Files:
       - <file path 1>
@@ -527,7 +531,7 @@ Task tool parameters:
   subagent_type: ts-coding
   prompt: |
     Purpose: Fix code review issues for TASK-XXX
-    Reference Document: impl-plans/active/<plan-name>.md
+    Reference Document: impl-plans/<plan-name>.md
     Implementation Target: Fix the following review issues
 
     Issues to Fix:
@@ -584,12 +588,12 @@ If only some tasks complete:
 
 | Action | Tool | Parameters |
 |--------|------|------------|
-| Read plan | Read | `impl-plans/active/<plan>.md` |
+| Read plan | Read | `impl-plans/<plan>.md` |
 | Execute task | Task | `subagent_type: ts-coding` (NO run_in_background) |
 | Run tests | Task | `subagent_type: check-and-test-after-modify` |
 | Review code | Task | `subagent_type: ts-review` |
 | Update plan | Edit | Update status, checkboxes, log |
-| Move completed | Bash | `mv impl-plans/active/ impl-plans/completed/` |
+| Update progress | Edit | Update PROGRESS.json task/plan status |
 
 ## Common Response Formats
 
@@ -599,15 +603,15 @@ If only some tasks complete:
 ## Implementation Plan Completed
 
 ### Plan
-`impl-plans/completed/<plan-name>.md` (moved from active/)
+`impl-plans/<plan-name>.md`
 
 ### Final Verification
 - Type checking: Pass
 - Tests: Pass (X/X)
 
 ### Plan Finalization
-- Status updated to: Completed
-- Moved to: impl-plans/completed/
+- Plan file status updated to: Completed
+- PROGRESS.json status updated to: Completed
 - README.md updated
 
 ### Next Steps
@@ -642,7 +646,7 @@ If only some tasks complete:
 6. **Fail gracefully**: If a task fails, document it and proceed to next task
 7. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
 8. **Run review cycle**: After tests pass, invoke `ts-review` for code review (max 3 iterations)
-9. **Move completed plans**: Move to `impl-plans/completed/` when done
+9. **No file move required**: Plan status tracked in PROGRESS.json, not by file location
 
 ## Cross-Plan Execution
 
@@ -704,20 +708,21 @@ Phase 4: browser-viewer-*, cli-*
 
 When updating plans after cross-plan execution:
 
-1. Update each affected plan's task statuses
-2. Add progress log to each affected plan
-3. Check if any plan is now complete
-4. If plan completes, check if new phases become eligible
-5. Update `impl-plans/README.md` if plan moves to completed
+1. Update each affected plan's task statuses in plan files
+2. Update PROGRESS.json with new task statuses
+3. Add progress log to each affected plan
+4. Check if any plan is now complete
+5. If plan completes, update PROGRESS.json plan status and check if new phases become eligible
 
 ### Phase Transition Handling
 
 When a phase-gating plan completes (e.g., foundation-and-core):
 
-1. Move plan to `impl-plans/completed/`
-2. Update `impl-plans/README.md` status table
-3. Report newly eligible plans
-4. Suggest running `/impl-exec-auto` again for next phase
+1. Update plan status to "Completed" in PROGRESS.json
+2. Update plan file header status to "Completed"
+3. Update phase status in PROGRESS.json if all phase plans complete
+4. Report newly eligible plans
+5. Suggest running `/impl-exec-auto` again for next phase
 
 ## Integration with Other Skills
 

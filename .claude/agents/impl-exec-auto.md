@@ -128,7 +128,7 @@ Return the analysis in this exact format:
 Total: N tasks ready for execution
 
 #### Task 1: [plan-name]:TASK-XXX
-- **Plan File**: impl-plans/active/[plan-name].md
+- **Plan File**: impl-plans/[plan-name].md
 - **Purpose**: [task description]
 - **Deliverables**:
   - [file path 1]

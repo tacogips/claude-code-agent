@@ -9,7 +9,7 @@
 
 ## Related Plans
 
-- **Next**: `impl-plans/active/browser-viewer-ui.md` (SvelteKit UI)
+- **Next**: `impl-plans/browser-viewer-ui.md` (SvelteKit UI)
 - **Depends On**: `foundation-and-core` (completed), `realtime-monitoring`
 
 ---

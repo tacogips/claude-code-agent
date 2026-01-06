@@ -63,9 +63,9 @@ for plan in plans:
 
 # GOOD: Parallel (fast)
 # Issue multiple Read/Glob calls in a SINGLE message
-Read(impl-plans/active/plan-a.md)  \
-Read(impl-plans/active/plan-b.md)   |-- All in same message = parallel
-Read(impl-plans/active/plan-c.md)  /
+Read(impl-plans/plan-a.md)  \
+Read(impl-plans/plan-b.md)   |-- All in same message = parallel
+Read(impl-plans/plan-c.md)  /
 ```
 
 ### Concurrent File Existence Checks
@@ -95,7 +95,7 @@ plans = list(progress_json["plans"].keys())
 
 # Step 2: Read ALL plan files in parallel (single message with multiple Read calls)
 plan_contents = parallel_read([
-    f"impl-plans/active/{plan}.md" for plan in plans
+    f"impl-plans/{plan}.md" for plan in plans
 ])
 
 # Step 3: Extract all deliverable file paths
@@ -122,10 +122,10 @@ update_progress_json(results)
 
 **Message 1** - Read all plan files:
 ```
-Read(impl-plans/active/session-groups-types.md)
-Read(impl-plans/active/session-groups-runner.md)
-Read(impl-plans/active/command-queue-types.md)
-Read(impl-plans/active/command-queue-core.md)
+Read(impl-plans/session-groups-types.md)
+Read(impl-plans/session-groups-runner.md)
+Read(impl-plans/command-queue-types.md)
+Read(impl-plans/command-queue-core.md)
 ... (up to 10-15 files per batch)
 ```
 
@@ -177,11 +177,12 @@ For each plan in PROGRESS.json:
 
 ### 2a. Read Plan File
 
-Determine plan file path:
+Plan file path:
 ```
-impl-plans/active/<plan-name>.md   (if exists)
-impl-plans/completed/<plan-name>.md (if not in active)
+impl-plans/<plan-name>.md
 ```
+
+**Note**: All plans are in `impl-plans/` regardless of completion status. Status is tracked in PROGRESS.json.
 
 ### 2b. Extract Task Deliverables
 
@@ -439,11 +440,11 @@ Log warning: "Cannot determine status for TASK-XXX: wildcard/directory deliverab
 
 ### Missing Plan File
 
-If plan file doesn't exist in active/ or completed/:
+If plan file doesn't exist:
 
 ```markdown
 Warning: Plan file not found for 'foo'
-Checked: impl-plans/active/foo.md, impl-plans/completed/foo.md
+Checked: impl-plans/foo.md
 Skipping plan
 ```
 

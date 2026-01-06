@@ -243,7 +243,7 @@ For detailed design specifications, see `design-docs/`:
 Design Document --> Implementation Plan --> Implementation --> Completion
      |                    |                      |               |
 design-docs/         impl-plans/            ts-coding        Progress
-specs/*.md          active/*.md              agent            Update
+specs/*.md            *.md                   agent            Update
 ```
 
 ### Creating Implementation Plans
@@ -307,11 +307,11 @@ Use `/impl-exec-auto` to automatically select and execute all parallelizable tas
 /impl-exec-auto foundation-and-core
 
 # With full path
-/impl-exec-auto impl-plans/active/session-groups.md
+/impl-exec-auto impl-plans/session-groups.md
 ```
 
 This command:
-1. Reads the implementation plan from `impl-plans/active/`
+1. Reads PROGRESS.json to identify executable tasks
 2. Builds a dependency graph from task definitions
 3. Selects ALL tasks that can run in parallel (dependencies satisfied, status "Not Started")
 4. Spawns `ts-coding` agents **concurrently** for all selected tasks
@@ -351,13 +351,14 @@ Implementation progress is tracked within implementation plans in `impl-plans/`:
 ```
 impl-plans/
 ├── README.md                    # Index of all implementation plans
-├── active/                      # Currently active implementation plans
-│   └── <feature>.md             # One file per feature being implemented
-├── completed/                   # Completed implementation plans (archive)
-│   └── <feature>.md             # Completed plans for reference
+├── PROGRESS.json                # Task status index (single source of truth)
+├── <feature>.md                 # Implementation plan files
+├── <feature>-types.md           # Split plans use consistent naming
 └── templates/                   # Plan templates
     └── plan-template.md         # Standard plan template
 ```
+
+**Note**: Plan status is tracked in PROGRESS.json, not by file location. All plans remain in `impl-plans/` regardless of completion status.
 
 ### Progress Tracking in Plans
 
