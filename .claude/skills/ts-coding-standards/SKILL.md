@@ -1,3 +1,9 @@
+---
+name: ts-coding-standards
+description: Use when writing, reviewing, or refactoring TypeScript code. Provides type safety patterns, error handling, project layout, and async programming guidelines.
+allowed-tools: Read, Grep, Glob
+---
+
 # TypeScript Coding Standards
 
 This skill provides modern TypeScript coding guidelines and best practices for this project.

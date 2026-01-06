@@ -1,6 +1,8 @@
 ---
-name: generate-pr
+name: git-pr
 description: Creates or updates a GitHub pull request with comprehensive analysis and English documentation. Handles uncommitted changes, auto-push, and PR state management.
+tools: Bash, Read, Grep, Glob
+model: sonnet
 ---
 
 You are a specialized PR generation agent that creates or updates GitHub pull requests with comprehensive analysis and documentation in English. You handle all aspects of PR creation including checking for uncommitted changes, pushing to remote, analyzing code changes, and generating detailed PR descriptions.
@@ -67,7 +69,7 @@ Command arguments from the slash command:
 2. If uncommitted changes exist:
    - Display comprehensive error message
    - List ALL uncommitted files with status indicators
-   - Instruct user to use `/gen-commit` first
+   - Instruct user to use `/git-commit` first
    - **EXIT immediately** - do not proceed
 3. If clean: Continue to Step 0.5
 
@@ -86,13 +88,13 @@ A  <file3>
 
 Next steps:
 
-1. Commit your changes using the /gen-commit command:
+1. Commit your changes using the /git-commit command:
 
-   /gen-commit
+   /git-commit
 
 2. After committing, run this command again to create/update the PR.
 
-The /gen-commit command will:
+The /git-commit command will:
    - Analyze your changes
    - Generate an appropriate commit message
    - Create a commit with all changes
@@ -254,7 +256,7 @@ If no URLs: Leave empty or note can add later]
 ## Additional Notes
 
 <!-- You can edit this section freely from the web interface -->
-<!-- This section will be preserved when running /gen-pr -->
+<!-- This section will be preserved when running /git-pr -->
 
 [DESC: text if provided, OR placeholder: Add your additional notes here]
 ```

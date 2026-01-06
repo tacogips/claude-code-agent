@@ -20,7 +20,7 @@ $ARGUMENTS
 
 ## Instructions
 
-Invoke the `batch-plan-generator` subagent using the Task tool to generate all implementation plans concurrently.
+Invoke the `impl-plan-all` subagent using the Task tool to generate all implementation plans concurrently.
 
 ### Argument Parsing
 
@@ -33,7 +33,7 @@ Parse `$ARGUMENTS` to extract:
 
 ```
 Task tool parameters:
-  subagent_type: batch-plan-generator
+  subagent_type: impl-plan-all
   prompt: |
     Design Directory: design-docs/
     Output Directory: impl-plans/active/
@@ -45,17 +45,17 @@ Task tool parameters:
 
 **Generate all missing plans**:
 ```
-/gen-all-impl-plans
+/impl-plan-all
 ```
 
 **Preview what would be created**:
 ```
-/gen-all-impl-plans --dry-run
+/impl-plan-all --dry-run
 ```
 
 **Regenerate all plans (including existing)**:
 ```
-/gen-all-impl-plans --force
+/impl-plan-all --force
 ```
 
 ### After Subagent Completes
@@ -69,5 +69,5 @@ Task tool parameters:
 
 If errors occur during generation:
 - Report which plans failed
-- Suggest using `/gen-impl-plan` for individual retries
+- Suggest using `/impl-plan` for individual retries
 - Continue with successful plans

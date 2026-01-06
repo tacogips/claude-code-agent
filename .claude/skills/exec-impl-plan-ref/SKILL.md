@@ -1,6 +1,12 @@
+---
+name: exec-impl-plan-ref
+description: Use when executing tasks from implementation plans. Provides task selection, parallel execution, progress tracking, and review cycle guidelines.
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TaskOutput
+---
+
 # Implementation Execution Skill
 
-This skill provides guidelines for executing implementation plans created by the `plan-from-design` agent.
+This skill provides guidelines for executing implementation plans created by the `impl-plan` agent.
 
 ## When to Apply
 
@@ -22,19 +28,19 @@ This skill bridges implementation plans (what to build) and actual code implemen
 
 Two execution modes are available:
 
-### Auto Mode (`exec-impl-plan-auto`)
+### Auto Mode (`impl-exec-auto`)
 
 Automatically selects and executes all parallelizable tasks. Supports two sub-modes:
 
 **Cross-Plan Mode** (no argument - recommended):
 ```bash
-/exec-impl-plan-auto
+/impl-exec-auto
 ```
 Analyzes ALL active plans and executes tasks across plans based on phase dependencies.
 
 **Single-Plan Mode** (with argument):
 ```bash
-/exec-impl-plan-auto foundation-and-core
+/impl-exec-auto foundation-and-core
 ```
 Focuses on one specific plan only.
 
@@ -52,12 +58,12 @@ The auto mode:
 6. Executes them concurrently
 7. Reports newly unblocked tasks and phases
 
-### Specific Mode (`exec-impl-plan-specific`)
+### Specific Mode (`impl-exec-specific`)
 
 Executes specific tasks by ID:
 
 ```bash
-/exec-impl-plan-specific foundation-and-core TASK-001 TASK-002
+/impl-exec-specific foundation-and-core TASK-001 TASK-002
 ```
 
 Use this mode when:
@@ -511,7 +517,7 @@ If only some tasks complete:
 ### Recommended Actions
 1. Review failure details
 2. Fix the issue
-3. Re-run with: `/exec-impl-plan-specific <plan-name> TASK-XXX`
+3. Re-run with: `/impl-exec-specific <plan-name> TASK-XXX`
 ```
 
 ## Important Guidelines
@@ -527,7 +533,7 @@ If only some tasks complete:
 
 ## Cross-Plan Execution
 
-When running `/exec-impl-plan-auto` without arguments, the system analyzes all active plans and respects phase dependencies.
+When running `/impl-exec-auto` without arguments, the system analyzes all active plans and respects phase dependencies.
 
 ### Phase Dependency Rules
 
@@ -589,7 +595,7 @@ When a phase-gating plan completes (e.g., foundation-and-core):
 1. Move plan to `impl-plans/completed/`
 2. Update `impl-plans/README.md` status table
 3. Report newly eligible plans
-4. Suggest running `/exec-impl-plan-auto` again for next phase
+4. Suggest running `/impl-exec-auto` again for next phase
 
 ## Integration with Other Skills
 

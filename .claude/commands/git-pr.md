@@ -3,7 +3,7 @@ allowed-tools: Bash,Read,Grep,Glob
 description: Generate or update a GitHub pull request with comprehensive description
 ---
 
-Use the `generate-pr` agent to create or update a GitHub pull request with comprehensive analysis and documentation.
+Use the `git-pr` agent to create or update a GitHub pull request with comprehensive analysis and documentation.
 
 Arguments provided: $ARGUMENTS
 
@@ -22,8 +22,8 @@ Arguments can include:
 - `Desc:` prefix followed by description text
 
 Examples:
-- `/gen-pr` - Create draft PR to default branch
-- `/gen-pr main` - Create draft PR to main branch
-- `/gen-pr State:Open` - Create open (non-draft) PR
-- `/gen-pr https://github.com/owner/repo/issues/123` - Link to issue
-- `/gen-pr Desc: This PR implements the new search feature` - Add description
+- `/git-pr` - Create draft PR to default branch
+- `/git-pr main` - Create draft PR to main branch
+- `/git-pr State:Open` - Create open (non-draft) PR
+- `/git-pr https://github.com/owner/repo/issues/123` - Link to issue
+- `/git-pr Desc: This PR implements the new search feature` - Add description

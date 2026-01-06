@@ -11,7 +11,7 @@ This command **automatically analyzes** implementation plan(s) and selects tasks
 - Cross-plan dependencies (phase-based ordering from impl-plans/README.md)
 - Parallelization markers (Parallelizable: Yes)
 
-For executing specific tasks by ID, use `/exec-impl-plan-specific` instead.
+For executing specific tasks by ID, use `/impl-exec-specific` instead.
 
 ### Current Context
 
@@ -26,7 +26,7 @@ $ARGUMENTS
 
 ## Instructions
 
-Invoke the `exec-impl-plan-auto` subagent using the Task tool.
+Invoke the `impl-exec-auto` subagent using the Task tool.
 
 ### Argument Parsing
 
@@ -54,7 +54,7 @@ Examples:
 **When no argument provided (cross-plan mode)**:
 ```
 Task tool parameters:
-  subagent_type: exec-impl-plan-auto
+  subagent_type: impl-exec-auto
   prompt: |
     Mode: cross-plan auto-select
     Analyze ALL plans in impl-plans/active/
@@ -64,7 +64,7 @@ Task tool parameters:
 **When plan path provided (single-plan mode)**:
 ```
 Task tool parameters:
-  subagent_type: exec-impl-plan-auto
+  subagent_type: impl-exec-auto
   prompt: |
     Implementation Plan: <resolved-plan-path>
     Mode: single-plan auto-select parallelizable tasks
@@ -74,7 +74,7 @@ Task tool parameters:
 
 **Execute across ALL plans (recommended)**:
 ```
-/exec-impl-plan-auto
+/impl-exec-auto
 ```
 Analyzes all active plans, finds all tasks that:
 - Belong to plans whose phase dependencies are satisfied
@@ -86,14 +86,14 @@ Then executes them concurrently using Claude subtasks.
 
 **Execute within a specific plan**:
 ```
-/exec-impl-plan-auto foundation-and-core
+/impl-exec-auto foundation-and-core
 ```
 Focuses on tasks within the specified plan only.
 
 **Dry run (preview without executing)**:
 ```
-/exec-impl-plan-auto --dry-run
-/exec-impl-plan-auto foundation-and-core --dry-run
+/impl-exec-auto --dry-run
+/impl-exec-auto foundation-and-core --dry-run
 ```
 
 ### What the Subagent Does
@@ -157,7 +157,7 @@ Phase 2: (blocked by Phase 1)
 
 Recommended Actions:
 1. Wait for in-progress tasks to complete
-2. Use /exec-impl-plan-specific to run specific tasks
+2. Use /impl-exec-specific to run specific tasks
 ```
 
 ### After Subagent Completes
@@ -175,7 +175,7 @@ Recommended Actions:
 
 3. If more tasks available:
    - List next executable tasks/plans
-   - Suggest re-running `/exec-impl-plan-auto`
+   - Suggest re-running `/impl-exec-auto`
 
 4. If a plan completed:
    - Confirm plan moved to `impl-plans/completed/`

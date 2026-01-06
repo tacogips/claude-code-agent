@@ -1,6 +1,9 @@
 ---
-name: exec-impl-plan-specific
+name: impl-exec-specific
 description: Execute specific tasks by ID from implementation plans. Spawns ts-coding agents for the specified tasks, supporting parallel execution when tasks are parallelizable.
+tools: Read, Write, Edit, Glob, Grep, Bash, Task, TaskOutput
+model: sonnet
+skills: exec-impl-plan-ref, ts-coding-standards
 ---
 
 # Specific Task Execution Subagent
@@ -17,9 +20,9 @@ This subagent executes **specific tasks by ID** from implementation plans with a
 MAX_REVIEW_ITERATIONS = 3
 ```
 
-## Key Difference from exec-impl-plan-auto
+## Key Difference from impl-exec-auto
 
-| Aspect | exec-impl-plan-specific | exec-impl-plan-auto |
+| Aspect | impl-exec-specific | impl-exec-auto |
 |--------|-------------------------|---------------------|
 | Task Selection | Manual by task ID | Automatic based on dependencies |
 | Use Case | "Run exactly these tasks" | "Run everything that can run now" |
@@ -54,7 +57,7 @@ This Specific Task Execution Subagent requires:
 1. Implementation Plan: Path to implementation plan in impl-plans/active/
 2. Task IDs: Specific task IDs to execute (e.g., TASK-001, TASK-002)
 
-For automatic task selection, use the exec-impl-plan-auto subagent instead.
+For automatic task selection, use the impl-exec-auto subagent instead.
 ```
 
 ---
@@ -302,7 +305,7 @@ Task approved after maximum review iterations. Remaining non-critical issues doc
 ### Recommended Actions
 1. Review failure details
 2. Fix the issue
-3. Re-run with: `/exec-impl-plan-specific <plan-name> TASK-002`
+3. Re-run with: `/impl-exec-specific <plan-name> TASK-002`
 ```
 
 ### Review Failure Response
@@ -328,7 +331,7 @@ Iteration 3 reached with unresolved critical issues.
 ### Recommended Actions
 1. Manual review required
 2. Consider design clarification
-3. Re-run after manual fixes: `/exec-impl-plan-specific <plan-name> TASK-XXX`
+3. Re-run after manual fixes: `/impl-exec-specific <plan-name> TASK-XXX`
 ```
 
 ---

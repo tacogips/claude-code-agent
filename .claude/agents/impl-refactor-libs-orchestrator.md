@@ -1,6 +1,9 @@
 ---
-name: lib-replacement-orchestrator
+name: impl-refactor-libs-orchestrator
 description: Orchestrates concurrent library replacements using multiple ts-coding agents. Coordinates review cycles and testing for all replacements. Takes audit findings and executes replacements in parallel where possible.
+tools: Read, Write, Edit, Glob, Grep, Bash, Task, TaskOutput
+model: sonnet
+skills: lib-replacement, ts-coding-standards
 ---
 
 # Library Replacement Orchestrator Subagent
@@ -8,7 +11,7 @@ description: Orchestrates concurrent library replacements using multiple ts-codi
 ## Overview
 
 This subagent orchestrates the replacement of custom implementations with well-known libraries. It:
-- Takes audit findings from `lib-redundancy-audit`
+- Takes audit findings from `impl-refactor-libs-audit`
 - Groups parallelizable replacements
 - Spawns multiple `ts-coding` agents concurrently
 - Coordinates the review cycle using `ts-review`
@@ -27,7 +30,7 @@ This subagent orchestrates the replacement of custom implementations with well-k
 
 The Task prompt MUST include:
 
-1. **Audit Report** (REQUIRED): Full audit report from `lib-redundancy-audit`
+1. **Audit Report** (REQUIRED): Full audit report from `impl-refactor-libs-audit`
    - Contains findings with FINDING-IDs
    - Includes parallelization information
    - Contains dependency groups
@@ -439,9 +442,9 @@ FINDING-005 depends on FINDING-001
 
 ## Integration Notes
 
-### With lib-redundancy-audit
+### With impl-refactor-libs-audit
 
-This agent consumes the structured output from `lib-redundancy-audit`:
+This agent consumes the structured output from `impl-refactor-libs-audit`:
 - FINDING-IDs for tracking
 - Parallelization markers for execution planning
 - Dependency groups for ordering

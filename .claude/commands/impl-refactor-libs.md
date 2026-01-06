@@ -28,16 +28,16 @@ $ARGUMENTS
 ## Workflow
 
 ```
-/refactor-to-libs
+/impl-refactor-libs
         |
         v
-Phase 1: Audit (lib-redundancy-audit)
+Phase 1: Audit (impl-refactor-libs-audit)
         |
         v
 [Show findings, confirm with user]
         |
         v
-Phase 2: Replace (lib-replacement-orchestrator)
+Phase 2: Replace (impl-refactor-libs-orchestrator)
         |
         +--> ts-coding (concurrent)
         +--> check-and-test-after-modify
@@ -74,11 +74,11 @@ Parse `$ARGUMENTS` for options:
 
 ### Step 2: Run Audit Phase
 
-Invoke `lib-redundancy-audit` to scan the codebase:
+Invoke `impl-refactor-libs-audit` to scan the codebase:
 
 ```
 Task tool parameters:
-  subagent_type: lib-redundancy-audit
+  subagent_type: impl-refactor-libs-audit
   prompt: |
     Scope: [resolved scope from arguments]
     Categories: [categories from arguments or "all"]
@@ -140,12 +140,12 @@ Use `AskUserQuestion` tool to get confirmation.
 
 ### Step 5: Execute Replacements
 
-If user confirms, invoke `lib-replacement-orchestrator`:
+If user confirms, invoke `impl-refactor-libs-orchestrator`:
 
 **For all findings**:
 ```
 Task tool parameters:
-  subagent_type: lib-replacement-orchestrator
+  subagent_type: impl-refactor-libs-orchestrator
   prompt: |
     Mode: all
 
@@ -156,7 +156,7 @@ Task tool parameters:
 **For specific findings**:
 ```
 Task tool parameters:
-  subagent_type: lib-replacement-orchestrator
+  subagent_type: impl-refactor-libs-orchestrator
   prompt: |
     Mode: specific
     Specific Findings: FINDING-001, FINDING-003
@@ -194,7 +194,7 @@ All tests passing / X tests failing
 ### Basic Usage (Full Audit and Replace)
 
 ```
-/refactor-to-libs
+/impl-refactor-libs
 ```
 
 Audits entire `src/` directory, presents findings, asks for confirmation, then executes replacements.
@@ -202,7 +202,7 @@ Audits entire `src/` directory, presents findings, asks for confirmation, then e
 ### Dry Run (Audit Only)
 
 ```
-/refactor-to-libs --dry-run
+/impl-refactor-libs --dry-run
 ```
 
 Audits and presents findings without making any changes.
@@ -210,7 +210,7 @@ Audits and presents findings without making any changes.
 ### Scoped Audit
 
 ```
-/refactor-to-libs --scope=src/utils/
+/impl-refactor-libs --scope=src/utils/
 ```
 
 Focuses audit on specific directory.
@@ -218,7 +218,7 @@ Focuses audit on specific directory.
 ### Category-Specific
 
 ```
-/refactor-to-libs --category=error-handling
+/impl-refactor-libs --category=error-handling
 ```
 
 Only looks for error handling patterns (Result types, etc.).
@@ -226,7 +226,7 @@ Only looks for error handling patterns (Result types, etc.).
 ### Execute Specific Findings
 
 ```
-/refactor-to-libs --finding=FINDING-001,FINDING-003
+/impl-refactor-libs --finding=FINDING-001,FINDING-003
 ```
 
 Only replaces specified findings (assumes prior audit).
@@ -279,7 +279,7 @@ If user cancels after audit:
 Findings have been reviewed. No changes made.
 
 To execute replacements later, run:
-/refactor-to-libs --finding=FINDING-001,FINDING-002,...
+/impl-refactor-libs --finding=FINDING-001,FINDING-002,...
 ```
 
 ---

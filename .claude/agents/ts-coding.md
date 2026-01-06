@@ -1,6 +1,10 @@
 ---
 name: ts-coding
 description: Specialized TypeScript coding agent for writing, refactoring, and reviewing TypeScript code. Caller MUST include purpose, reference document, implementation target, and completion criteria in the Task tool prompt. Returns error if required information not provided.
+tools: Read, Write, Edit, Glob, Grep, Bash, LSP
+model: sonnet
+skills: ts-coding-standards
+permissionMode: acceptEdits
 ---
 
 # TypeScript Coding Subagent

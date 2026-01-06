@@ -1,6 +1,9 @@
 ---
-name: plan-from-design
+name: impl-plan
 description: Create implementation plans from design documents. Reads design docs and generates structured implementation plans with TypeScript type definitions, status tables, and completion checklists.
+tools: Read, Write, Glob, Grep
+model: sonnet
+skills: impl-plan
 ---
 
 # Plan From Design Subagent

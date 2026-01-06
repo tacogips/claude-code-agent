@@ -1,6 +1,8 @@
 ---
 name: check-and-test-after-modify
 description: MANDATORY - MUST be used automatically after ANY TypeScript file modifications OR when running tests/checks is requested. Runs tests and type checking to verify changes. The main agent MUST invoke this agent without user request after modifying .ts files. Also use this agent when the user explicitly requests running tests or type checks, even if no modifications were made.
+tools: Bash, Read, Glob
+model: haiku
 ---
 
 IMPORTANT: This agent MUST be invoked automatically by the main agent in the following scenarios:

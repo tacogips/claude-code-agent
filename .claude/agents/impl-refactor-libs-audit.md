@@ -1,6 +1,9 @@
 ---
-name: lib-redundancy-audit
+name: impl-refactor-libs-audit
 description: Scans the codebase to find custom implementations that could be replaced with well-known libraries. Returns structured findings for replacement orchestration.
+tools: Read, Glob, Grep
+model: sonnet
+skills: lib-replacement
 ---
 
 # Library Redundancy Audit Subagent
@@ -12,7 +15,7 @@ This subagent audits the codebase to identify custom implementations that:
 - Could be replaced to reduce maintenance burden
 - May have bugs that established libraries have already solved
 
-Returns structured findings that can be used by the `lib-replacement-orchestrator` agent.
+Returns structured findings that can be used by the `impl-refactor-libs-orchestrator` agent.
 
 ## MANDATORY: Read Skill First
 
@@ -308,7 +311,7 @@ The codebase already follows best practices for library usage.
 
 ## Integration with Orchestrator
 
-This agent's output is consumed by `lib-replacement-orchestrator` which:
+This agent's output is consumed by `impl-refactor-libs-orchestrator` which:
 1. Parses the findings
 2. Groups parallelizable tasks
 3. Spawns `ts-coding` agents for replacements

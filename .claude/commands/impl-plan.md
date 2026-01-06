@@ -20,7 +20,7 @@ $ARGUMENTS
 
 ## Instructions
 
-Invoke the `plan-from-design` subagent using the Task tool.
+Invoke the `impl-plan` subagent using the Task tool.
 
 ### Argument Parsing
 
@@ -44,7 +44,7 @@ Generate the output path based on feature name:
 
 ```
 Task tool parameters:
-  subagent_type: plan-from-design
+  subagent_type: impl-plan
   prompt: |
     Design Document: <parsed-design-doc-path>
     Feature Scope: <parsed-or-derived-feature-scope>
@@ -55,19 +55,19 @@ Task tool parameters:
 
 **Basic usage with design doc path**:
 ```
-/gen-impl-plan design-docs/spec-session-groups.md
+/impl-plan design-docs/spec-session-groups.md
 ```
 Creates: `impl-plans/active/session-groups.md`
 
 **With explicit feature name**:
 ```
-/gen-impl-plan design-docs/DESIGN.md foundation-layer
+/impl-plan design-docs/DESIGN.md foundation-layer
 ```
 Creates: `impl-plans/active/foundation-layer.md`
 
 **With section reference**:
 ```
-/gen-impl-plan design-docs/spec-infrastructure.md#testability testability
+/impl-plan design-docs/spec-infrastructure.md#testability testability
 ```
 Creates: `impl-plans/active/testability.md`
 
@@ -81,12 +81,12 @@ Creates: `impl-plans/active/testability.md`
 
 If no arguments provided, respond with usage instructions:
 ```
-Usage: /gen-impl-plan <design-doc-path> [feature-name]
+Usage: /impl-plan <design-doc-path> [feature-name]
 
 Examples:
-  /gen-impl-plan design-docs/spec-session-groups.md
-  /gen-impl-plan design-docs/DESIGN.md foundation-layer
-  /gen-impl-plan design-docs/spec-infrastructure.md#testability testability
+  /impl-plan design-docs/spec-session-groups.md
+  /impl-plan design-docs/DESIGN.md foundation-layer
+  /impl-plan design-docs/spec-infrastructure.md#testability testability
 
 The design document path is required. Feature name is optional.
 ```

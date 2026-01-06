@@ -3,7 +3,7 @@ allowed-tools: Bash,Read,Grep,Glob
 description: Generate a commit with comprehensive commit message
 ---
 
-Use the `generate-commit` agent to analyze all current changes and create a git commit with a comprehensive, structured commit message.
+Use the `git-commit` agent to analyze all current changes and create a git commit with a comprehensive, structured commit message.
 
 The agent will:
 1. Analyze all staged and unstaged changes

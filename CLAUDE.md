@@ -248,10 +248,10 @@ specs/*.md          active/*.md              agent            Update
 
 ### Creating Implementation Plans
 
-Use the `/gen-impl-plan` command or `plan-from-design` agent to create implementation plans:
+Use the `/impl-plan` command or `impl-plan` agent to create implementation plans:
 
 ```bash
-/gen-impl-plan design-docs/spec-session-groups.md
+/impl-plan design-docs/spec-session-groups.md
 ```
 
 **Skill Reference**: Refer to `.claude/skills/impl-plan/SKILL.md` for implementation plan guidelines.
@@ -300,14 +300,14 @@ Two commands are available for executing implementation plans:
 
 #### Auto Mode (Recommended)
 
-Use `/exec-impl-plan-auto` to automatically select and execute all parallelizable tasks:
+Use `/impl-exec-auto` to automatically select and execute all parallelizable tasks:
 
 ```bash
 # Automatically select and execute all available tasks
-/exec-impl-plan-auto foundation-and-core
+/impl-exec-auto foundation-and-core
 
 # With full path
-/exec-impl-plan-auto impl-plans/active/session-groups.md
+/impl-exec-auto impl-plans/active/session-groups.md
 ```
 
 This command:
@@ -320,14 +320,14 @@ This command:
 
 #### Specific Mode
 
-Use `/exec-impl-plan-specific` to execute specific tasks by ID:
+Use `/impl-exec-specific` to execute specific tasks by ID:
 
 ```bash
 # Execute specific tasks
-/exec-impl-plan-specific foundation-and-core TASK-001 TASK-002
+/impl-exec-specific foundation-and-core TASK-001 TASK-002
 
 # Execute single task
-/exec-impl-plan-specific foundation-and-core TASK-005
+/impl-exec-specific foundation-and-core TASK-005
 ```
 
 **Skill Reference**: Refer to `.claude/skills/exec-impl-plan-ref/SKILL.md` for implementation execution guidelines.

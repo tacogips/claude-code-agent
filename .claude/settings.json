@@ -9,29 +9,5 @@
   },
   "enabledPlugins": {
     "ts-lsp@local": true
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bunx prettier --write \"src/**/*.ts\""
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bunx prettier --write \"src/**/*.ts\""
-          }
-        ]
-      }
-    ]
   }
 }

@@ -1,3 +1,9 @@
+---
+name: design-doc
+description: Use when creating or organizing design documents. Provides directory structure, file naming, and content guidelines for design specs and references.
+allowed-tools: Read, Write, Glob, Grep
+---
+
 # Design Documentation Skill
 
 This skill provides guidelines for creating and organizing design documents in this project.

@@ -7,7 +7,7 @@ argument-hint: "<plan-path> <task-ids...>"
 
 This command executes **specific tasks by ID** from an implementation plan. Use this when you want to explicitly choose which tasks to run.
 
-For automatic task selection based on dependencies and parallelization, use `/exec-impl-plan-auto` instead.
+For automatic task selection based on dependencies and parallelization, use `/impl-exec-auto` instead.
 
 ### Current Context
 
@@ -22,7 +22,7 @@ $ARGUMENTS
 
 ## Instructions
 
-Invoke the `exec-impl-plan-specific` subagent using the Task tool.
+Invoke the `impl-exec-specific` subagent using the Task tool.
 
 ### Argument Parsing
 
@@ -49,7 +49,7 @@ Examples:
 
 ```
 Task tool parameters:
-  subagent_type: exec-impl-plan-specific
+  subagent_type: impl-exec-specific
   prompt: |
     Implementation Plan: <resolved-plan-path>
     Task IDs: <task-ids as comma-separated list>
@@ -60,34 +60,34 @@ Task tool parameters:
 
 **Execute specific tasks**:
 ```
-/exec-impl-plan-specific foundation-and-core TASK-001 TASK-002
+/impl-exec-specific foundation-and-core TASK-001 TASK-002
 ```
 Executes only the specified tasks (in parallel if possible).
 
 **Execute single task**:
 ```
-/exec-impl-plan-specific foundation-and-core TASK-005
+/impl-exec-specific foundation-and-core TASK-005
 ```
 
 **Execute with full path**:
 ```
-/exec-impl-plan-specific impl-plans/active/session-groups.md TASK-001
+/impl-exec-specific impl-plans/active/session-groups.md TASK-001
 ```
 
 ### Error Handling
 
 **If no task IDs provided**:
 ```
-Usage: /exec-impl-plan-specific <plan-path> <task-ids...>
+Usage: /impl-exec-specific <plan-path> <task-ids...>
 
 This command requires explicit task IDs.
 
 Examples:
-  /exec-impl-plan-specific foundation-and-core TASK-001
-  /exec-impl-plan-specific foundation-and-core TASK-001 TASK-002 TASK-003
+  /impl-exec-specific foundation-and-core TASK-001
+  /impl-exec-specific foundation-and-core TASK-001 TASK-002 TASK-003
 
 For automatic task selection, use:
-  /exec-impl-plan-auto foundation-and-core
+  /impl-exec-auto foundation-and-core
 ```
 
 **If plan not found**:

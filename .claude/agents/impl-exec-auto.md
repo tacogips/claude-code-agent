@@ -1,6 +1,9 @@
 ---
-name: exec-impl-plan-auto
+name: impl-exec-auto
 description: Automatically select parallelizable tasks from implementation plans based on dependencies and status, then execute them concurrently using Claude subtasks.
+tools: Read, Write, Edit, Glob, Grep, Bash, Task, TaskOutput
+model: sonnet
+skills: exec-impl-plan-ref, ts-coding-standards
 ---
 
 # Auto Task Selection Execution Subagent
@@ -19,9 +22,9 @@ This subagent **automatically** selects and executes tasks from implementation p
 MAX_REVIEW_ITERATIONS = 3
 ```
 
-## Key Difference from exec-impl-plan-specific
+## Key Difference from impl-exec-specific
 
-| Aspect | exec-impl-plan-auto | exec-impl-plan-specific |
+| Aspect | impl-exec-auto | impl-exec-specific |
 |--------|---------------------|-------------------------|
 | Task Selection | Automatic based on dependencies | Manual by task ID |
 | Use Case | "Run everything that can run now" | "Run exactly these tasks" |
@@ -318,7 +321,7 @@ Cross-plan auto-select (analyzed all active plans)
 **Phases**: No new phases unblocked (Phase 1 still in progress)
 
 ### Next Steps
-Run `/exec-impl-plan-auto` again to execute newly unblocked tasks.
+Run `/impl-exec-auto` again to execute newly unblocked tasks.
 ```
 
 ### Phase Transition Response (with Review)
@@ -344,7 +347,7 @@ The following plans can now execute:
 - file-changes (4 tasks ready)
 
 ### Recommendation
-Run `/exec-impl-plan-auto` to execute Phase 2 tasks in parallel.
+Run `/impl-exec-auto` to execute Phase 2 tasks in parallel.
 Total parallelizable tasks available: 28
 ```
 
@@ -391,7 +394,7 @@ The following tasks are now available (dependencies satisfied):
 
 ### Plan Status
 - Overall: In Progress (X/Y tasks completed)
-- Run `/exec-impl-plan-auto` again to execute newly unblocked tasks
+- Run `/impl-exec-auto` again to execute newly unblocked tasks
 ```
 
 ### No Executable Tasks Response
@@ -420,7 +423,7 @@ Cross-plan auto-select
 
 ### Recommended Actions
 1. Wait for in-progress tasks to complete
-2. Or use `/exec-impl-plan-specific foundation-and-core TASK-001` to check status
+2. Or use `/impl-exec-specific foundation-and-core TASK-001` to check status
 ```
 
 ### Review Issues Documented Response

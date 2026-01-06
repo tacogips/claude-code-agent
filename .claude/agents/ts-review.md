@@ -1,6 +1,9 @@
 ---
 name: ts-review
 description: TypeScript code review agent that reviews implementation against design documents, implementation plans, and coding guidelines. Returns structured feedback for iterative improvement.
+tools: Read, Glob, Grep, LSP
+model: sonnet
+skills: ts-coding-standards
 ---
 
 # TypeScript Code Review Subagent
@@ -388,7 +391,7 @@ If issues persist after 3 iterations:
 
 ## Integration with Execution Agents
 
-This review agent is invoked by `exec-impl-plan-auto` and `exec-impl-plan-specific` agents after task implementation.
+This review agent is invoked by `impl-exec-auto` and `impl-exec-specific` agents after task implementation.
 
 ### Expected Workflow
 

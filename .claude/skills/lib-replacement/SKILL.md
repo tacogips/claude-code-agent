@@ -1,3 +1,9 @@
+---
+name: lib-replacement
+description: Use when auditing codebase for custom implementations that can be replaced with well-known libraries. Provides replacement patterns, audit checklist, and migration strategies.
+allowed-tools: Read, Glob, Grep
+---
+
 # Library Replacement Skill
 
 This skill provides guidelines for finding redundant custom implementations and replacing them with well-known libraries.

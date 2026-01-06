@@ -1,3 +1,9 @@
+---
+name: impl-plan
+description: Use when creating implementation plans from design documents. Provides plan structure, status tracking, and progress logging guidelines.
+allowed-tools: Read, Write, Glob, Grep
+---
+
 # Implementation Plan Skill
 
 This skill provides guidelines for creating and managing implementation plans from design documents.

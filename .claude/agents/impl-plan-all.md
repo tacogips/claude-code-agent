@@ -1,13 +1,16 @@
 ---
-name: batch-plan-generator
-description: Generate all implementation plans from design documents in parallel. Spawns multiple plan-from-design agents as concurrent subtasks to create all plans at once.
+name: impl-plan-all
+description: Generate all implementation plans from design documents in parallel. Spawns multiple impl-plan agents as concurrent subtasks to create all plans at once.
+tools: Read, Write, Glob, Grep, Task
+model: sonnet
+skills: impl-plan
 ---
 
 # Batch Plan Generator Subagent
 
 ## Overview
 
-This subagent generates all implementation plans from design documents by spawning multiple `plan-from-design` agents in parallel. It reads the design documentation, identifies all features that need implementation plans, and creates them concurrently.
+This subagent generates all implementation plans from design documents by spawning multiple `impl-plan` agents in parallel. It reads the design documentation, identifies all features that need implementation plans, and creates them concurrently.
 
 ## MANDATORY: Required Information in Task Prompt
 
@@ -79,12 +82,12 @@ Example mapping for this project:
 
 ### Phase 4: Spawn Parallel Subtasks
 
-For each feature that needs a plan, spawn a `plan-from-design` agent:
+For each feature that needs a plan, spawn a `impl-plan` agent:
 
 ```
 For each feature in features_to_generate:
   spawn Task(
-    subagent_type: plan-from-design,
+    subagent_type: impl-plan,
     prompt: |
       Design Document: <design-doc-path>
       Feature Scope: <feature-description>
@@ -173,14 +176,14 @@ Do not generate plans for:
 
 ### Recommended Actions
 - Review failed plans
-- Retry with /gen-impl-plan for specific failures
+- Retry with /impl-plan for specific failures
 ```
 
 ---
 
 ## Important Guidelines
 
-1. **Parallel execution**: Always spawn plan-from-design agents with `run_in_background: true`
+1. **Parallel execution**: Always spawn impl-plan agents with `run_in_background: true`
 2. **Skip existing**: Never overwrite existing plans without explicit request
 3. **Update README**: Always update impl-plans/README.md with new plans
 4. **Error handling**: Continue with other plans if one fails
