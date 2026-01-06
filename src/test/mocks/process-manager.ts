@@ -147,10 +147,26 @@ export class MockManagedProcess implements ManagedProcess {
     const self = this;
 
     return new Promise((resolve) => {
+      // If already killed, resolve immediately
+      if (self.killed) {
+        setImmediate(() => resolve(null));
+        return;
+      }
+
       if (exitDelay > 0) {
-        setTimeout(() => {
-          resolve(self.killed ? null : exitCodeValue);
-        }, exitDelay);
+        // Check periodically if killed to resolve early
+        const checkInterval = 10;
+        let elapsed = 0;
+        const intervalId = setInterval(() => {
+          elapsed += checkInterval;
+          if (self.killed) {
+            clearInterval(intervalId);
+            resolve(null);
+          } else if (elapsed >= exitDelay) {
+            clearInterval(intervalId);
+            resolve(exitCodeValue);
+          }
+        }, checkInterval);
       } else {
         // Use setImmediate to ensure async behavior
         setImmediate(() => {

@@ -61,3 +61,8 @@ export {
   isBudgetWarning,
   isBudgetExceeded,
 } from "./progress";
+
+// Re-export runner
+export type { RunOptions, PauseReason, RunnerState } from "./runner";
+
+export { GroupRunner } from "./runner";

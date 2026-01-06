@@ -97,13 +97,17 @@ Two execution modes are available:
 
 ### Auto Mode (`impl-exec-auto`)
 
-Automatically selects and executes all parallelizable tasks. Supports two sub-modes:
+**Architecture**: Analysis-only subagent + Main conversation orchestration.
+
+Claude Code does not support nested subagent spawning (subagents cannot use Task tool). Therefore:
+- `impl-exec-auto` agent: Analyzes plans and returns executable task list
+- Main conversation: Spawns ts-coding agents and updates PROGRESS.json
 
 **Cross-Plan Mode** (no argument - recommended):
 ```bash
 /impl-exec-auto
 ```
-Analyzes ALL active plans and executes tasks across plans based on phase dependencies.
+Analyzes ALL active plans and returns executable tasks across plans.
 
 **Single-Plan Mode** (with argument):
 ```bash
@@ -116,15 +120,23 @@ Use this mode when:
 - Continuing work after completing some tasks
 - You want automatic task selection across the entire project
 
-The auto mode:
-1. Reads `impl-plans/PROGRESS.json` (NOT individual plan files!)
-2. Identifies executable tasks from PROGRESS.json
-3. For each executable task:
-   - Reads only that specific plan file
-   - Executes ts-coding
-   - Runs tests and review cycle
-   - Updates plan file AND PROGRESS.json
-4. Reports newly unblocked tasks and phases
+**The auto mode workflow**:
+
+Step 1: `impl-exec-auto` agent (analysis only):
+1. Reads `impl-plans/PROGRESS.json`
+2. Identifies executable tasks (deps satisfied, status "Not Started")
+3. Reads plan files for task details
+4. Returns structured task list to main conversation
+
+Step 2: Main conversation (orchestration):
+1. Parses the executable tasks list
+2. For each task (sequentially):
+   a. Spawns `ts-coding` agent with task details
+   b. Spawns `check-and-test-after-modify` agent
+   c. Spawns `ts-review` agent (up to 3 iterations)
+   d. Updates PROGRESS.json (with lock)
+   e. Updates plan file status
+3. Reports completion and newly unblocked tasks
 
 ### Specific Mode (`impl-exec-specific`)
 
@@ -720,3 +732,92 @@ When a phase-gating plan completes (e.g., foundation-and-core):
 | `design-doc/SKILL.md` | Original design reference |
 | `ts-review` agent | Code review after implementation |
 | `check-and-test-after-modify` agent | Test verification before review |
+
+## Main Conversation Orchestration Protocol
+
+After `impl-exec-auto` returns the executable tasks list, the main conversation handles orchestration.
+
+### Task Execution Loop
+
+For each task in the executable tasks list:
+
+```
+1. Spawn ts-coding agent:
+   Task tool parameters:
+     subagent_type: ts-coding
+     prompt: |
+       Purpose: <task description>
+       Reference Document: <plan file path>
+       Implementation Target: <deliverables list>
+       Completion Criteria:
+         - <criterion 1>
+         - <criterion 2>
+
+2. Spawn check-and-test-after-modify agent:
+   Task tool parameters:
+     subagent_type: check-and-test-after-modify
+     prompt: Verify changes for <plan-name>:<TASK-ID>
+
+3. Spawn ts-review agent (up to 3 iterations):
+   Task tool parameters:
+     subagent_type: ts-review
+     prompt: |
+       Design Reference: <design doc path>
+       Implementation Plan: <plan file path>
+       Task ID: <TASK-ID>
+       Implemented Files:
+         - <file 1>
+         - <file 2>
+       Iteration: 1
+
+4. Update PROGRESS.json (with lock):
+   a. Acquire lock:
+      Bash: while [ -f impl-plans/.progress.lock ]; do sleep 1; done && echo "<plan>:<task>" > impl-plans/.progress.lock
+   b. Edit PROGRESS.json: Change task status to "Completed"
+   c. Release lock:
+      Bash: rm -f impl-plans/.progress.lock
+
+5. Update plan file:
+   Edit: Change task status to "Completed" in plan file
+   Edit: Add progress log entry
+
+6. Proceed to next task
+```
+
+### PROGRESS.json Update Example
+
+```json
+// Before:
+"TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] }
+
+// After:
+"TASK-001": { "status": "Completed", "parallelizable": true, "deps": [] }
+```
+
+Also update the `lastUpdated` timestamp.
+
+### Plan File Status Update
+
+```markdown
+### TASK-001: Core Implementation
+**Status**: Completed  <!-- Changed from "Not Started" -->
+```
+
+### Progress Log Entry
+
+Add to the plan file's Progress Log section:
+
+```markdown
+### Session: YYYY-MM-DD HH:MM
+**Tasks Completed**: TASK-001
+**Review Iterations**: 2
+**Notes**: Implementation notes
+```
+
+### Error Handling
+
+If a task fails:
+1. Keep task status as "In Progress" (not completed)
+2. Document the error in progress log
+3. Continue with next task if possible
+4. Report failures at the end
