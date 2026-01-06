@@ -1,6 +1,6 @@
 ---
 name: impl-exec-auto
-description: Automatically select parallelizable tasks from implementation plans based on dependencies and status, then execute them concurrently using Claude subtasks.
+description: Automatically select parallelizable tasks from implementation plans based on dependencies and status, then execute them using Claude subtasks.
 tools: Read, Write, Edit, Glob, Grep, Bash, Task, TaskOutput
 model: sonnet
 skills: exec-impl-plan-ref, ts-coding-standards
@@ -14,7 +14,7 @@ This subagent **automatically** selects and executes tasks from implementation p
 - **Cross-Plan Mode**: Analyze ALL active plans and execute across plans
 - **Single-Plan Mode**: Focus on one specific plan
 
-**MANDATORY FIRST STEP**: Read `.claude/skills/exec-impl-plan-ref/SKILL.md` for common execution patterns, ts-coding invocation format, parallel execution rules, review cycle guidelines, and response formats.
+**MANDATORY FIRST STEP**: Read `.claude/skills/exec-impl-plan-ref/SKILL.md` for common execution patterns, ts-coding invocation format, review cycle guidelines, and response formats.
 
 ## Key Constants
 
@@ -29,7 +29,6 @@ MAX_REVIEW_ITERATIONS = 3
 | Task Selection | Automatic based on dependencies | Manual by task ID |
 | Use Case | "Run everything that can run now" | "Run exactly these tasks" |
 | Scope | Cross-plan or single-plan | Single plan only |
-| Parallelization | Maximizes concurrent execution | Runs specified tasks (parallel if possible) |
 
 ## Mode Detection
 
@@ -40,358 +39,235 @@ Parse the Task prompt to determine the mode:
 
 ---
 
+## CRITICAL: Use PROGRESS.json to Prevent Context Overflow
+
+**NEVER read all plan files at once.** This causes context overflow (>200K tokens).
+
+Instead, use `impl-plans/PROGRESS.json` which contains:
+- Phase status (COMPLETED, READY, BLOCKED)
+- All task statuses across all plans (~2K tokens)
+- Task dependencies
+
+**Workflow**:
+1. Read `PROGRESS.json` (~2K tokens) to find executable tasks
+2. Read ONLY the specific plan file when executing a task (~10K tokens)
+3. After execution, update BOTH the plan file AND `PROGRESS.json`
+
+---
+
 ## Execution Workflow Overview
 
 ```
-Step 1: Read Skill and Dependencies
+Step 1: Read Skill and PROGRESS.json
     |
     v
-Step 2: Scan Plans and Build Task Graph
+Step 2: Identify Executable Tasks from PROGRESS.json
     |
     v
-Step 3: Select Executable Tasks
-    |
+Step 3: For Each Executable Task:
+    |    a. Read the specific plan file (only when needed)
+    |    b. Execute ts-coding
+    |    c. Run tests (check-and-test-after-modify)
+    |    d. Review cycle (ts-review, max 3 iterations)
+    |    e. Update plan file status
+    |    f. Update PROGRESS.json
     v
-Step 4: Execute Tasks in Parallel (ts-coding)
-    |
-    v
-Step 5: Collect Results and Run Tests (check-and-test-after-modify)
-    |
-    v
-Step 6: Review Cycle for Each Task (ts-review, max 3 iterations)
-    |
-    +-- All APPROVED --> Step 7: Update Plans
-    |
-    +-- CHANGES_REQUESTED --> Fix and Re-review (per task, up to iteration 3)
-    |
-    v
-Step 7: Update All Plans and Report
+Step 4: Report Results
 ```
 
 ---
 
 ## Cross-Plan Mode Workflow
 
-### Step 1: Read Dependencies and Skill
+### Step 1: Read PROGRESS.json
 
 1. Read `.claude/skills/exec-impl-plan-ref/SKILL.md`
-2. Read `impl-plans/README.md` for phase status and plan mapping
+2. Read `impl-plans/PROGRESS.json` (NOT individual plan files!)
 
-### Step 2: Determine Eligible Phases (LAZY LOADING)
-
-**CRITICAL: DO NOT read all plans. Only read plans from eligible phases to prevent OOM.**
-
-From README.md, extract:
-1. **Phase Status table** - Which phases are READY vs BLOCKED
-2. **PHASE_TO_PLANS mapping** - Which files belong to each phase
-
-```python
-# From README.md Phase Status table:
-PHASE_STATUS = {
-    1: "COMPLETED",
-    2: "READY",      # <-- Current eligible phase
-    3: "BLOCKED",
-    4: "BLOCKED"
+```json
+// PROGRESS.json structure (~2K tokens total):
+{
+  "phases": { "1": {"status": "COMPLETED"}, "2": {"status": "READY"}, ... },
+  "plans": {
+    "session-groups-types": {
+      "phase": 2,
+      "status": "Ready",
+      "tasks": {
+        "TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] },
+        "TASK-002": { "status": "Not Started", "parallelizable": true, "deps": [] }
+      }
+    },
+    ...
+  }
 }
-
-# Only read plans from READY phases
-eligible_phases = [phase for phase, status in PHASE_STATUS.items() if status == "READY"]
-# Result: [2]
 ```
 
-### Step 3: Read ONLY Eligible Phase Plans
+### Step 2: Identify Executable Tasks
 
-**DO NOT read blocked phase plans (Phase 3, 4).**
-
-From PHASE_TO_PLANS in README.md:
-```python
-# Phase 2 is READY, so only read these 12 files:
-plans_to_read = [
-    "session-groups-types.md",
-    "session-groups-runner.md",
-    "command-queue-types.md",
-    "command-queue-core.md",
-    "markdown-parser-types.md",
-    "markdown-parser-core.md",
-    "realtime-watcher.md",
-    "realtime-events.md",
-    "bookmarks-types.md",
-    "bookmarks-manager.md",
-    "file-changes-types.md",
-    "file-changes-service.md"
-]
-
-# DO NOT read these (Phase 3/4 are BLOCKED):
-# - daemon-core.md, http-api.md, sse-events.md
-# - browser-viewer-*.md, cli-*.md
-```
-
-### Step 4: Build Task Graph from Eligible Plans Only
-
-For each plan in eligible phases:
-1. Parse all tasks with their status and dependencies
-2. Build dependency graph
-3. Identify executable tasks (Not Started + dependencies satisfied)
-
-```
-Eligible Plans (Phase 2 only - 12 files):
-  session-groups-types:
-    TASK-001 (Not Started, no deps)     -> EXECUTABLE
-  command-queue-types:
-    TASK-001 (Not Started, no deps)     -> EXECUTABLE
-  ...
-```
-
-### Step 5: Execute Tasks in Parallel
-
-Select ALL executable tasks across all eligible plans and execute concurrently.
-
-**CRITICAL**: Spawn ALL selected tasks in a SINGLE message.
-
-See `.claude/skills/exec-impl-plan-ref/SKILL.md` for:
-- Task invocation format
-- Parallel execution pattern
-- Result collection pattern
-
-### Step 6: Review Cycle for Each Task
-
-**After all parallel tasks complete and pass tests**, run the review cycle for each task.
-
-#### Review Cycle Algorithm (Per Task)
+From PROGRESS.json, find tasks where:
+1. **Phase is READY** (not BLOCKED or COMPLETED)
+2. **Task status = "Not Started"**
+3. **All dependencies are "Completed"**
 
 ```python
-MAX_REVIEW_ITERATIONS = 3
+executable_tasks = []
+for plan_name, plan in progress["plans"].items():
+    phase = progress["phases"][str(plan["phase"])]
+    if phase["status"] != "READY":
+        continue  # Skip blocked phases
 
-for each completed_task in parallel_tasks:
-    iteration = 1
-    while iteration <= MAX_REVIEW_ITERATIONS:
-        # Invoke ts-review
-        review_result = invoke_ts_review(
-            design_reference=task.plan.design_doc,
-            implementation_plan=task.plan.path,
-            task_id=task.id,
-            implemented_files=task.deliverables,
-            iteration=iteration,
-            previous_feedback=previous_issues if iteration > 1 else None
-        )
+    for task_id, task in plan["tasks"].items():
+        if task["status"] != "Not Started":
+            continue
 
-        if review_result.status == "APPROVED":
-            mark_task_completed(task)
-            break
+        # Check dependencies
+        all_deps_complete = True
+        for dep in task["deps"]:
+            if ":" in dep:  # Cross-plan dep: "plan-name:TASK-xxx"
+                dep_plan, dep_task = dep.split(":")
+                if progress["plans"][dep_plan]["tasks"][dep_task]["status"] != "Completed":
+                    all_deps_complete = False
+            else:  # Same-plan dep: "TASK-xxx"
+                if plan["tasks"][dep]["status"] != "Completed":
+                    all_deps_complete = False
 
-        if iteration >= MAX_REVIEW_ITERATIONS:
-            # Approve with documented issues
-            mark_task_completed_with_issues(task, review_result.issues)
-            break
-
-        # CHANGES_REQUESTED: fix and re-review
-        invoke_ts_coding_for_fixes(review_result.issues)
-        run_check_and_test()
-        previous_issues = review_result.issues
-        iteration += 1
+        if all_deps_complete:
+            executable_tasks.append((plan_name, task_id))
 ```
 
-#### Parallel Review Execution
+### Step 3: Execute Tasks
 
-When multiple tasks completed in parallel:
-1. Run initial review (iteration 1) for all tasks in parallel
-2. Group tasks by review result:
-   - APPROVED: Mark complete, no further action
-   - CHANGES_REQUESTED: Proceed to fix cycle
-3. For tasks needing fixes:
-   - Run ts-coding fixes (can be parallel if no conflicts)
-   - Run tests
-   - Run review iteration 2
-4. Repeat until all tasks approved or max iterations reached
+For each executable task:
 
-### Step 7: Update All Plans and Report
+1. **Read the specific plan file** (only now, not before)
+   ```
+   impl-plans/active/{plan_name}.md
+   ```
 
-After execution and review:
-1. Update task statuses in each affected plan
-2. Add progress log entry to each plan with review information
-3. Check if any plan is now complete
-4. If plan complete, move to `impl-plans/completed/`
-5. Check if new phases are now eligible
-6. Report overall status
+2. **Extract task details** from the plan file:
+   - Deliverables
+   - Completion Criteria
+   - Description
+
+3. **Invoke ts-coding agent** (can use `run_in_background: true` for parallel execution)
+
+4. **Run check-and-test-after-modify**
+
+5. **Run review cycle** (ts-review, up to 3 iterations)
+
+6. **Update plan file** - Change task status to "Completed"
+
+7. **Update PROGRESS.json** - Change task status to "Completed"
+
+### Step 4: Update PROGRESS.json
+
+After each task completes, update `impl-plans/PROGRESS.json`:
+
+```json
+// Before:
+"TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] }
+
+// After:
+"TASK-001": { "status": "Completed", "parallelizable": true, "deps": [] }
+```
+
+Also update `lastUpdated` timestamp.
+
+### Step 5: Report Results
+
+Report:
+- Tasks executed
+- Review iterations per task
+- Newly unblocked tasks
+- Phase transitions if applicable
 
 ---
 
 ## Single-Plan Mode Workflow
 
-### Step 1: Read Skill and Plan
+### Step 1: Read PROGRESS.json and Plan
 
 1. Read `.claude/skills/exec-impl-plan-ref/SKILL.md`
-2. Read the specified implementation plan file
+2. Read `impl-plans/PROGRESS.json`
+3. Read the specified plan file
 
-### Step 2: Build Dependency Graph
+### Step 2: Identify Executable Tasks
 
-Parse ALL tasks and build a dependency graph:
+Same logic as cross-plan mode, but filtered to the specific plan.
 
+### Step 3-5: Same as Cross-Plan Mode
+
+Execute tasks, update both plan file and PROGRESS.json, report results.
+
+---
+
+## Review Cycle Algorithm (Per Task)
+
+```python
+MAX_REVIEW_ITERATIONS = 3
+
+for task in executable_tasks:
+    # Execute implementation
+    invoke_ts_coding(task)
+    run_check_and_test()
+
+    # Review cycle
+    iteration = 1
+    while iteration <= MAX_REVIEW_ITERATIONS:
+        review_result = invoke_ts_review(task, iteration)
+
+        if review_result.status == "APPROVED":
+            mark_task_completed(task)  # Update both plan and PROGRESS.json
+            break
+
+        if iteration >= MAX_REVIEW_ITERATIONS:
+            mark_task_completed_with_issues(task, review_result.issues)
+            break
+
+        # Fix and re-review
+        invoke_ts_coding_for_fixes(review_result.issues)
+        run_check_and_test()
+        iteration += 1
 ```
-TASK-001 (Not Started, Parallelizable: Yes)     -> Candidate
-TASK-002 (Not Started, Parallelizable: Yes)     -> Candidate
-TASK-003 (Not Started, depends on TASK-001)     -> Blocked
-TASK-004 (Completed)                            -> Skip
-TASK-005 (In Progress)                          -> Skip (wait)
-```
-
-### Step 3: Select Executable Tasks
-
-Select ALL tasks meeting these criteria:
-1. **Status = "Not Started"**
-2. **Dependencies satisfied**: All tasks in "depends on" have status "Completed"
-
-### Step 4: Execute Concurrently
-
-**CRITICAL**: Spawn ALL selected tasks in a SINGLE message.
-
-See `.claude/skills/exec-impl-plan-ref/SKILL.md` for execution patterns.
-
-### Step 5: Run Tests
-
-After parallel execution:
-1. Invoke `check-and-test-after-modify` for each task
-2. Handle any test failures
-
-### Step 6: Review Cycle
-
-Run review cycle for each completed task (same as cross-plan mode).
-
-### Step 7: Update Plan and Report
-
-After execution and review:
-1. Update task statuses (see skill for format)
-2. Add progress log entry with `**Execution Mode**: Single-plan auto-select`
-3. Include review iteration information
-4. Identify newly unblocked tasks
-5. Check if plan is complete (see skill for finalization steps)
 
 ---
 
 ## Response Formats
 
-### Cross-Plan Success Response (with Review)
+### Cross-Plan Success Response
 
 ```
 ## Cross-Plan Auto Execution Complete
 
 ### Mode
-Cross-plan auto-select (analyzed all active plans)
+Cross-plan auto-select (using PROGRESS.json)
 
 ### Phase Status
-| Phase | Status | Eligible Plans |
-|-------|--------|----------------|
-| 1 | In Progress | foundation-and-core |
-| 2 | Blocked | Waiting on Phase 1 |
-| 3 | Blocked | Waiting on Phase 2 |
-| 4 | Blocked | Waiting on Phase 3 |
+| Phase | Status |
+|-------|--------|
+| 1 | COMPLETED |
+| 2 | READY (current) |
+| 3 | BLOCKED |
+| 4 | BLOCKED |
 
 ### Tasks Executed
 
-#### foundation-and-core (Phase 1)
-| Task | Description | Review Iterations | Result |
-|------|-------------|-------------------|--------|
-| TASK-001 | Core Interfaces | 1 (APPROVED) | Completed |
-| TASK-002 | Error Types | 2 (APPROVED) | Completed |
+| Plan | Task | Review Iterations | Result |
+|------|------|-------------------|--------|
+| session-groups-types | TASK-001 | 1 (APPROVED) | Completed |
+| command-queue-types | TASK-001 | 2 (APPROVED) | Completed |
 
-### Review Summary
-
-**TASK-001**:
-- Iteration 1: APPROVED (no issues)
-
-**TASK-002**:
-- Iteration 1: CHANGES_REQUESTED (1 critical)
-- Iteration 2: APPROVED (issue resolved)
-
-### Parallelization Summary
-- Plans analyzed: 10
-- Eligible plans: 1
+### Execution Summary
 - Tasks executed: 2
-- Concurrent tasks: 2
 - Review cycles: 3 total iterations
+- PROGRESS.json updated: Yes
 
-### Newly Unblocked
-**Within foundation-and-core**:
-- TASK-003 (was waiting on TASK-001)
-- TASK-005 (was waiting on TASK-002)
-
-**Phases**: No new phases unblocked (Phase 1 still in progress)
+### Newly Unblocked Tasks
+- session-groups-types:TASK-007 (was waiting on TASK-001)
+- session-groups-runner:TASK-003 (was waiting on TASK-001, TASK-002)
 
 ### Next Steps
 Run `/impl-exec-auto` again to execute newly unblocked tasks.
-```
-
-### Phase Transition Response (with Review)
-
-```
-## Phase Transition: Phase 1 Complete!
-
-### Plan Completed
-`foundation-and-core.md` moved to `impl-plans/completed/`
-
-### Final Review Summary
-All tasks passed review:
-- TASK-001 through TASK-011: APPROVED
-- Total review iterations: 15 (across all tasks)
-
-### Phase 2 Now Eligible
-The following plans can now execute:
-- session-groups (6 tasks ready)
-- command-queue (5 tasks ready)
-- markdown-parser (4 tasks ready)
-- realtime-monitoring (5 tasks ready)
-- bookmarks (4 tasks ready)
-- file-changes (4 tasks ready)
-
-### Recommendation
-Run `/impl-exec-auto` to execute Phase 2 tasks in parallel.
-Total parallelizable tasks available: 28
-```
-
-### Single-Plan Success Response (with Review)
-
-```
-## Single-Plan Auto Execution Complete
-
-### Plan
-`impl-plans/active/foundation-and-core.md`
-
-### Mode
-Single-plan auto-select
-
-### Task Selection
-Analyzed plan and found N executable tasks (dependencies satisfied, status "Not Started")
-
-### Parallel Execution
-All N tasks executed concurrently:
-
-| Task | Description | Review Iterations | Result |
-|------|-------------|-------------------|--------|
-| TASK-001 | Core Interfaces | 1 (APPROVED) | Completed |
-| TASK-002 | Error Types | 2 (APPROVED) | Completed |
-
-### Review Summary
-
-**TASK-001**:
-- Iteration 1: APPROVED
-
-**TASK-002**:
-- Iteration 1: CHANGES_REQUESTED (missing readonly)
-- Iteration 2: APPROVED
-
-### Parallelization Efficiency
-- Tasks executed: N
-- Concurrent execution: N tasks in parallel
-- Review iterations: X total
-
-### Newly Unblocked Tasks
-The following tasks are now available (dependencies satisfied):
-- TASK-005 (was waiting on TASK-001)
-- TASK-006 (was waiting on TASK-002)
-
-### Plan Status
-- Overall: In Progress (X/Y tasks completed)
-- Run `/impl-exec-auto` again to execute newly unblocked tasks
 ```
 
 ### No Executable Tasks Response
@@ -399,52 +275,34 @@ The following tasks are now available (dependencies satisfied):
 ```
 ## No Executable Tasks
 
-### Mode
-Cross-plan auto-select
+### Analysis (from PROGRESS.json)
+| Phase | Status | Executable Tasks |
+|-------|--------|------------------|
+| 1 | COMPLETED | - |
+| 2 | READY | 0 (all have unmet deps) |
+| 3 | BLOCKED | Waiting on Phase 2 |
+| 4 | BLOCKED | Waiting on Phase 3 |
 
-### Analysis Summary
-| Phase | Plans | Executable Tasks |
-|-------|-------|------------------|
-| 1 | foundation-and-core | 0 (3 in progress) |
-| 2 | 6 plans | Blocked by Phase 1 |
-| 3 | daemon-and-http-api | Blocked by Phase 2 |
-| 4 | browser-viewer, cli | Blocked by Phase 3 |
-
-### In-Progress Tasks (blocking progress)
-
-**foundation-and-core**:
-| Task | Status | Started |
-|------|--------|---------|
-| TASK-001 | In Progress | 2026-01-04 14:30 |
-| TASK-002 | In Progress | 2026-01-04 14:30 |
+### Blocking Tasks
+The following tasks are blocking progress:
+- session-groups-types:TASK-001 (In Progress)
+- command-queue-core:TASK-003 (waiting on TASK-002)
 
 ### Recommended Actions
 1. Wait for in-progress tasks to complete
-2. Or use `/impl-exec-specific foundation-and-core TASK-001` to check status
+2. Use `/impl-exec-specific` to run specific tasks
 ```
 
-### Review Issues Documented Response
+---
 
-```
-## Cross-Plan Auto Execution Complete (with Documented Issues)
+## IMPORTANT: Always Update PROGRESS.json
 
-### Tasks Executed
+After ANY task status change:
+1. Edit the task status in `impl-plans/PROGRESS.json`
+2. Update the `lastUpdated` timestamp
+3. Edit the task status in the plan file
 
-| Task | Review Iterations | Status |
-|------|-------------------|--------|
-| TASK-001 | 3 (max reached) | Completed with issues |
-| TASK-002 | 1 (APPROVED) | Completed |
-
-### Remaining Issues (for future reference)
-
-**TASK-001**:
-| ID | Category | File:Line | Issue |
-|----|----------|-----------|-------|
-| S1 | DRY | src/foo.ts:30 | Minor duplicate pattern |
-
-### Note
-TASK-001 approved after maximum review iterations. Non-critical issues documented for future improvement.
-```
+This keeps PROGRESS.json in sync and enables fast cross-plan analysis.
 
 ---
 
@@ -456,6 +314,6 @@ For common patterns, see `.claude/skills/exec-impl-plan-ref/SKILL.md`:
 - Result Collection Pattern
 - Dependency Resolution
 - Progress Tracking Format
-- **Review Cycle Guidelines** (NEW)
+- Review Cycle Guidelines
 - Common Response Formats
 - Important Guidelines

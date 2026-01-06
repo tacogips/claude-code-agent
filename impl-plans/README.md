@@ -15,6 +15,7 @@ Implementation plans bridge design documents (what to build) and actual code (ho
 ```
 impl-plans/
 ├── README.md              # This file
+├── PROGRESS.json          # Task status index (CRITICAL for impl-exec-auto)
 ├── active/                # Currently active implementation plans
 │   └── <feature>.md       # One file per feature being implemented
 ├── completed/             # Completed implementation plans (archive)
@@ -22,6 +23,45 @@ impl-plans/
 └── templates/             # Plan templates
     └── plan-template.md   # Standard plan template
 ```
+
+## PROGRESS.json (Task Status Index)
+
+**CRITICAL**: `PROGRESS.json` is the central task status index used by `impl-exec-auto`.
+
+Reading all plan files at once causes context overflow (>200K tokens). Instead:
+1. `impl-exec-auto` reads only `PROGRESS.json` (~2K tokens)
+2. Identifies executable tasks from this index
+3. Reads specific plan files only when executing tasks
+4. Updates BOTH the plan file AND `PROGRESS.json` after each task
+
+### Structure
+
+```json
+{
+  "lastUpdated": "2026-01-06T16:00:00Z",
+  "phases": {
+    "1": { "status": "COMPLETED" },
+    "2": { "status": "READY" }
+  },
+  "plans": {
+    "plan-name": {
+      "phase": 2,
+      "status": "Ready",
+      "tasks": {
+        "TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] },
+        "TASK-002": { "status": "Completed", "parallelizable": true, "deps": [] }
+      }
+    }
+  }
+}
+```
+
+### Keeping PROGRESS.json in Sync
+
+After ANY task status change:
+1. Edit the task status in `PROGRESS.json`
+2. Update `lastUpdated` timestamp
+3. Edit the task status in the plan file
 
 ## File Size Limits
 

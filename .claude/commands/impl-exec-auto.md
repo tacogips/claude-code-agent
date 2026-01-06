@@ -5,11 +5,13 @@ argument-hint: "[plan-path]"
 
 ## Execute Implementation Plan (Auto-Select) Command
 
-This command **automatically analyzes** implementation plan(s) and selects tasks that can be executed concurrently based on:
+This command **automatically analyzes** implementation plans via `impl-plans/PROGRESS.json` and selects tasks that can be executed based on:
 - Task status (Not Started)
 - Dependency satisfaction (all dependencies completed)
-- Cross-plan dependencies (phase-based ordering from impl-plans/README.md)
+- Cross-plan dependencies (phase-based ordering)
 - Parallelization markers (Parallelizable: Yes)
+
+**IMPORTANT**: Uses PROGRESS.json (~2K tokens) instead of reading all plan files (~200K+ tokens) to prevent context overflow.
 
 For executing specific tasks by ID, use `/impl-exec-specific` instead.
 
@@ -82,7 +84,7 @@ Analyzes all active plans, finds all tasks that:
 - Have all task-level dependencies satisfied
 - Are marked as parallelizable
 
-Then executes them concurrently using Claude subtasks.
+Then executes them sequentially using Claude subtasks.
 
 **Execute within a specific plan**:
 ```
@@ -109,7 +111,7 @@ Focuses on tasks within the specified plan only.
    - Phase 4: Eligible when Phase 3 is Completed
 4. **Builds cross-plan dependency graph**
 5. **Selects executable tasks from ALL eligible plans**
-6. **Spawns ts-coding agents** concurrently for selected tasks
+6. **Spawns ts-coding agents** sequentially for selected tasks
 7. **Updates each plan's progress log and status**
 8. **Reports** overall progress and newly unblocked tasks/plans
 
@@ -118,7 +120,7 @@ Focuses on tasks within the specified plan only.
 1. **Reads the implementation plan file**
 2. **Builds dependency graph** from task definitions
 3. **Identifies executable tasks** within that plan only
-4. **Spawns ts-coding agents** in parallel
+4. **Spawns ts-coding agents** sequentially (one at a time)
 5. **Updates plan status**
 
 ### Cross-Plan Dependencies (from impl-plans/README.md)
@@ -171,7 +173,7 @@ Recommended Actions:
 
 2. Show updated status:
    - Overall progress by phase
-   - Parallelization efficiency
+   - Execution summary
 
 3. If more tasks available:
    - List next executable tasks/plans

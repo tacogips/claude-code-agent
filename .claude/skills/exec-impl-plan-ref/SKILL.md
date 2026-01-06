@@ -13,16 +13,60 @@ This skill provides guidelines for executing implementation plans created by the
 Apply this skill when:
 - Executing tasks from an implementation plan in `impl-plans/active/`
 - Tracking progress during multi-session implementation work
-- Coordinating concurrent execution of parallelizable subtasks
+- Coordinating sequential execution of tasks
 - Updating implementation plan status and progress logs
 
 ## Purpose
 
 This skill bridges implementation plans (what to build) and actual code implementation. It provides:
-- Task selection based on dependencies and parallelization
-- Concurrent execution via Claude subtasks
-- Progress tracking and plan updates
+- Task selection based on dependencies and parallelization markers
+- Execution via Claude subtasks (parallel or sequential)
+- Progress tracking via PROGRESS.json and plan updates
 - Completion verification and plan finalization
+
+## CRITICAL: Use PROGRESS.json to Prevent Context Overflow
+
+**NEVER read all plan files at once.** This causes context overflow (>200K tokens).
+
+Use `impl-plans/PROGRESS.json` instead, which contains:
+- Phase status (COMPLETED, READY, BLOCKED)
+- All task statuses across all plans (~2K tokens)
+- Task dependencies
+
+**Workflow**:
+1. Read `PROGRESS.json` (~2K tokens) to find executable tasks
+2. Read ONLY the specific plan file when executing a task (~10K tokens)
+3. After execution, update BOTH the plan file AND `PROGRESS.json`
+
+### PROGRESS.json Structure
+
+```json
+{
+  "lastUpdated": "2026-01-06T16:00:00Z",
+  "phases": {
+    "1": { "status": "COMPLETED" },
+    "2": { "status": "READY" },
+    "3": { "status": "BLOCKED" },
+    "4": { "status": "BLOCKED" }
+  },
+  "plans": {
+    "session-groups-types": {
+      "phase": 2,
+      "status": "Ready",
+      "tasks": {
+        "TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] },
+        "TASK-002": { "status": "Not Started", "parallelizable": true, "deps": [] },
+        "TASK-007": { "status": "Not Started", "parallelizable": false, "deps": ["TASK-001"] }
+      }
+    }
+  }
+}
+```
+
+### Dependency Format
+
+- Same-plan dependency: `"TASK-001"` (task in same plan)
+- Cross-plan dependency: `"session-groups-types:TASK-001"` (task in different plan)
 
 ## Execution Modes
 
@@ -47,16 +91,17 @@ Focuses on one specific plan only.
 Use this mode when:
 - Starting implementation (cross-plan mode)
 - Continuing work after completing some tasks
-- You want maximum parallelization across the entire project
+- You want automatic task selection across the entire project
 
 The auto mode:
-1. Reads phase dependencies from `impl-plans/README.md`
-2. Analyzes all active plans (or specified plan)
-3. Determines which phases/plans are eligible
-4. Builds dependency graph(s)
-5. Selects ALL tasks with satisfied dependencies
-6. Executes them concurrently
-7. Reports newly unblocked tasks and phases
+1. Reads `impl-plans/PROGRESS.json` (NOT individual plan files!)
+2. Identifies executable tasks from PROGRESS.json
+3. For each executable task:
+   - Reads only that specific plan file
+   - Executes ts-coding
+   - Runs tests and review cycle
+   - Updates plan file AND PROGRESS.json
+4. Reports newly unblocked tasks and phases
 
 ### Specific Mode (`impl-exec-specific`)
 
@@ -91,27 +136,38 @@ Select tasks for execution based on:
 | Small estimated effort | Medium | Quick wins build momentum |
 | Foundation/core tasks | High | Unblock other tasks |
 
-### Phase 3: Concurrent Execution
+### Phase 3: Sequential Execution
 
-For parallelizable tasks with no mutual dependencies:
+Execute tasks one at a time to avoid LLM errors:
 
-1. **Spawn multiple ts-coding agents** using Task tool with `run_in_background: true`
-2. **Provide complete context** to each agent:
+1. **Spawn ts-coding agent** for first task (WITHOUT `run_in_background`)
+2. **Provide complete context** to the agent:
    - Purpose: From task description
    - Reference Document: The implementation plan path
    - Implementation Target: Deliverables from the task
    - Completion Criteria: From task completion criteria
-3. **Collect results** using TaskOutput tool
-4. **Handle failures**: If one task fails, other parallel tasks continue
+3. **Wait for completion** before proceeding
+4. **Run tests** (check-and-test-after-modify)
+5. **Run review cycle** (ts-review, up to 3 iterations)
+6. **Update task status** in plan
+7. **Repeat** for next task
 
 ### Phase 4: Progress Update
 
 After task execution:
 
-1. **Update task status** in the implementation plan:
+1. **Update task status in PROGRESS.json**:
+   ```json
+   // Edit impl-plans/PROGRESS.json
+   "TASK-001": { "status": "Completed", "parallelizable": true, "deps": [] }
+   ```
+   Also update `lastUpdated` timestamp.
+
+2. **Update task status in the plan file**:
    - Not Started -> In Progress (when started)
    - In Progress -> Completed (when all criteria met)
-2. **Add progress log entry**:
+
+3. **Add progress log entry** to plan file:
    ```markdown
    ### Session: YYYY-MM-DD HH:MM
    **Tasks Completed**: TASK-001, TASK-002
@@ -119,8 +175,12 @@ After task execution:
    **Blockers**: None
    **Notes**: Implementation notes and decisions made
    ```
-3. **Check completion criteria** for the overall plan
-4. **Move to completed** if all tasks done: `impl-plans/active/` -> `impl-plans/completed/`
+
+4. **Check completion criteria** for the overall plan
+
+5. **Move to completed** if all tasks done: `impl-plans/active/` -> `impl-plans/completed/`
+
+**IMPORTANT**: Always update BOTH `PROGRESS.json` AND the plan file to keep them in sync.
 
 ## Task Invocation Format
 
@@ -137,8 +197,10 @@ Task tool parameters:
       - <criterion 1 from task>
       - <criterion 2 from task>
       - <criterion N from task>
-  run_in_background: true  # Only for parallel tasks
+  run_in_background: true  # For parallel execution of independent tasks
 ```
+
+**Note**: Use `run_in_background: true` only when executing multiple independent tasks in parallel. Omit for sequential execution.
 
 ### Extracting Task Information
 
@@ -162,47 +224,54 @@ Define all core interfaces for abstracting external dependencies.
 - [ ] Type checking passes
 ```
 
-## Parallel Execution Pattern
+## Sequential Execution Pattern
 
-**CRITICAL**: Spawn ALL parallelizable tasks in a SINGLE message with multiple Task tool calls.
+**CRITICAL**: Execute tasks ONE AT A TIME to avoid LLM errors.
 
 ```
-In a single message, invoke Task tool multiple times:
+For each task in the executable tasks list:
 
-Task 1:
-  subagent_type: ts-coding
-  prompt: |
-    Purpose: <TASK-001 description>
-    Reference Document: <implementation-plan-path>
-    Implementation Target: <TASK-001 deliverables>
-    Completion Criteria:
-      - <criterion 1>
-      - <criterion 2>
-  run_in_background: true
+1. Invoke ts-coding (without run_in_background):
+   Task tool parameters:
+     subagent_type: ts-coding
+     prompt: |
+       Purpose: <TASK-001 description>
+       Reference Document: <implementation-plan-path>
+       Implementation Target: <TASK-001 deliverables>
+       Completion Criteria:
+         - <criterion 1>
+         - <criterion 2>
 
-Task 2:
-  subagent_type: ts-coding
-  prompt: |
-    Purpose: <TASK-002 description>
-    Reference Document: <implementation-plan-path>
-    Implementation Target: <TASK-002 deliverables>
-    Completion Criteria:
-      - <criterion 1>
-      - <criterion 2>
-  run_in_background: true
+2. Wait for ts-coding to complete
+
+3. Run check-and-test-after-modify:
+   Task tool parameters:
+     subagent_type: check-and-test-after-modify
+     prompt: |
+       Verify changes for TASK-001
+
+4. Run ts-review (up to 3 iterations):
+   Task tool parameters:
+     subagent_type: ts-review
+     prompt: |
+       Review TASK-001 implementation
+
+5. Update task status in plan
+
+6. Proceed to TASK-002 (repeat steps 1-5)
 ```
 
-**All tasks run concurrently** because they are launched in a single message with `run_in_background: true`.
+**All tasks run sequentially** - each task completes fully (including review) before the next begins.
 
-## Result Collection Pattern
+## Result Handling
 
-After launching background tasks:
+After each task completes:
 
-1. Use `TaskOutput` tool to wait for each background task
-2. Parse each task's result (success/failure)
-3. For each completed task:
-   - Verify completion criteria are met
-   - Record any issues or partial completion
+1. Parse the task's result (success/failure)
+2. Verify completion criteria are met
+3. Update task status immediately
+4. Record any issues or partial completion
+5. Proceed to next task
 
 ## Dependency Detection
 
@@ -240,23 +309,22 @@ From this graph:
 - TASK-004 must wait for TASK-001
 - TASK-007 must wait for TASK-003
 
-## Parallel Execution Rules
+## Execution Order Rules
 
-### Safe to Parallelize
+### All Tasks Execute Sequentially
 
-Tasks are safe to parallelize when:
-- No shared file modifications between tasks
-- No data dependencies (types, interfaces)
-- No import dependencies
-- Marked as "Parallelizable: Yes" in the plan
+**NOTE**: To avoid LLM errors, all tasks now execute sequentially regardless of parallelization markers.
 
-### Must Execute Sequentially
+The "Parallelizable: Yes" marker is still used to:
+- Identify tasks with no dependencies (can run in any order)
+- Track which tasks would theoretically be safe to parallelize
 
-Tasks must be sequential when:
-- Task B imports from Task A's output
-- Task B implements interface defined in Task A
-- Task B uses types defined in Task A
-- Marked as dependencies in the plan
+### Dependency Order
+
+When multiple tasks are executable, prefer this order:
+1. Foundation/core tasks first (unblock other tasks)
+2. Tasks with no dependencies
+3. Tasks with fewer downstream dependents
 
 ## Progress Tracking Format
 
@@ -473,9 +541,9 @@ If only some tasks complete:
 | Action | Tool | Parameters |
 |--------|------|------------|
 | Read plan | Read | `impl-plans/active/<plan>.md` |
-| Execute task | Task | `subagent_type: ts-coding` |
-| Parallel execution | Task | `run_in_background: true` |
-| Collect results | TaskOutput | `task_id: <id>` |
+| Execute task | Task | `subagent_type: ts-coding` (NO run_in_background) |
+| Run tests | Task | `subagent_type: check-and-test-after-modify` |
+| Review code | Task | `subagent_type: ts-review` |
 | Update plan | Edit | Update status, checkboxes, log |
 | Move completed | Bash | `mv impl-plans/active/ impl-plans/completed/` |
 
@@ -523,10 +591,10 @@ If only some tasks complete:
 ## Important Guidelines
 
 1. **Read this skill first**: Always read this skill before execution
-2. **Maximize parallelization**: Select ALL tasks that can run concurrently
-3. **Single message for parallel tasks**: Launch ALL parallel tasks in ONE message
-4. **Update plan immediately**: Update progress after execution completes
-5. **Fail gracefully**: Continue with other tasks if one fails
+2. **Execute sequentially**: Run tasks ONE AT A TIME to avoid LLM errors
+3. **Complete each task fully**: Run ts-coding -> check-and-test -> ts-review before next task
+4. **Update plan immediately**: Update progress after each task completes
+5. **Fail gracefully**: If a task fails, document it and proceed to next task
 6. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
 7. **Run review cycle**: After tests pass, invoke `ts-review` for code review (max 3 iterations)
 8. **Move completed plans**: Move to `impl-plans/completed/` when done
@@ -585,7 +653,7 @@ Phase 4: browser-viewer-*, cli-*
 2. Identify READY phases (skip BLOCKED phases entirely)
 3. Read ONLY plan files from READY phases
 4. Build task graph from those plans only
-5. Execute ALL parallelizable tasks
+5. Execute tasks sequentially (one at a time)
 
 ### Cross-Plan Progress Tracking
 

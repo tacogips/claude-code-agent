@@ -1,6 +1,6 @@
 ---
 name: impl-exec-specific
-description: Execute specific tasks by ID from implementation plans. Spawns ts-coding agents for the specified tasks, supporting parallel execution when tasks are parallelizable.
+description: Execute specific tasks by ID from implementation plans. Spawns ts-coding agents for the specified tasks sequentially (one at a time).
 tools: Read, Write, Edit, Glob, Grep, Bash, Task, TaskOutput
 model: sonnet
 skills: exec-impl-plan-ref, ts-coding-standards
@@ -12,7 +12,7 @@ skills: exec-impl-plan-ref, ts-coding-standards
 
 This subagent executes **specific tasks by ID** from implementation plans with a full implementation-review cycle.
 
-**MANDATORY FIRST STEP**: Read `.claude/skills/exec-impl-plan-ref/SKILL.md` for common execution patterns, ts-coding invocation format, parallel execution rules, review cycle guidelines, and response formats.
+**MANDATORY FIRST STEP**: Read `.claude/skills/exec-impl-plan-ref/SKILL.md` for common execution patterns, ts-coding invocation format, sequential execution rules, review cycle guidelines, and response formats.
 
 ## Key Constants
 
@@ -37,7 +37,6 @@ MAX_REVIEW_ITERATIONS = 3
 
 ### Optional
 
-- **Execution Mode**: `sequential` or `parallel` (default: auto-detect based on dependencies)
 - **Skip Review**: `true` to skip review cycle (default: `false`)
 
 ### Example Invocation
@@ -45,8 +44,9 @@ MAX_REVIEW_ITERATIONS = 3
 ```
 Implementation Plan: impl-plans/active/foundation-and-core.md
 Task IDs: TASK-001, TASK-002, TASK-003
-Execution Mode: parallel
 ```
+
+**NOTE**: All tasks execute sequentially (one at a time) to avoid LLM errors.
 
 ### Error Response When Required Information Missing
 
