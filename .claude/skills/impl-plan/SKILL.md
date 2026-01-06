@@ -291,14 +291,177 @@ now(): Date
   Called by: Logger, Cache
 ```
 
-## Parallelization Rules
+## Task Definition with Dependencies
 
-Subtasks can be parallelized when:
+**CRITICAL**: Each task MUST have explicit task ID and dependency information for PROGRESS.json integration.
+
+### Task Structure Format
+
+```markdown
+### TASK-001: Core Types
+
+**Status**: Not Started
+**Parallelizable**: Yes
+**Deliverables**: `src/sdk/queue/types.ts`, `src/sdk/queue/events.ts`
+**Dependencies**: None
+
+**Description**:
+Define core type definitions for the queue system.
+
+**Completion Criteria**:
+- [ ] Types defined
+- [ ] Type checking passes
+- [ ] Unit tests written
+```
+
+### Task ID Format
+
+- Format: `TASK-XXX` where XXX is zero-padded number (001, 002, etc.)
+- IDs are unique within a plan
+- Cross-plan references use format: `<plan-name>:TASK-XXX`
+
+### Dependency Specification
+
+**Same-plan dependency**:
+```markdown
+**Dependencies**: TASK-001
+**Dependencies**: TASK-001, TASK-002
+```
+
+**Cross-plan dependency**:
+```markdown
+**Dependencies**: session-groups-types:TASK-001
+**Dependencies**: session-groups-types:TASK-001, command-queue-types:TASK-002
+```
+
+**No dependencies**:
+```markdown
+**Dependencies**: None
+```
+
+### Dependency Identification Rules
+
+Identify dependencies by analyzing:
+
+1. **Type dependencies**: Does this task use types defined in another task?
+2. **Interface dependencies**: Does this implement an interface from another task?
+3. **Import dependencies**: Will the code import from files created by another task?
+4. **Execution order**: Must another task complete first for this to be testable?
+
+Example analysis:
+```
+TASK-001: Define QueueRepository interface
+TASK-002: Implement FileQueueRepository (implements QueueRepository)
+  -> TASK-002 depends on TASK-001
+
+TASK-003: Define QueueManager class (uses QueueRepository)
+  -> TASK-003 depends on TASK-001
+
+TASK-004: Define types (independent)
+  -> No dependencies, parallelizable
+```
+
+### Parallelization Rules
+
+Tasks can be parallelized when:
 1. No data dependencies between tasks
 2. No shared file modifications
 3. No order-dependent side effects
 
-Mark dependencies explicitly in the status table.
+**Parallelizable: Yes** means the task has no blocking dependencies on other incomplete tasks.
+**Parallelizable: No** is used when the task depends on other tasks (list in Dependencies field).
+
+## PROGRESS.json Integration
+
+**CRITICAL**: After creating a plan file, PROGRESS.json MUST be updated to include the new plan and its tasks.
+
+### PROGRESS.json Structure
+
+```json
+{
+  "lastUpdated": "2026-01-06T16:00:00Z",
+  "phases": {
+    "1": { "status": "COMPLETED" },
+    "2": { "status": "READY" },
+    "3": { "status": "BLOCKED" },
+    "4": { "status": "BLOCKED" }
+  },
+  "plans": {
+    "plan-name": {
+      "phase": 2,
+      "status": "Ready",
+      "tasks": {
+        "TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] },
+        "TASK-002": { "status": "Not Started", "parallelizable": false, "deps": ["TASK-001"] },
+        "TASK-003": { "status": "Not Started", "parallelizable": false, "deps": ["other-plan:TASK-001"] }
+      }
+    }
+  }
+}
+```
+
+### Dependency Format in PROGRESS.json
+
+| Dependency Type | Plan File Format | PROGRESS.json Format |
+|-----------------|------------------|---------------------|
+| None | `**Dependencies**: None` | `"deps": []` |
+| Same-plan | `**Dependencies**: TASK-001` | `"deps": ["TASK-001"]` |
+| Same-plan multiple | `**Dependencies**: TASK-001, TASK-002` | `"deps": ["TASK-001", "TASK-002"]` |
+| Cross-plan | `**Dependencies**: other-plan:TASK-001` | `"deps": ["other-plan:TASK-001"]` |
+| Mixed | `**Dependencies**: TASK-001, other-plan:TASK-002` | `"deps": ["TASK-001", "other-plan:TASK-002"]` |
+
+### Phase Assignment
+
+Assign the plan to a phase based on its dependencies:
+
+| Condition | Phase |
+|-----------|-------|
+| No cross-plan dependencies | Phase 2 (or current active phase) |
+| Depends on Phase 2 plans | Phase 3 |
+| Depends on Phase 3 plans | Phase 4 |
+
+### PROGRESS.json Update Protocol
+
+When creating a new plan:
+
+1. **Read current PROGRESS.json**
+2. **Extract tasks from plan file**:
+   - Parse all `### TASK-XXX:` sections
+   - Extract `**Status**`, `**Parallelizable**`, `**Dependencies**`
+3. **Convert to PROGRESS.json format**:
+   ```python
+   for task in plan_tasks:
+       task_entry = {
+           "status": task.status,  # "Not Started", "In Progress", "Completed"
+           "parallelizable": task.parallelizable,  # true/false
+           "deps": parse_dependencies(task.dependencies)  # ["TASK-001", "other-plan:TASK-002"]
+       }
+   ```
+4. **Add plan to PROGRESS.json**:
+   ```json
+   "new-plan-name": {
+     "phase": <determined-phase>,
+     "status": "Ready",
+     "tasks": { ... }
+   }
+   ```
+5. **Update lastUpdated timestamp**
+6. **Write PROGRESS.json** (with file locking if concurrent access possible)
+
+### File Locking Protocol
+
+When updating PROGRESS.json, use file locking to prevent race conditions:
+
+```bash
+# Acquire lock
+while [ -f impl-plans/.progress.lock ]; do sleep 1; done
+echo "<plan-name>" > impl-plans/.progress.lock
+
+# ... perform PROGRESS.json update ...
+
+# Release lock
+rm -f impl-plans/.progress.lock
+```
 
 ## Workflow Integration
 
@@ -306,9 +469,12 @@ Mark dependencies explicitly in the status table.
 1. Read the design document
 2. Identify feature boundaries
 3. Define TypeScript interfaces and types
-4. List modules with status tracking
-5. Set completion criteria
-6. Create plan file in `impl-plans/active/`
+4. Define tasks with explicit IDs and dependencies
+5. List modules with status tracking
+6. Set completion criteria
+7. Create plan file in `impl-plans/active/`
+8. **Update PROGRESS.json with new plan and tasks**
+9. **Update impl-plans/README.md with new plan entry**
 
 ### During Implementation
 1. Update module status as work progresses

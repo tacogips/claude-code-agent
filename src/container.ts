@@ -10,12 +10,14 @@
 import type { FileSystem } from "./interfaces/filesystem";
 import type { ProcessManager } from "./interfaces/process-manager";
 import type { Clock } from "./interfaces/clock";
+import type { GroupRepository } from "./repository/group-repository";
 import { BunFileSystem } from "./interfaces/bun-filesystem";
 import { BunProcessManager } from "./interfaces/bun-process-manager";
 import { SystemClock } from "./interfaces/system-clock";
 import { MockFileSystem } from "./test/mocks/filesystem";
 import { MockProcessManager } from "./test/mocks/process-manager";
 import { MockClock } from "./test/mocks/clock";
+import { InMemoryGroupRepository } from "./repository/in-memory";
 
 /**
  * Dependency injection container.
@@ -31,6 +33,8 @@ export interface Container {
   readonly processManager: ProcessManager;
   /** Time operations */
   readonly clock: Clock;
+  /** Group repository */
+  readonly groupRepository: GroupRepository;
 }
 
 /**
@@ -46,6 +50,7 @@ export function createProductionContainer(): Container {
     fileSystem: new BunFileSystem(),
     processManager: new BunProcessManager(),
     clock: new SystemClock(),
+    groupRepository: new InMemoryGroupRepository(),
   };
 }
 
@@ -64,6 +69,7 @@ export function createTestContainer(overrides?: Partial<Container>): Container {
     fileSystem: new MockFileSystem(),
     processManager: new MockProcessManager(),
     clock: new MockClock(),
+    groupRepository: new InMemoryGroupRepository(),
   };
 
   return {

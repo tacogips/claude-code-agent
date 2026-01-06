@@ -1,7 +1,7 @@
 ---
 name: impl-plan-all
-description: Generate all implementation plans from design documents in parallel. Spawns multiple impl-plan agents as concurrent subtasks to create all plans at once.
-tools: Read, Write, Glob, Grep, Task
+description: Generate all implementation plans from design documents in parallel. Spawns multiple impl-plan agents as concurrent subtasks to create all plans at once. Validates PROGRESS.json after all plans are created.
+tools: Read, Write, Edit, Glob, Grep, Task, TaskOutput
 model: sonnet
 skills: impl-plan
 ---
@@ -102,7 +102,39 @@ For each feature in features_to_generate:
 
 1. Wait for all subtasks to complete using TaskOutput
 2. Collect success/failure status for each plan
-3. Update impl-plans/README.md with new plans
+3. Each impl-plan agent updates PROGRESS.json individually
+
+### Phase 6: Validate and Finalize PROGRESS.json
+
+**IMPORTANT**: After all impl-plan agents complete, validate PROGRESS.json consistency.
+
+1. **Read PROGRESS.json**:
+   ```
+   Read impl-plans/PROGRESS.json
+   ```
+
+2. **Validate all plans are present**:
+   - Compare plans in PROGRESS.json with plans created
+   - Report any missing entries
+
+3. **Validate cross-plan dependencies**:
+   - For each task with cross-plan deps like `"other-plan:TASK-001"`
+   - Verify the referenced plan and task exist
+   - Report any broken references
+
+4. **Update phase statuses**:
+   ```json
+   "phases": {
+     "1": { "status": "COMPLETED" },
+     "2": { "status": "READY" },      // Has plans with no blocked deps
+     "3": { "status": "BLOCKED" },    // All plans depend on Phase 2
+     "4": { "status": "BLOCKED" }     // All plans depend on Phase 3
+   }
+   ```
+
+5. **Update impl-plans/README.md** with new plans:
+   - Add entries to Active Plans section
+   - Update Phase to Plans Mapping if needed
 
 ---
 
@@ -138,16 +170,31 @@ Do not generate plans for:
 ## Batch Plan Generation Complete
 
 ### Plans Created
-| Plan | Design Reference | Status |
-|------|------------------|--------|
-| session-groups.md | spec-session-groups.md | Created |
-| command-queue.md | spec-command-queue.md | Created |
-| markdown-parser.md | spec-sdk-api.md#markdown | Created |
+| Plan | Design Reference | Tasks | Phase | Status |
+|------|------------------|-------|-------|--------|
+| session-groups.md | spec-session-groups.md | 5 | 2 | Created |
+| command-queue.md | spec-command-queue.md | 6 | 2 | Created |
+| markdown-parser.md | spec-sdk-api.md#markdown | 4 | 2 | Created |
 
 ### Plans Skipped (Already Exist)
 | Plan | Reason |
 |------|--------|
 | foundation-and-core.md | Already exists in active/ |
+
+### PROGRESS.json Updated
+- Plans added: 7
+- Total tasks added: 42
+- Cross-plan dependencies validated: 15
+- Broken references: 0
+- lastUpdated: 2026-01-06T16:00:00Z
+
+### Phase Status
+| Phase | Status | Plans |
+|-------|--------|-------|
+| 1 | COMPLETED | foundation-* |
+| 2 | READY | session-groups-*, command-queue-*, etc. |
+| 3 | BLOCKED | daemon-core, http-api, sse-events |
+| 4 | BLOCKED | browser-viewer-*, cli-* |
 
 ### Summary
 - Total features detected: 10
@@ -157,8 +204,8 @@ Do not generate plans for:
 
 ### Next Steps
 1. Review generated plans in impl-plans/active/
-2. Adjust subtask granularity if needed
-3. Begin implementation with parallelizable tasks
+2. Run `/impl-exec-auto` to begin implementation
+3. Monitor progress via PROGRESS.json
 ```
 
 ### Failure Response

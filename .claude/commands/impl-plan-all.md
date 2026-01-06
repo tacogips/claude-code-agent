@@ -61,9 +61,15 @@ Task tool parameters:
 ### After Subagent Completes
 
 1. Report summary of plans created/skipped
-2. List any errors that occurred
-3. Update impl-plans/README.md with new entries
-4. Suggest next steps
+2. Report PROGRESS.json update summary:
+   - Plans added
+   - Total tasks added
+   - Cross-plan dependencies validated
+3. List any errors that occurred
+4. Confirm impl-plans/README.md was updated
+5. Suggest next steps:
+   - Review generated plans
+   - Run `/impl-exec-auto` to begin implementation
 
 ### Error Handling
 

@@ -74,8 +74,11 @@ Creates: `impl-plans/active/testability.md`
 ### After Subagent Completes
 
 1. Report the created plan file path to the user
-2. Summarize the subtasks and parallelization opportunities
-3. Suggest next steps (review plan, begin implementation)
+2. Summarize the tasks defined with their dependencies
+3. Confirm PROGRESS.json was updated with the new plan
+4. Suggest next steps:
+   - Review the generated plan
+   - Run `/impl-exec-auto` to begin implementation
 
 ### Error Handling
 
