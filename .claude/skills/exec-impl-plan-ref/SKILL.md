@@ -36,7 +36,30 @@ Use `impl-plans/PROGRESS.json` instead, which contains:
 **Workflow**:
 1. Read `PROGRESS.json` (~2K tokens) to find executable tasks
 2. Read ONLY the specific plan file when executing a task (~10K tokens)
-3. After execution, update BOTH the plan file AND `PROGRESS.json`
+3. After execution, update BOTH the plan file AND `PROGRESS.json` **IMMEDIATELY** (with lock)
+
+## CRITICAL: Update PROGRESS.json After EACH Task
+
+**IMPORTANT**: Update PROGRESS.json IMMEDIATELY after each task completes. DO NOT wait until all tasks finish.
+
+### File Locking Protocol
+
+Lock file path: `impl-plans/.progress.lock`
+
+**Before updating PROGRESS.json**:
+```bash
+# Acquire lock (retry if busy)
+while [ -f impl-plans/.progress.lock ]; do sleep 1; done
+echo "<plan-name>:<TASK-ID>" > impl-plans/.progress.lock
+```
+
+**After updating PROGRESS.json**:
+```bash
+# Release lock
+rm -f impl-plans/.progress.lock
+```
+
+This prevents race conditions when multiple sub-agents try to update concurrently.
 
 ### PROGRESS.json Structure
 
@@ -152,22 +175,35 @@ Execute tasks one at a time to avoid LLM errors:
 6. **Update task status** in plan
 7. **Repeat** for next task
 
-### Phase 4: Progress Update
+### Phase 4: Progress Update (IMMEDIATELY After Each Task)
+
+**CRITICAL**: Execute this phase IMMEDIATELY after each task completes. DO NOT batch updates.
 
 After task execution:
 
-1. **Update task status in PROGRESS.json**:
+1. **Acquire lock**:
+   ```bash
+   while [ -f impl-plans/.progress.lock ]; do sleep 1; done
+   echo "<plan-name>:<TASK-ID>" > impl-plans/.progress.lock
+   ```
+
+2. **Update task status in PROGRESS.json**:
    ```json
    // Edit impl-plans/PROGRESS.json
    "TASK-001": { "status": "Completed", "parallelizable": true, "deps": [] }
    ```
    Also update `lastUpdated` timestamp.
 
-2. **Update task status in the plan file**:
+3. **Release lock**:
+   ```bash
+   rm -f impl-plans/.progress.lock
+   ```
+
+4. **Update task status in the plan file**:
    - Not Started -> In Progress (when started)
    - In Progress -> Completed (when all criteria met)
 
-3. **Add progress log entry** to plan file:
+5. **Add progress log entry** to plan file:
    ```markdown
    ### Session: YYYY-MM-DD HH:MM
    **Tasks Completed**: TASK-001, TASK-002
@@ -176,9 +212,9 @@ After task execution:
    **Notes**: Implementation notes and decisions made
    ```
 
-4. **Check completion criteria** for the overall plan
+6. **Check completion criteria** for the overall plan
 
-5. **Move to completed** if all tasks done: `impl-plans/active/` -> `impl-plans/completed/`
+7. **Move to completed** if all tasks done: `impl-plans/active/` -> `impl-plans/completed/`
 
 **IMPORTANT**: Always update BOTH `PROGRESS.json` AND the plan file to keep them in sync.
 
@@ -593,11 +629,12 @@ If only some tasks complete:
 1. **Read this skill first**: Always read this skill before execution
 2. **Execute sequentially**: Run tasks ONE AT A TIME to avoid LLM errors
 3. **Complete each task fully**: Run ts-coding -> check-and-test -> ts-review before next task
-4. **Update plan immediately**: Update progress after each task completes
-5. **Fail gracefully**: If a task fails, document it and proceed to next task
-6. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
-7. **Run review cycle**: After tests pass, invoke `ts-review` for code review (max 3 iterations)
-8. **Move completed plans**: Move to `impl-plans/completed/` when done
+4. **Update PROGRESS.json IMMEDIATELY**: Update with lock AFTER EACH task (not batched at end)
+5. **Use file locking**: Acquire/release `impl-plans/.progress.lock` around PROGRESS.json updates
+6. **Fail gracefully**: If a task fails, document it and proceed to next task
+7. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
+8. **Run review cycle**: After tests pass, invoke `ts-review` for code review (max 3 iterations)
+9. **Move completed plans**: Move to `impl-plans/completed/` when done
 
 ## Cross-Plan Execution
 

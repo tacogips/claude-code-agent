@@ -53,6 +53,84 @@ Instead, use `impl-plans/PROGRESS.json` which contains:
 2. Read ONLY the specific plan file when executing a task (~10K tokens)
 3. After execution, update BOTH the plan file AND `PROGRESS.json`
 
+## CRITICAL: Update PROGRESS.json After EACH Task (Not All at Once)
+
+**IMPORTANT**: When executing multiple tasks, update PROGRESS.json IMMEDIATELY after each task completes. DO NOT wait until all tasks finish.
+
+```
+Task 1 completes -> Update PROGRESS.json immediately
+Task 2 completes -> Update PROGRESS.json immediately
+Task 3 completes -> Update PROGRESS.json immediately
+```
+
+This enables:
+- Real-time progress visibility
+- Early failure detection
+- Safe interruption and resume
+
+## File Locking for Concurrent Updates
+
+When multiple sub-agents run concurrently, use file locking to prevent race conditions.
+
+### Lock File Protocol
+
+Lock file path: `impl-plans/.progress.lock`
+
+**Before updating PROGRESS.json**:
+```bash
+# Acquire lock (retry loop)
+MAX_RETRIES=10
+RETRY_COUNT=0
+while [ -f impl-plans/.progress.lock ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  sleep 1
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+
+# Create lock with task identifier
+echo "<plan-name>:<TASK-ID>" > impl-plans/.progress.lock
+```
+
+**After updating PROGRESS.json**:
+```bash
+# Release lock
+rm -f impl-plans/.progress.lock
+```
+
+### Lock Acquisition Workflow
+
+```
+1. Check if lock file exists
+   |
+   +-- EXISTS: Wait 1 second, retry (max 10 retries)
+   |
+   +-- NOT EXISTS: Create lock file with task ID
+       |
+       v
+2. Read current PROGRESS.json
+       |
+       v
+3. Edit task status to "Completed"
+       |
+       v
+4. Update lastUpdated timestamp
+       |
+       v
+5. Delete lock file
+```
+
+### Lock File Cleanup
+
+If a stale lock file exists (older than 60 seconds), it can be safely removed:
+```bash
+# Check lock age and remove if stale
+if [ -f impl-plans/.progress.lock ]; then
+  LOCK_AGE=$(($(date +%s) - $(stat -c %Y impl-plans/.progress.lock 2>/dev/null || echo 0)))
+  if [ $LOCK_AGE -gt 60 ]; then
+    rm -f impl-plans/.progress.lock
+  fi
+fi
+```
+
 ---
 
 ## Execution Workflow Overview
@@ -70,10 +148,12 @@ Step 3: For Each Executable Task:
     |    c. Run tests (check-and-test-after-modify)
     |    d. Review cycle (ts-review, max 3 iterations)
     |    e. Update plan file status
-    |    f. Update PROGRESS.json
+    |    f. Acquire lock -> Update PROGRESS.json -> Release lock  <-- IMMEDIATELY after each task
     v
 Step 4: Report Results
 ```
+
+**CRITICAL**: Step 3f MUST execute immediately after each task completes. DO NOT batch updates.
 
 ---
 
@@ -159,10 +239,24 @@ For each executable task:
 
 7. **Update PROGRESS.json** - Change task status to "Completed"
 
-### Step 4: Update PROGRESS.json
+### Step 4: Update PROGRESS.json (With Lock)
 
-After each task completes, update `impl-plans/PROGRESS.json`:
+**IMMEDIATELY after each task completes**, update `impl-plans/PROGRESS.json` using the lock protocol:
 
+```bash
+# 1. Acquire lock (before any read/write)
+MAX_RETRIES=10
+RETRY_COUNT=0
+while [ -f impl-plans/.progress.lock ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  sleep 1
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+echo "<plan-name>:<TASK-ID>" > impl-plans/.progress.lock
+
+# 2. Now safe to update PROGRESS.json using Edit tool
+```
+
+Update the task status:
 ```json
 // Before:
 "TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] }
@@ -172,6 +266,13 @@ After each task completes, update `impl-plans/PROGRESS.json`:
 ```
 
 Also update `lastUpdated` timestamp.
+
+```bash
+# 3. Release lock (after Edit completes)
+rm -f impl-plans/.progress.lock
+```
+
+**DO NOT WAIT** for other tasks to complete. Update PROGRESS.json immediately after each task.
 
 ### Step 5: Report Results
 
@@ -295,14 +396,28 @@ The following tasks are blocking progress:
 
 ---
 
-## IMPORTANT: Always Update PROGRESS.json
+## IMPORTANT: Always Update PROGRESS.json (IMMEDIATELY with Lock)
 
-After ANY task status change:
-1. Edit the task status in `impl-plans/PROGRESS.json`
-2. Update the `lastUpdated` timestamp
-3. Edit the task status in the plan file
+After ANY task status change, update IMMEDIATELY (not batched):
 
-This keeps PROGRESS.json in sync and enables fast cross-plan analysis.
+1. **Acquire lock**:
+   ```bash
+   while [ -f impl-plans/.progress.lock ]; do sleep 1; done
+   echo "<plan-name>:<TASK-ID>" > impl-plans/.progress.lock
+   ```
+
+2. **Edit the task status** in `impl-plans/PROGRESS.json`
+
+3. **Update the `lastUpdated` timestamp**
+
+4. **Release lock**:
+   ```bash
+   rm -f impl-plans/.progress.lock
+   ```
+
+5. **Edit the task status** in the plan file
+
+This keeps PROGRESS.json in sync, enables fast cross-plan analysis, and prevents race conditions.
 
 ---
 

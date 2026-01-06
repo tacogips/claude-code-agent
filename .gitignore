@@ -42,5 +42,8 @@ tmp/
 temp/
 .cache/
 
+# Implementation progress lock file
+impl-plans/.progress.lock
+
 # Private files
 .private*/
