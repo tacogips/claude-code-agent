@@ -1,7 +1,5 @@
 /**
- * Tests for InMemoryBookmarkRepository.
- *
- * @module repository/in-memory/bookmark-repository.test
+ * Unit tests for InMemoryBookmarkRepository.
  */
 
 import { describe, test, expect, beforeEach } from "vitest";
@@ -11,319 +9,392 @@ import type { Bookmark } from "../bookmark-repository";
 describe("InMemoryBookmarkRepository", () => {
   let repo: InMemoryBookmarkRepository;
 
+  // Test fixtures
+  const createBookmark = (overrides: Partial<Bookmark> = {}): Bookmark => ({
+    id: "bm-001",
+    type: "session",
+    sessionId: "session-001",
+    name: "Test Bookmark",
+    tags: [],
+    createdAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+    updatedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+    ...overrides,
+  });
+
   beforeEach(() => {
     repo = new InMemoryBookmarkRepository();
   });
 
-  const createTestBookmark = (overrides?: Partial<Bookmark>): Bookmark => ({
-    id: "bm-1",
-    name: "Test Bookmark",
-    type: "session",
-    sessionId: "session-1",
-    tags: ["important"],
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
-    ...overrides,
-  });
-
-  describe("save and findById", () => {
-    test("saves and retrieves a bookmark", async () => {
-      const bookmark = createTestBookmark();
+  describe("findById", () => {
+    test("should return bookmark when found", async () => {
+      const bookmark = createBookmark();
       await repo.save(bookmark);
 
-      const found = await repo.findById("bm-1");
-      expect(found).toEqual(bookmark);
+      const result = await repo.findById("bm-001");
+      expect(result).toEqual(bookmark);
     });
 
-    test("returns null for non-existent bookmark", async () => {
-      const found = await repo.findById("non-existent");
-      expect(found).toBeNull();
-    });
-
-    test("updates existing bookmark on save", async () => {
-      const bookmark = createTestBookmark();
-      await repo.save(bookmark);
-
-      const updated = { ...bookmark, name: "Updated Name" };
-      await repo.save(updated);
-
-      const found = await repo.findById("bm-1");
-      expect(found?.name).toBe("Updated Name");
-    });
-  });
-
-  describe("delete", () => {
-    test("deletes existing bookmark", async () => {
-      const bookmark = createTestBookmark();
-      await repo.save(bookmark);
-
-      const deleted = await repo.delete("bm-1");
-      expect(deleted).toBe(true);
-
-      const found = await repo.findById("bm-1");
-      expect(found).toBeNull();
-    });
-
-    test("returns false for non-existent bookmark", async () => {
-      const deleted = await repo.delete("non-existent");
-      expect(deleted).toBe(false);
+    test("should return null when not found", async () => {
+      const result = await repo.findById("nonexistent");
+      expect(result).toBeNull();
     });
   });
 
   describe("findBySession", () => {
-    test("finds all bookmarks for a session", async () => {
-      await repo.save(createTestBookmark({ id: "bm1", sessionId: "s1" }));
-      await repo.save(createTestBookmark({ id: "bm2", sessionId: "s1" }));
-      await repo.save(createTestBookmark({ id: "bm3", sessionId: "s2" }));
+    test("should return all bookmarks for a session", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", sessionId: "session-001" });
+      const bookmark2 = createBookmark({ id: "bm-002", sessionId: "session-001" });
+      const bookmark3 = createBookmark({ id: "bm-003", sessionId: "session-002" });
 
-      const bookmarks = await repo.findBySession("s1");
-      expect(bookmarks).toHaveLength(2);
-      expect(bookmarks.map((b) => b.id)).toEqual(
-        expect.arrayContaining(["bm1", "bm2"]),
-      );
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+      await repo.save(bookmark3);
+
+      const results = await repo.findBySession("session-001");
+      expect(results).toHaveLength(2);
+      expect(results).toContainEqual(bookmark1);
+      expect(results).toContainEqual(bookmark2);
     });
 
-    test("returns empty array for session with no bookmarks", async () => {
-      const bookmarks = await repo.findBySession("non-existent");
-      expect(bookmarks).toEqual([]);
+    test("should return empty array when session has no bookmarks", async () => {
+      const results = await repo.findBySession("nonexistent");
+      expect(results).toEqual([]);
     });
   });
 
   describe("findByTag", () => {
-    test("finds all bookmarks with a tag", async () => {
-      await repo.save(
-        createTestBookmark({ id: "bm1", tags: ["important", "review"] }),
-      );
-      await repo.save(createTestBookmark({ id: "bm2", tags: ["review"] }));
-      await repo.save(createTestBookmark({ id: "bm3", tags: ["archive"] }));
+    test("should return all bookmarks with the tag", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", tags: ["auth", "bug"] });
+      const bookmark2 = createBookmark({ id: "bm-002", tags: ["auth"] });
+      const bookmark3 = createBookmark({ id: "bm-003", tags: ["feature"] });
 
-      const bookmarks = await repo.findByTag("review");
-      expect(bookmarks).toHaveLength(2);
-      expect(bookmarks.map((b) => b.id)).toEqual(
-        expect.arrayContaining(["bm1", "bm2"]),
-      );
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+      await repo.save(bookmark3);
+
+      const results = await repo.findByTag("auth");
+      expect(results).toHaveLength(2);
+      expect(results).toContainEqual(bookmark1);
+      expect(results).toContainEqual(bookmark2);
     });
 
-    test("returns empty array for tag with no bookmarks", async () => {
-      const bookmarks = await repo.findByTag("non-existent");
-      expect(bookmarks).toEqual([]);
+    test("should return empty array when no bookmarks have the tag", async () => {
+      const results = await repo.findByTag("nonexistent");
+      expect(results).toEqual([]);
     });
   });
 
   describe("list", () => {
-    beforeEach(async () => {
-      await repo.save(
-        createTestBookmark({
-          id: "bm1",
-          name: "Alpha",
-          type: "session",
-          sessionId: "s1",
-          tags: ["tag1"],
-          createdAt: "2026-01-01T00:00:00Z",
-        }),
-      );
-      await repo.save(
-        createTestBookmark({
-          id: "bm2",
-          name: "Beta",
-          type: "message",
-          sessionId: "s1",
-          tags: ["tag2"],
-          createdAt: "2026-01-02T00:00:00Z",
-        }),
-      );
-      await repo.save(
-        createTestBookmark({
-          id: "bm3",
-          name: "Gamma",
-          type: "range",
-          sessionId: "s2",
-          tags: ["tag1", "tag2"],
-          createdAt: "2026-01-03T00:00:00Z",
-        }),
-      );
+    test("should return all bookmarks when no filter", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001" });
+      const bookmark2 = createBookmark({ id: "bm-002" });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.list();
+      expect(results).toHaveLength(2);
     });
 
-    test("lists all bookmarks without filter", async () => {
-      const bookmarks = await repo.list();
-      expect(bookmarks).toHaveLength(3);
+    test("should filter by type", async () => {
+      const sessionBm = createBookmark({ id: "bm-001", type: "session" });
+      const messageBm = createBookmark({ id: "bm-002", type: "message", messageId: "msg-001" });
+
+      await repo.save(sessionBm);
+      await repo.save(messageBm);
+
+      const results = await repo.list({ type: "message" });
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual(messageBm);
     });
 
-    test("filters by sessionId", async () => {
-      const bookmarks = await repo.list({ sessionId: "s1" });
-      expect(bookmarks).toHaveLength(2);
-      expect(bookmarks.every((b) => b.sessionId === "s1")).toBe(true);
+    test("should filter by sessionId", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", sessionId: "session-001" });
+      const bookmark2 = createBookmark({ id: "bm-002", sessionId: "session-002" });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.list({ sessionId: "session-001" });
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual(bookmark1);
     });
 
-    test("filters by type", async () => {
-      const bookmarks = await repo.list({ type: "message" });
-      expect(bookmarks).toHaveLength(1);
-      expect(bookmarks[0]?.type).toBe("message");
+    test("should filter by tags (ALL tags required)", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", tags: ["auth", "bug"] });
+      const bookmark2 = createBookmark({ id: "bm-002", tags: ["auth"] });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.list({ tags: ["auth", "bug"] });
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual(bookmark1);
     });
 
-    test("filters by tags (any match)", async () => {
-      const bookmarks = await repo.list({ tags: ["tag1"] });
-      expect(bookmarks).toHaveLength(2);
-      expect(bookmarks.map((b) => b.id)).toEqual(
-        expect.arrayContaining(["bm1", "bm3"]),
-      );
+    test("should filter by nameContains (case-insensitive)", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", name: "Auth Bug Fix" });
+      const bookmark2 = createBookmark({ id: "bm-002", name: "Feature Request" });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.list({ nameContains: "auth" });
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual(bookmark1);
     });
 
-    test("filters by nameContains", async () => {
-      const bookmarks = await repo.list({ nameContains: "beta" });
-      expect(bookmarks).toHaveLength(1);
-      expect(bookmarks[0]?.name).toBe("Beta");
+    test("should filter by since date", async () => {
+      const bookmark1 = createBookmark({
+        id: "bm-001",
+        createdAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+      });
+      const bookmark2 = createBookmark({
+        id: "bm-002",
+        createdAt: new Date("2026-01-05T00:00:00Z").toISOString(),
+      });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.list({ since: new Date("2026-01-03T00:00:00Z") });
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual(bookmark2);
     });
 
-    test("applies limit", async () => {
-      const bookmarks = await repo.list({ limit: 2 });
-      expect(bookmarks).toHaveLength(2);
+    test("should sort by name ascending", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", name: "Zebra" });
+      const bookmark2 = createBookmark({ id: "bm-002", name: "Alpha" });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.list(undefined, { field: "name", direction: "asc" });
+      expect(results[0]?.name).toBe("Alpha");
+      expect(results[1]?.name).toBe("Zebra");
     });
 
-    test("applies offset", async () => {
-      const bookmarks = await repo.list({ offset: 1 });
-      expect(bookmarks).toHaveLength(2);
+    test("should sort by createdAt descending", async () => {
+      const bookmark1 = createBookmark({
+        id: "bm-001",
+        createdAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+      });
+      const bookmark2 = createBookmark({
+        id: "bm-002",
+        createdAt: new Date("2026-01-05T00:00:00Z").toISOString(),
+      });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.list(undefined, { field: "createdAt", direction: "desc" });
+      expect(results[0]?.id).toBe("bm-002");
+      expect(results[1]?.id).toBe("bm-001");
     });
 
-    test("sorts by name ascending", async () => {
-      const bookmarks = await repo.list(
-        {},
+    test("should apply offset and limit", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", name: "A" });
+      const bookmark2 = createBookmark({ id: "bm-002", name: "B" });
+      const bookmark3 = createBookmark({ id: "bm-003", name: "C" });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+      await repo.save(bookmark3);
+
+      const results = await repo.list(
+        { offset: 1, limit: 1 },
         { field: "name", direction: "asc" },
       );
-      expect(bookmarks.map((b) => b.name)).toEqual(["Alpha", "Beta", "Gamma"]);
-    });
-
-    test("sorts by name descending", async () => {
-      const bookmarks = await repo.list(
-        {},
-        { field: "name", direction: "desc" },
-      );
-      expect(bookmarks.map((b) => b.name)).toEqual(["Gamma", "Beta", "Alpha"]);
-    });
-
-    test("sorts by createdAt", async () => {
-      const bookmarks = await repo.list(
-        {},
-        { field: "createdAt", direction: "asc" },
-      );
-      expect(bookmarks.map((b) => b.id)).toEqual(["bm1", "bm2", "bm3"]);
+      expect(results).toHaveLength(1);
+      expect(results[0]?.name).toBe("B");
     });
   });
 
   describe("search", () => {
-    beforeEach(async () => {
-      await repo.save(
-        createTestBookmark({
-          id: "bm1",
-          name: "Important Session",
-          tags: ["work"],
-          description: "Critical bug fix",
-        }),
-      );
-      await repo.save(
-        createTestBookmark({
-          id: "bm2",
-          name: "Review Later",
-          tags: ["review", "important"],
-        }),
-      );
-      await repo.save(
-        createTestBookmark({
-          id: "bm3",
-          name: "Archive",
-          tags: ["archive"],
-          description: "Old session",
-        }),
-      );
-    });
+    test("should find bookmarks by name", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", name: "Auth Bug" });
+      const bookmark2 = createBookmark({ id: "bm-002", name: "Feature" });
 
-    test("searches in name", async () => {
-      const results = await repo.search({ query: "session" });
-      expect(results).toHaveLength(2);
-      expect(results.map((b) => b.id)).toEqual(
-        expect.arrayContaining(["bm1", "bm3"]),
-      );
-    });
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
 
-    test("searches in notes", async () => {
-      const results = await repo.search({ query: "bug" });
+      const results = await repo.search({ query: "auth" });
       expect(results).toHaveLength(1);
-      expect(results[0]?.id).toBe("bm1");
+      expect(results[0]).toEqual(bookmark1);
     });
 
-    test("searches in tags", async () => {
-      const results = await repo.search({ query: "important" });
-      expect(results).toHaveLength(2);
-      expect(results.map((b) => b.id)).toEqual(
-        expect.arrayContaining(["bm1", "bm2"]),
-      );
+    test("should find bookmarks by description", async () => {
+      const bookmark1 = createBookmark({
+        id: "bm-001",
+        name: "Session",
+        description: "OAuth implementation",
+      });
+      const bookmark2 = createBookmark({ id: "bm-002", name: "Other" });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.search({ query: "oauth" });
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual(bookmark1);
     });
 
-    test("applies limit to search results", async () => {
-      const results = await repo.search({ query: "session", limit: 1 });
+    test("should find bookmarks by tag", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", tags: ["authentication"] });
+      const bookmark2 = createBookmark({ id: "bm-002", tags: ["feature"] });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.search({ query: "auth" });
+      expect(results).toHaveLength(1);
+      expect(results[0]).toEqual(bookmark1);
+    });
+
+    test("should be case-insensitive", async () => {
+      const bookmark = createBookmark({ id: "bm-001", name: "AUTH BUG" });
+      await repo.save(bookmark);
+
+      const results = await repo.search({ query: "auth bug" });
       expect(results).toHaveLength(1);
     });
 
-    test("is case insensitive", async () => {
-      const results = await repo.search({ query: "IMPORTANT" });
-      expect(results).toHaveLength(2);
+    test("should prioritize exact name matches", async () => {
+      const exactMatch = createBookmark({ id: "bm-001", name: "auth" });
+      const partialMatch = createBookmark({ id: "bm-002", name: "authentication" });
+
+      await repo.save(partialMatch);
+      await repo.save(exactMatch);
+
+      const results = await repo.search({ query: "auth" });
+      expect(results[0]).toEqual(exactMatch);
+      expect(results[1]).toEqual(partialMatch);
+    });
+
+    test("should apply limit", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", name: "Auth 1" });
+      const bookmark2 = createBookmark({ id: "bm-002", name: "Auth 2" });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
+
+      const results = await repo.search({ query: "auth", limit: 1 });
+      expect(results).toHaveLength(1);
+    });
+  });
+
+  describe("save", () => {
+    test("should save a new bookmark", async () => {
+      const bookmark = createBookmark();
+      await repo.save(bookmark);
+
+      const result = await repo.findById("bm-001");
+      expect(result).toEqual(bookmark);
+    });
+
+    test("should update an existing bookmark", async () => {
+      const bookmark = createBookmark({ name: "Original" });
+      await repo.save(bookmark);
+
+      const updated = { ...bookmark, name: "Updated" };
+      await repo.save(updated);
+
+      const result = await repo.findById("bm-001");
+      expect(result?.name).toBe("Updated");
+    });
+  });
+
+  describe("update", () => {
+    test("should update existing bookmark", async () => {
+      const bookmark = createBookmark({ name: "Original" });
+      await repo.save(bookmark);
+
+      await repo.update("bm-001", { name: "Updated" });
+
+      const result = await repo.findById("bm-001");
+      expect(result?.name).toBe("Updated");
+    });
+
+    test("should throw when bookmark not found", async () => {
+      await expect(repo.update("nonexistent", { name: "Updated" })).rejects.toThrow(
+        "Bookmark not found: nonexistent",
+      );
+    });
+
+    test("should not change ID", async () => {
+      const bookmark = createBookmark();
+      await repo.save(bookmark);
+
+      await repo.update("bm-001", { name: "Updated" });
+
+      const result = await repo.findById("bm-001");
+      expect(result?.id).toBe("bm-001");
+    });
+  });
+
+  describe("delete", () => {
+    test("should delete existing bookmark", async () => {
+      const bookmark = createBookmark();
+      await repo.save(bookmark);
+
+      const deleted = await repo.delete("bm-001");
+      expect(deleted).toBe(true);
+
+      const result = await repo.findById("bm-001");
+      expect(result).toBeNull();
+    });
+
+    test("should return false when bookmark not found", async () => {
+      const deleted = await repo.delete("nonexistent");
+      expect(deleted).toBe(false);
     });
   });
 
   describe("getAllTags", () => {
-    test("returns unique tags across all bookmarks", async () => {
-      await repo.save(createTestBookmark({ tags: ["tag1", "tag2"] }));
-      await repo.save(
-        createTestBookmark({ id: "bm2", tags: ["tag2", "tag3"] }),
-      );
-      await repo.save(createTestBookmark({ id: "bm3", tags: ["tag1"] }));
+    test("should return all unique tags sorted", async () => {
+      const bookmark1 = createBookmark({ id: "bm-001", tags: ["auth", "bug"] });
+      const bookmark2 = createBookmark({ id: "bm-002", tags: ["feature", "auth"] });
+
+      await repo.save(bookmark1);
+      await repo.save(bookmark2);
 
       const tags = await repo.getAllTags();
-      expect(tags).toEqual(["tag1", "tag2", "tag3"]);
+      expect(tags).toEqual(["auth", "bug", "feature"]);
     });
 
-    test("returns empty array when no bookmarks", async () => {
+    test("should return empty array when no bookmarks", async () => {
       const tags = await repo.getAllTags();
       expect(tags).toEqual([]);
-    });
-
-    test("returns sorted tags", async () => {
-      await repo.save(
-        createTestBookmark({ tags: ["zebra", "apple", "monkey"] }),
-      );
-
-      const tags = await repo.getAllTags();
-      expect(tags).toEqual(["apple", "monkey", "zebra"]);
     });
   });
 
   describe("count", () => {
-    beforeEach(async () => {
-      await repo.save(createTestBookmark({ id: "bm1", type: "session" }));
-      await repo.save(createTestBookmark({ id: "bm2", type: "message" }));
-      await repo.save(createTestBookmark({ id: "bm3", type: "session" }));
-    });
+    test("should count all bookmarks when no filter", async () => {
+      await repo.save(createBookmark({ id: "bm-001" }));
+      await repo.save(createBookmark({ id: "bm-002" }));
 
-    test("counts all bookmarks without filter", async () => {
       const count = await repo.count();
-      expect(count).toBe(3);
+      expect(count).toBe(2);
     });
 
-    test("counts filtered bookmarks", async () => {
-      const count = await repo.count({ type: "session" });
-      expect(count).toBe(2);
+    test("should count filtered bookmarks", async () => {
+      await repo.save(createBookmark({ id: "bm-001", sessionId: "session-001" }));
+      await repo.save(createBookmark({ id: "bm-002", sessionId: "session-002" }));
+
+      const count = await repo.count({ sessionId: "session-001" });
+      expect(count).toBe(1);
     });
   });
 
   describe("clear", () => {
-    test("removes all bookmarks", async () => {
-      await repo.save(createTestBookmark({ id: "bm1" }));
-      await repo.save(createTestBookmark({ id: "bm2" }));
+    test("should remove all bookmarks", async () => {
+      await repo.save(createBookmark({ id: "bm-001" }));
+      await repo.save(createBookmark({ id: "bm-002" }));
 
       repo.clear();
 
-      const bookmarks = await repo.list();
-      expect(bookmarks).toEqual([]);
+      const count = await repo.count();
+      expect(count).toBe(0);
     });
   });
 });

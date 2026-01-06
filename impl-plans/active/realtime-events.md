@@ -376,7 +376,7 @@ Implement state management for monitored sessions.
 
 ### TASK-005: Session Monitor
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-001 in realtime-watcher.md, TASK-003, TASK-004)
 **Deliverables**: `src/polling/monitor.ts`
 **Estimated Effort**: Medium
@@ -385,12 +385,12 @@ Implement state management for monitored sessions.
 Implement high-level SessionMonitor class.
 
 **Completion Criteria**:
-- [ ] watch() yields events from transcript
-- [ ] Integrates watcher, parser, state manager
-- [ ] getState() returns current state
-- [ ] stop() cleans up all resources
-- [ ] Integration tests
-- [ ] Type checking passes
+- [x] watch() yields events from transcript
+- [x] Integrates watcher, parser, state manager
+- [x] getState() returns current state
+- [x] stop() cleans up all resources
+- [x] Integration tests
+- [x] Type checking passes
 
 ---
 
@@ -507,7 +507,19 @@ Parallelizable groups:
 
 ## Progress Log
 
-(To be filled during implementation)
+### Session: 2026-01-06 11:42
+**Tasks Completed**: TASK-005
+**Notes**:
+- Implemented SessionMonitor class in src/polling/monitor.ts
+- Integrates TranscriptWatcher, JsonlStreamParser, EventParser, and StateManager
+- watch() method yields monitor events from transcript files
+- getState() returns current session state from StateManager
+- stop() cleans up all watcher resources
+- Added comprehensive integration tests in src/polling/monitor.test.ts
+- Enhanced MockFileSystem with writeFileSync and appendFileSync for testing
+- Configured TranscriptWatcher with includeExisting: true by default for monitoring use case
+- All tests passing (9/9)
+- Type checking passes
 
 ---
 

@@ -36,13 +36,17 @@ Use `impl-plans/PROGRESS.json` instead, which contains:
 **Workflow**:
 1. Read `PROGRESS.json` (~2K tokens) to find executable tasks
 2. Read ONLY the specific plan file when executing a task (~10K tokens)
-3. After execution, update BOTH the plan file AND `PROGRESS.json` **IMMEDIATELY** (with lock)
+3. After execution:
+   - `impl-exec-specific` updates the **plan file** immediately
+   - **Main conversation** updates `PROGRESS.json` after impl-exec-specific completes
 
-## CRITICAL: Update PROGRESS.json After EACH Task
+## Responsibility Split: Plan File vs PROGRESS.json
 
-**IMPORTANT**: Update PROGRESS.json IMMEDIATELY after each task completes. DO NOT wait until all tasks finish.
+**Clear ownership to avoid conflicts**:
+- `impl-exec-specific` agent: Updates **plan file** (task status, progress log)
+- Main conversation: Updates **PROGRESS.json** (after impl-exec-specific completes)
 
-### File Locking Protocol
+### File Locking Protocol (for main conversation PROGRESS.json updates)
 
 Lock file path: `impl-plans/.progress.lock`
 
@@ -59,7 +63,7 @@ echo "<plan-name>:<TASK-ID>" > impl-plans/.progress.lock
 rm -f impl-plans/.progress.lock
 ```
 
-This prevents race conditions when multiple sub-agents try to update concurrently.
+This prevents race conditions when multiple conversations update concurrently.
 
 ### PROGRESS.json Structure
 
@@ -97,11 +101,11 @@ Two execution modes are available:
 
 ### Auto Mode (`impl-exec-auto`)
 
-**Architecture**: Analysis-only subagent + Main conversation orchestration.
+**Architecture**: Analysis-only subagent + Main conversation orchestration via `impl-exec-specific`.
 
 Claude Code does not support nested subagent spawning (subagents cannot use Task tool). Therefore:
 - `impl-exec-auto` agent: Analyzes plans and returns executable task list
-- Main conversation: Spawns ts-coding agents and updates PROGRESS.json
+- Main conversation: **Invokes `impl-exec-specific`** to execute tasks (NOT direct ts-coding spawning)
 
 **Cross-Plan Mode** (no argument - recommended):
 ```bash
@@ -128,15 +132,21 @@ Step 1: `impl-exec-auto` agent (analysis only):
 3. Reads plan files for task details
 4. Returns structured task list to main conversation
 
-Step 2: Main conversation (orchestration):
-1. Parses the executable tasks list
-2. For each task (sequentially):
-   a. Spawns `ts-coding` agent with task details
-   b. Spawns `check-and-test-after-modify` agent
-   c. Spawns `ts-review` agent (up to 3 iterations)
-   d. Updates PROGRESS.json (with lock)
-   e. Updates plan file status
-3. Reports completion and newly unblocked tasks
+Step 2: Main conversation (orchestration via impl-exec-specific):
+1. Parses the executable tasks list from impl-exec-auto
+2. Groups tasks by plan
+3. For each plan with executable tasks:
+   a. Invokes `impl-exec-specific` with task IDs
+   b. `impl-exec-specific` handles: ts-coding, check-and-test, ts-review cycle, plan updates
+4. After `impl-exec-specific` completes:
+   a. Updates PROGRESS.json status (with lock)
+   b. Reports completion and newly unblocked tasks
+5. Repeats for remaining plans/tasks
+
+**Why impl-exec-specific?**
+- Main conversation lacks review cycle logic and plan update format
+- impl-exec-auto cannot spawn subagents (Claude Code limitation)
+- impl-exec-specific handles the full implementation cycle
 
 ### Specific Mode (`impl-exec-specific`)
 
@@ -191,31 +201,17 @@ Execute tasks one at a time to avoid LLM errors:
 
 **CRITICAL**: Execute this phase IMMEDIATELY after each task completes. DO NOT batch updates.
 
-After task execution:
+**Responsibility Split (when using impl-exec-specific)**:
+- `impl-exec-specific` agent: Updates **plan file** only
+- Main conversation: Updates **PROGRESS.json** after impl-exec-specific completes
 
-1. **Acquire lock**:
-   ```bash
-   while [ -f impl-plans/.progress.lock ]; do sleep 1; done
-   echo "<plan-name>:<TASK-ID>" > impl-plans/.progress.lock
-   ```
+After task execution (within impl-exec-specific):
 
-2. **Update task status in PROGRESS.json**:
-   ```json
-   // Edit impl-plans/PROGRESS.json
-   "TASK-001": { "status": "Completed", "parallelizable": true, "deps": [] }
-   ```
-   Also update `lastUpdated` timestamp.
-
-3. **Release lock**:
-   ```bash
-   rm -f impl-plans/.progress.lock
-   ```
-
-4. **Update task status in the plan file**:
+1. **Update task status in the plan file**:
    - Not Started -> In Progress (when started)
    - In Progress -> Completed (when all criteria met)
 
-5. **Add progress log entry** to plan file:
+2. **Add progress log entry** to plan file:
    ```markdown
    ### Session: YYYY-MM-DD HH:MM
    **Tasks Completed**: TASK-001, TASK-002
@@ -224,11 +220,11 @@ After task execution:
    **Notes**: Implementation notes and decisions made
    ```
 
-6. **Check completion criteria** for the overall plan
+3. **Check completion criteria** for the overall plan
 
-7. **Move to completed** if all tasks done: `impl-plans/active/` -> `impl-plans/completed/`
+4. **Move to completed** if all tasks done: `impl-plans/active/` -> `impl-plans/completed/`
 
-**IMPORTANT**: Always update BOTH `PROGRESS.json` AND the plan file to keep them in sync.
+**NOTE**: PROGRESS.json is updated by **main conversation** after impl-exec-specific completes. See "Main Conversation Orchestration Protocol" section for details.
 
 ## Task Invocation Format
 
@@ -641,8 +637,8 @@ If only some tasks complete:
 1. **Read this skill first**: Always read this skill before execution
 2. **Execute sequentially**: Run tasks ONE AT A TIME to avoid LLM errors
 3. **Complete each task fully**: Run ts-coding -> check-and-test -> ts-review before next task
-4. **Update PROGRESS.json IMMEDIATELY**: Update with lock AFTER EACH task (not batched at end)
-5. **Use file locking**: Acquire/release `impl-plans/.progress.lock` around PROGRESS.json updates
+4. **Update plan file IMMEDIATELY**: Update task status in plan file AFTER EACH task
+5. **PROGRESS.json updated by main conversation**: Main conversation updates PROGRESS.json (with lock) after impl-exec-specific completes
 6. **Fail gracefully**: If a task fails, document it and proceed to next task
 7. **Invoke check-and-test**: After ts-coding completes, invoke `check-and-test-after-modify`
 8. **Run review cycle**: After tests pass, invoke `ts-review` for code review (max 3 iterations)
@@ -735,89 +731,90 @@ When a phase-gating plan completes (e.g., foundation-and-core):
 
 ## Main Conversation Orchestration Protocol
 
-After `impl-exec-auto` returns the executable tasks list, the main conversation handles orchestration.
+After `impl-exec-auto` returns the executable tasks list, the main conversation handles orchestration **via `impl-exec-specific`**.
 
-### Task Execution Loop
+**IMPORTANT**: DO NOT spawn ts-coding agents directly from the main conversation. Use `impl-exec-specific` instead.
 
-For each task in the executable tasks list:
+### Orchestration Workflow
 
 ```
-1. Spawn ts-coding agent:
-   Task tool parameters:
-     subagent_type: ts-coding
-     prompt: |
-       Purpose: <task description>
-       Reference Document: <plan file path>
-       Implementation Target: <deliverables list>
-       Completion Criteria:
-         - <criterion 1>
-         - <criterion 2>
+1. Receive executable tasks list from impl-exec-auto
+2. Group tasks by plan name
+3. For each plan with executable tasks:
+   a. Invoke impl-exec-specific:
+      /impl-exec-specific <plan-name> <TASK-IDs>
 
-2. Spawn check-and-test-after-modify agent:
-   Task tool parameters:
-     subagent_type: check-and-test-after-modify
-     prompt: Verify changes for <plan-name>:<TASK-ID>
+      Example:
+      /impl-exec-specific session-groups-runner TASK-008
+      /impl-exec-specific command-queue-core TASK-005 TASK-006
+      /impl-exec-specific bookmarks-types TASK-003 TASK-004
 
-3. Spawn ts-review agent (up to 3 iterations):
-   Task tool parameters:
-     subagent_type: ts-review
-     prompt: |
-       Design Reference: <design doc path>
-       Implementation Plan: <plan file path>
-       Task ID: <TASK-ID>
-       Implemented Files:
-         - <file 1>
-         - <file 2>
-       Iteration: 1
+   b. impl-exec-specific handles internally:
+      - ts-coding spawning
+      - check-and-test-after-modify
+      - ts-review cycle (up to 3 iterations)
+      - Plan file status updates
 
-4. Update PROGRESS.json (with lock):
-   a. Acquire lock:
-      Bash: while [ -f impl-plans/.progress.lock ]; do sleep 1; done && echo "<plan>:<task>" > impl-plans/.progress.lock
-   b. Edit PROGRESS.json: Change task status to "Completed"
-   c. Release lock:
-      Bash: rm -f impl-plans/.progress.lock
+4. After impl-exec-specific completes:
+   a. Update PROGRESS.json (with lock)
+   b. Report results
 
-5. Update plan file:
-   Edit: Change task status to "Completed" in plan file
-   Edit: Add progress log entry
-
-6. Proceed to next task
+5. Repeat for remaining plans/tasks
 ```
 
-### PROGRESS.json Update Example
+### Why Use impl-exec-specific?
 
-```json
-// Before:
-"TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] }
+| Approach | Problem |
+|----------|---------|
+| Main spawns ts-coding directly | Main lacks review cycle logic, plan update format |
+| impl-exec-auto spawns ts-coding | Claude Code prohibits nested subagent spawning |
+| **Main invokes impl-exec-specific** | Correct - full implementation cycle handled |
 
-// After:
-"TASK-001": { "status": "Completed", "parallelizable": true, "deps": [] }
+### PROGRESS.json Update (After impl-exec-specific Completes)
+
+```
+1. Acquire lock:
+   Bash: while [ -f impl-plans/.progress.lock ]; do sleep 1; done && echo "<plan>:<task>" > impl-plans/.progress.lock
+
+2. Edit PROGRESS.json:
+   // Before:
+   "TASK-001": { "status": "Not Started", "parallelizable": true, "deps": [] }
+
+   // After:
+   "TASK-001": { "status": "Completed", "parallelizable": true, "deps": [] }
+
+   Also update `lastUpdated` timestamp.
+
+3. Release lock:
+   Bash: rm -f impl-plans/.progress.lock
 ```
 
-Also update the `lastUpdated` timestamp.
-
-### Plan File Status Update
+### Example Main Conversation Response
 
 ```markdown
-### TASK-001: Core Implementation
-**Status**: Completed  <!-- Changed from "Not Started" -->
-```
+The impl-exec-auto analysis found 9 executable tasks across 6 plans.
 
-### Progress Log Entry
+Executing via impl-exec-specific:
 
-Add to the plan file's Progress Log section:
+1. /impl-exec-specific session-groups-runner TASK-008
+   Result: TASK-008 completed (2 review iterations)
 
-```markdown
-### Session: YYYY-MM-DD HH:MM
-**Tasks Completed**: TASK-001
-**Review Iterations**: 2
-**Notes**: Implementation notes
+2. /impl-exec-specific command-queue-core TASK-005 TASK-006
+   Result: TASK-005, TASK-006 completed
+
+3. /impl-exec-specific markdown-parser-core TASK-004
+   Result: TASK-004 completed
+
+... (continue for remaining plans)
+
+All 9 tasks completed. PROGRESS.json updated.
+Newly unblocked tasks: TASK-009, TASK-010
 ```
 
 ### Error Handling
 
-If a task fails:
-1. Keep task status as "In Progress" (not completed)
-2. Document the error in progress log
-3. Continue with next task if possible
-4. Report failures at the end
+If impl-exec-specific reports a task failure:
+1. Keep task status as "In Progress" in PROGRESS.json
+2. Report the failure to user
+3. Continue with next plan if possible
+4. Suggest re-running failed tasks: `/impl-exec-specific <plan-name> <failed-task-id>`

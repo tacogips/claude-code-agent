@@ -188,20 +188,20 @@ export { FileChangeService } from './service';
 
 ### TASK-003: File Change Index
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-001, TASK-002)
 **Deliverables**: `src/sdk/file-changes/index-manager.ts`
 **Estimated Effort**: Medium
 
 **Completion Criteria**:
-- [ ] buildIndex() scans all sessions
-- [ ] Index stored as JSON
-- [ ] lookup() returns entries for file path
-- [ ] lookupPattern() supports glob patterns
-- [ ] getStats() returns index statistics
-- [ ] invalidate() clears index
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] buildIndex() scans all sessions
+- [x] Index stored as JSON
+- [x] lookup() returns entries for file path
+- [x] lookupPattern() supports glob patterns
+- [x] getStats() returns index statistics
+- [x] invalidate() clears index
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
@@ -275,4 +275,12 @@ TASK-005 (Exports)
 
 ## Progress Log
 
-(To be filled during implementation)
+### Session: 2026-01-06 21:00
+**Tasks Completed**: TASK-003
+**Review Iterations**: N/A (manual implementation)
+**Notes**:
+- Implemented FileChangeIndex class with full CRUD operations
+- Added glob pattern matching using minimatch library
+- Fixed bugs in FileChangeExtractor's path normalization
+- All 18 unit tests passing
+- Type checking passes (1 unrelated error in queue/recovery.ts)

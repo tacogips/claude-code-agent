@@ -1,0 +1,188 @@
+/**
+ * Claude Code Agent SDK
+ *
+ * TypeScript SDK for programmatic integration with Claude Code sessions.
+ *
+ * This module provides the public API for external applications to integrate
+ * with claude-code-agent. It includes types, managers, and utilities for
+ * session monitoring, session groups, command queues, and real-time events.
+ *
+ * @example Session Groups
+ * ```typescript
+ * import { GroupManager, GroupRunner } from "claude-code-agent/sdk";
+ *
+ * // Create a session group
+ * const manager = new GroupManager(container, repository, emitter);
+ * const group = await manager.createGroup({
+ *   name: "Cross-Project Refactor",
+ *   description: "Refactor auth across services",
+ * });
+ *
+ * // Add sessions
+ * await manager.addSession(group.id, {
+ *   id: "001-uuid-session1",
+ *   projectPath: "/path/to/project-a",
+ *   prompt: "Implement auth module",
+ *   status: "pending",
+ *   dependsOn: [],
+ *   createdAt: new Date().toISOString(),
+ * });
+ *
+ * // Run with concurrent execution
+ * const runner = new GroupRunner(container, repository, emitter);
+ * await runner.run(group.id, {
+ *   maxConcurrent: 3,
+ *   respectDependencies: true,
+ * });
+ * ```
+ *
+ * @packageDocumentation
+ */
+
+// Session Groups
+export type {
+  // Core types
+  GroupStatus,
+  BudgetConfig,
+  ConcurrencyConfig,
+  SessionConfig,
+  GroupConfig,
+  GroupSession,
+  SessionGroup,
+  // Events
+  GroupCreatedEvent,
+  GroupStartedEvent,
+  GroupCompletedEvent,
+  GroupPausedEvent,
+  GroupResumedEvent,
+  GroupFailedEvent,
+  GroupSessionStartedEvent,
+  GroupSessionCompletedEvent,
+  GroupSessionFailedEvent,
+  BudgetWarningEvent,
+  BudgetExceededEvent,
+  DependencyWaitingEvent,
+  DependencyResolvedEvent,
+  SessionProgressEvent,
+  GroupProgressEvent,
+  GroupEvent,
+  GroupEventMap,
+  GroupEventType,
+  // Progress
+  SessionProgress,
+  GroupProgress,
+  // Manager
+  CreateGroupOptions,
+  // Config Generator
+  SessionConfigResult,
+  ConfigGeneratorError,
+  // Dependency Graph
+  BlockedSession,
+  // Runner
+  RunOptions,
+  PauseReason,
+  RunnerState,
+} from "./group";
+
+export {
+  // Type guards and defaults
+  isTerminalGroupStatus,
+  canResumeGroup,
+  isActiveGroup,
+  DEFAULT_BUDGET_CONFIG,
+  DEFAULT_CONCURRENCY_CONFIG,
+  DEFAULT_SESSION_CONFIG,
+  DEFAULT_GROUP_CONFIG,
+  // Progress utilities
+  ProgressAggregator,
+  createSessionProgress,
+  calculateBudgetUsage,
+  isBudgetWarning,
+  isBudgetExceeded,
+  // Classes
+  GroupManager,
+  ConfigGenerator,
+  DependencyGraph,
+  GroupRunner,
+} from "./group";
+
+// Command Queue
+export type {
+  // Core types
+  QueueStatus,
+  CommandStatus,
+  SessionMode,
+  QueueConfig,
+  QueueStats,
+  QueueCommand,
+  CommandQueue,
+  // Events
+  BaseQueueEvent,
+  QueueCreatedEvent,
+  QueueStartedEvent,
+  QueuePausedEvent,
+  QueueResumedEvent,
+  QueueStoppedEvent,
+  QueueCompletedEvent,
+  QueueFailedEvent,
+  CommandStartedEvent,
+  CommandCompletedEvent,
+  CommandFailedEvent,
+  CommandAddedEvent,
+  CommandUpdatedEvent,
+  CommandRemovedEvent,
+  CommandReorderedEvent,
+  CommandModeChangedEvent,
+  QueueEvent,
+} from "./queue";
+
+// Events
+export type {
+  // Base and session events
+  BaseEvent,
+  SessionStartedEvent,
+  SessionEndedEvent,
+  MessageReceivedEvent,
+  ToolStartedEvent,
+  ToolCompletedEvent,
+  TasksUpdatedEvent,
+  SessionEvent,
+  SdkEvent,
+  EventMap,
+  EventType,
+  // Event emitter
+  EventHandler,
+  Subscription,
+} from "./events";
+
+export { EventEmitter, createEventEmitter } from "./events";
+
+// Session Reader
+export { SessionReader } from "./session-reader";
+
+// JSONL Parser
+export {
+  parseJsonl,
+  parseJsonlWithRecovery,
+  parseJsonLine,
+  parseJsonlStream,
+  toJsonl,
+  toJsonLine,
+} from "./jsonl-parser";
+
+// Markdown Parser
+export {
+  parseMarkdown,
+  type ParsedMarkdown,
+  type MarkdownSection,
+  type HeadingInfo,
+  type ContentBlock,
+  type ParagraphBlock,
+  type CodeBlock,
+  type ListBlock,
+  type ListItem,
+  type BlockquoteBlock,
+  type TableBlock,
+  type MarkdownMetadata,
+  type ParseOptions,
+} from "./markdown-parser";

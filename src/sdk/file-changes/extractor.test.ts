@@ -52,8 +52,8 @@ describe("FileChangeExtractor", () => {
 
       const result = await extractor.extractFromTranscript(transcriptPath);
 
-      expect(result).toHaveLength(1);
-      const changedFile = result[0];
+      expect(result.changedFiles).toHaveLength(1);
+      const changedFile = result.changedFiles[0];
       expect(changedFile).toBeDefined();
       expect(changedFile!.path).toContain("src/test.ts");
       expect(changedFile!.changeCount).toBe(1);
@@ -93,8 +93,8 @@ describe("FileChangeExtractor", () => {
 
       const result = await extractor.extractFromTranscript(transcriptPath);
 
-      expect(result).toHaveLength(1);
-      const changedFile = result[0];
+      expect(result.changedFiles).toHaveLength(1);
+      const changedFile = result.changedFiles[0];
       expect(changedFile).toBeDefined();
       expect(changedFile!.path).toContain("src/new.ts");
       expect(changedFile!.changeCount).toBe(1);
@@ -143,9 +143,9 @@ describe("FileChangeExtractor", () => {
 
       const result = await extractor.extractFromTranscript(transcriptPath);
 
-      expect(result).toHaveLength(2);
-      expect(result.some((f) => f.path.includes("file1.ts"))).toBe(true);
-      expect(result.some((f) => f.path.includes("file2.ts"))).toBe(true);
+      expect(result.changedFiles).toHaveLength(2);
+      expect(result.changedFiles.some((f) => f.path.includes("file1.ts"))).toBe(true);
+      expect(result.changedFiles.some((f) => f.path.includes("file2.ts"))).toBe(true);
     });
 
     test("aggregates multiple changes to same file", async () => {
@@ -199,8 +199,8 @@ describe("FileChangeExtractor", () => {
 
       const result = await extractor.extractFromTranscript(transcriptPath);
 
-      expect(result).toHaveLength(1);
-      const changedFile = result[0];
+      expect(result.changedFiles).toHaveLength(1);
+      const changedFile = result.changedFiles[0];
       expect(changedFile).toBeDefined();
       expect(changedFile!.changeCount).toBe(2);
       expect(changedFile!.changes).toHaveLength(2);
@@ -252,8 +252,8 @@ describe("FileChangeExtractor", () => {
 
       const result = await extractor.extractFromTranscript(transcriptPath);
 
-      expect(result).toHaveLength(1);
-      const changedFile = result[0];
+      expect(result.changedFiles).toHaveLength(1);
+      const changedFile = result.changedFiles[0];
       expect(changedFile).toBeDefined();
       expect(changedFile!.version).toBe(3);
       expect(changedFile!.backupFileName).toBe("hash@v3");
@@ -293,8 +293,8 @@ describe("FileChangeExtractor", () => {
         includeContent: true,
       });
 
-      expect(result).toHaveLength(1);
-      const changedFile = result[0];
+      expect(result.changedFiles).toHaveLength(1);
+      const changedFile = result.changedFiles[0];
       expect(changedFile).toBeDefined();
       const change = changedFile!.changes[0];
       expect(change).toBeDefined();
@@ -353,8 +353,8 @@ describe("FileChangeExtractor", () => {
         extensions: [".ts"],
       });
 
-      expect(result).toHaveLength(1);
-      expect(result[0]!.path).toContain(".ts");
+      expect(result.changedFiles).toHaveLength(1);
+      expect(result.changedFiles[0]!.path).toContain(".ts");
     });
 
     test("filters by directory", async () => {
@@ -408,8 +408,8 @@ describe("FileChangeExtractor", () => {
         directories: ["/home/user/project/src"],
       });
 
-      expect(result).toHaveLength(1);
-      expect(result[0]!.path).toContain("/src/");
+      expect(result.changedFiles).toHaveLength(1);
+      expect(result.changedFiles[0]!.path).toContain("/src/");
     });
 
     test("handles empty transcript", async () => {
@@ -418,7 +418,7 @@ describe("FileChangeExtractor", () => {
 
       const result = await extractor.extractFromTranscript(transcriptPath);
 
-      expect(result).toHaveLength(0);
+      expect(result.changedFiles).toHaveLength(0);
     });
 
     test("handles malformed JSON lines gracefully", async () => {
@@ -455,7 +455,7 @@ describe("FileChangeExtractor", () => {
       const result = await extractor.extractFromTranscript(transcriptPath);
 
       // Should still parse valid lines
-      expect(result).toHaveLength(1);
+      expect(result.changedFiles).toHaveLength(1);
     });
   });
 

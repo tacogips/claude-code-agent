@@ -1,8 +1,8 @@
 /**
- * In-memory implementation of BookmarkRepository.
+ * In-memory bookmark repository for testing.
  *
- * Provides in-memory storage for bookmarks using a Map.
- * Primarily for testing and development purposes.
+ * Provides a Map-based implementation of BookmarkRepository
+ * for use in unit tests and development.
  *
  * @module repository/in-memory/bookmark-repository
  */
@@ -18,56 +18,49 @@ import type {
 /**
  * In-memory implementation of BookmarkRepository.
  *
- * All data is stored in memory and will be lost when the process exits.
- * Suitable for testing and development.
+ * Uses a Map for storage with bookmark.id as the key.
+ * All data is lost when the instance is destroyed.
  */
 export class InMemoryBookmarkRepository implements BookmarkRepository {
-  private bookmarks: Map<string, Bookmark>;
-
-  constructor() {
-    this.bookmarks = new Map();
-  }
+  private bookmarks = new Map<string, Bookmark>();
 
   /**
    * Find a bookmark by its ID.
-   *
-   * @param id - Bookmark ID
-   * @returns Bookmark if found, null otherwise
    */
   async findById(id: string): Promise<Bookmark | null> {
     return this.bookmarks.get(id) ?? null;
   }
 
   /**
-   * Find all bookmarks for a session.
-   *
-   * @param sessionId - Session ID
-   * @returns Array of bookmarks for the session
+   * Find bookmarks by session ID.
    */
   async findBySession(sessionId: string): Promise<readonly Bookmark[]> {
-    return Array.from(this.bookmarks.values()).filter(
-      (bookmark) => bookmark.sessionId === sessionId,
-    );
+    const results: Bookmark[] = [];
+    const bookmarks = Array.from(this.bookmarks.values());
+    for (const bookmark of bookmarks) {
+      if (bookmark.sessionId === sessionId) {
+        results.push(bookmark);
+      }
+    }
+    return results;
   }
 
   /**
    * Find bookmarks by tag.
-   *
-   * @param tag - Tag to search for
-   * @returns Array of bookmarks with the tag
    */
   async findByTag(tag: string): Promise<readonly Bookmark[]> {
-    return Array.from(this.bookmarks.values()).filter((bookmark) =>
-      bookmark.tags.includes(tag),
-    );
+    const results: Bookmark[] = [];
+    const bookmarks = Array.from(this.bookmarks.values());
+    for (const bookmark of bookmarks) {
+      if (bookmark.tags.includes(tag)) {
+        results.push(bookmark);
+      }
+    }
+    return results;
   }
 
   /**
    * List bookmarks with optional filtering and sorting.
-   *
-   * @param filter - Filter criteria
-   * @param sort - Sort options
-   * @returns Array of bookmarks matching the filter
    */
   async list(
     filter?: BookmarkFilter,
@@ -77,12 +70,77 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
 
     // Apply filters
     if (filter) {
-      results = this.applyFilter(results, filter);
+      results = results.filter((bookmark) => {
+        // Filter by type
+        if (filter.type !== undefined && bookmark.type !== filter.type) {
+          return false;
+        }
+
+        // Filter by sessionId
+        if (
+          filter.sessionId !== undefined &&
+          bookmark.sessionId !== filter.sessionId
+        ) {
+          return false;
+        }
+
+        // Filter by tags (bookmark must have ALL specified tags)
+        if (filter.tags !== undefined && filter.tags.length > 0) {
+          const hasAllTags = filter.tags.every((tag) =>
+            bookmark.tags.includes(tag),
+          );
+          if (!hasAllTags) {
+            return false;
+          }
+        }
+
+        // Filter by name (partial match)
+        if (
+          filter.nameContains !== undefined &&
+          !bookmark.name.toLowerCase().includes(filter.nameContains.toLowerCase())
+        ) {
+          return false;
+        }
+
+        // Filter by since date
+        if (filter.since !== undefined) {
+          const sinceDate =
+            typeof filter.since === "string"
+              ? new Date(filter.since)
+              : filter.since;
+          const createdDate = new Date(bookmark.createdAt);
+          if (createdDate < sinceDate) {
+            return false;
+          }
+        }
+
+        return true;
+      });
     }
 
     // Apply sorting
     if (sort) {
-      results = this.applySort(results, sort);
+      results.sort((a, b) => {
+        const aValue = a[sort.field];
+        const bValue = b[sort.field];
+
+        let comparison = 0;
+        if (aValue < bValue) {
+          comparison = -1;
+        } else if (aValue > bValue) {
+          comparison = 1;
+        }
+
+        return sort.direction === "asc" ? comparison : -comparison;
+      });
+    }
+
+    // Apply pagination
+    if (filter?.offset !== undefined) {
+      results = results.slice(filter.offset);
+    }
+    if (filter?.limit !== undefined) {
+      results = results.slice(0, filter.limit);
     }
 
     return results;
@@ -91,38 +149,57 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
   /**
    * Search bookmarks by query string.
    *
-   * Searches in name, description, and tags.
-   *
-   * @param options - Search options
-   * @returns Array of matching bookmarks
+   * Searches in name, description, and tags fields.
+   * Returns results sorted by relevance (exact matches first).
    */
-  async search(options: BookmarkSearchOptions): Promise<readonly Bookmark[]> {
+  async search(
+    options: BookmarkSearchOptions,
+  ): Promise<readonly Bookmark[]> {
     const query = options.query.toLowerCase();
-    let results = Array.from(this.bookmarks.values());
+    const results: Bookmark[] = [];
+    const bookmarks = Array.from(this.bookmarks.values());
 
-    results = results.filter((bookmark) => {
+    for (const bookmark of bookmarks) {
       // Search in name
       if (bookmark.name.toLowerCase().includes(query)) {
-        return true;
+        results.push(bookmark);
+        continue;
       }
 
       // Search in description
-      if (bookmark.description?.toLowerCase().includes(query)) {
-        return true;
+      if (
+        bookmark.description !== undefined &&
+        bookmark.description.toLowerCase().includes(query)
+      ) {
+        results.push(bookmark);
+        continue;
       }
 
       // Search in tags
-      if (
-        bookmark.tags.some((tag: string) => tag.toLowerCase().includes(query))
-      ) {
-        return true;
+      const matchesTag = bookmark.tags.some((tag) =>
+        tag.toLowerCase().includes(query),
+      );
+      if (matchesTag) {
+        results.push(bookmark);
+        continue;
       }
+    }
 
-      return false;
+    // Sort by relevance (exact name matches first)
+    results.sort((a, b) => {
+      const aExactName = a.name.toLowerCase() === query;
+      const bExactName = b.name.toLowerCase() === query;
+
+      if (aExactName && !bExactName) return -1;
+      if (!aExactName && bExactName) return 1;
+
+      // Secondary sort by name
+      return a.name.localeCompare(b.name);
     });
 
+    // Apply limit
     if (options.limit !== undefined) {
-      results = results.slice(0, options.limit);
+      return results.slice(0, options.limit);
     }
 
     return results;
@@ -132,8 +209,6 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
    * Save a bookmark.
    *
    * Creates a new bookmark or updates an existing one.
-   *
-   * @param bookmark - Bookmark to save
    */
   async save(bookmark: Bookmark): Promise<void> {
     this.bookmarks.set(bookmark.id, bookmark);
@@ -141,26 +216,20 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
 
   /**
    * Update a bookmark by ID.
-   *
-   * Updates mutable fields (name, description, tags) of an existing bookmark.
-   *
-   * @param id - Bookmark ID to update
-   * @param updates - Partial bookmark data to update
    */
-  async update(id: string, updates: Partial<Bookmark>): Promise<void> {
+  async update(
+    id: string,
+    updates: Partial<Omit<Bookmark, "id">>,
+  ): Promise<void> {
     const existing = this.bookmarks.get(id);
-    if (!existing) {
+    if (existing === undefined) {
       throw new Error(`Bookmark not found: ${id}`);
     }
 
     const updated: Bookmark = {
       ...existing,
       ...updates,
-      id: existing.id, // ID cannot be changed
-      type: existing.type, // Type cannot be changed
-      sessionId: existing.sessionId, // Session ID cannot be changed
-      createdAt: existing.createdAt, // Created timestamp cannot be changed
-      updatedAt: new Date().toISOString(), // Always update timestamp
+      id, // Ensure ID cannot be changed
     };
 
     this.bookmarks.set(id, updated);
@@ -169,7 +238,6 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
   /**
    * Delete a bookmark by ID.
    *
-   * @param id - Bookmark ID to delete
    * @returns True if bookmark was deleted, false if not found
    */
   async delete(id: string): Promise<boolean> {
@@ -178,116 +246,32 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
 
   /**
    * Get all unique tags across all bookmarks.
-   *
-   * @returns Array of unique tag strings
    */
   async getAllTags(): Promise<readonly string[]> {
-    const tagsSet = new Set<string>();
-
-    for (const bookmark of this.bookmarks.values()) {
+    const tags = new Set<string>();
+    const bookmarks = Array.from(this.bookmarks.values());
+    for (const bookmark of bookmarks) {
       for (const tag of bookmark.tags) {
-        tagsSet.add(tag);
+        tags.add(tag);
       }
     }
-
-    return Array.from(tagsSet).sort();
+    return Array.from(tags).sort();
   }
 
   /**
    * Count bookmarks matching the filter.
-   *
-   * @param filter - Filter criteria
-   * @returns Number of matching bookmarks
    */
   async count(filter?: BookmarkFilter): Promise<number> {
-    if (!filter) {
-      return this.bookmarks.size;
-    }
-
-    const filtered = this.applyFilter(
-      Array.from(this.bookmarks.values()),
-      filter,
-    );
-    return filtered.length;
+    const results = await this.list(filter);
+    return results.length;
   }
 
   /**
-   * Clear all bookmarks from memory.
+   * Clear all bookmarks.
    *
-   * Useful for test cleanup.
+   * Useful for cleaning up between tests.
    */
   clear(): void {
     this.bookmarks.clear();
-  }
-
-  /**
-   * Apply filter criteria to bookmark array.
-   */
-  private applyFilter(
-    bookmarks: Bookmark[],
-    filter: BookmarkFilter,
-  ): Bookmark[] {
-    let results = bookmarks;
-
-    if (filter.sessionId !== undefined) {
-      results = results.filter((b) => b.sessionId === filter.sessionId);
-    }
-
-    if (filter.type !== undefined) {
-      results = results.filter((b) => b.type === filter.type);
-    }
-
-    if (filter.tags !== undefined && filter.tags.length > 0) {
-      results = results.filter((b) =>
-        filter.tags!.some((tag: string) => b.tags.includes(tag)),
-      );
-    }
-
-    if (filter.nameContains !== undefined) {
-      const searchTerm = filter.nameContains.toLowerCase();
-      results = results.filter((b) =>
-        b.name.toLowerCase().includes(searchTerm),
-      );
-    }
-
-    if (filter.offset !== undefined) {
-      results = results.slice(filter.offset);
-    }
-
-    if (filter.limit !== undefined) {
-      results = results.slice(0, filter.limit);
-    }
-
-    return results;
-  }
-
-  /**
-   * Apply sort options to bookmark array.
-   */
-  private applySort(bookmarks: Bookmark[], sort: BookmarkSort): Bookmark[] {
-    const sorted = [...bookmarks];
-    const direction = sort.direction === "asc" ? 1 : -1;
-
-    sorted.sort((a, b) => {
-      let compareValue = 0;
-
-      switch (sort.field) {
-        case "name":
-          compareValue = a.name.localeCompare(b.name);
-          break;
-        case "createdAt":
-          compareValue =
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case "updatedAt":
-          compareValue =
-            new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
-          break;
-      }
-
-      return compareValue * direction;
-    });
-
-    return sorted;
   }
 }

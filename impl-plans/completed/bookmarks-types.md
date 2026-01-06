@@ -1,6 +1,6 @@
 # Bookmarks Types Implementation Plan
 
-**Status**: Ready
+**Status**: Completed
 **Design Reference**: design-docs/spec-viewers.md#6-bookmarks, design-docs/spec-sdk-api.md#5.3-bookmark-endpoints
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-06
@@ -129,7 +129,7 @@ interface BookmarkRepository {
 
 #### src/repository/file/bookmark-repository.ts
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 ```typescript
 class FileBookmarkRepository implements BookmarkRepository {
@@ -153,13 +153,13 @@ class FileBookmarkRepository implements BookmarkRepository {
 **Storage**: `~/.local/claude-code-agent/metadata/bookmarks/{bookmark-id}.json`
 
 **Checklist**:
-- [ ] JSON file storage per bookmark
-- [ ] Directory creation on first save
-- [ ] All CRUD operations implemented
-- [ ] findByTag uses linear scan or index
-- [ ] list() with filter support
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] JSON file storage per bookmark
+- [x] Directory creation on first save
+- [x] All CRUD operations implemented
+- [x] findByTag uses linear scan or index
+- [x] list() with filter support
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
@@ -167,7 +167,7 @@ class FileBookmarkRepository implements BookmarkRepository {
 
 #### src/repository/in-memory/bookmark-repository.ts
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 ```typescript
 class InMemoryBookmarkRepository implements BookmarkRepository {
@@ -187,11 +187,11 @@ class InMemoryBookmarkRepository implements BookmarkRepository {
 ```
 
 **Checklist**:
-- [ ] Map-based storage
-- [ ] All repository methods implemented
-- [ ] clear() method for tests
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] Map-based storage
+- [x] All repository methods implemented
+- [x] clear() method for tests
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
@@ -200,9 +200,9 @@ class InMemoryBookmarkRepository implements BookmarkRepository {
 | Module | File Path | Status | Tests |
 |--------|-----------|--------|-------|
 | Bookmark types | `src/sdk/bookmarks/types.ts` | COMPLETED | N/A |
-| Repository interface | `src/repository/bookmark-repository.ts` | NOT_STARTED | - |
-| File repository | `src/repository/file/bookmark-repository.ts` | NOT_STARTED | - |
-| In-memory repository | `src/repository/in-memory/bookmark-repository.ts` | NOT_STARTED | - |
+| Repository interface | `src/repository/bookmark-repository.ts` | COMPLETED | N/A |
+| File repository | `src/repository/file/bookmark-repository.ts` | COMPLETED | Pass (49 tests) |
+| In-memory repository | `src/repository/in-memory/bookmark-repository.ts` | COMPLETED | Pass (33 tests) |
 
 ---
 
@@ -243,35 +243,35 @@ class InMemoryBookmarkRepository implements BookmarkRepository {
 
 ### TASK-003: File Bookmark Repository
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-001, TASK-002)
 **Deliverables**: `src/repository/file/bookmark-repository.ts`
 **Estimated Effort**: Medium
 
 **Completion Criteria**:
-- [ ] JSON file storage per bookmark
-- [ ] Directory creation on first save
-- [ ] All CRUD operations implemented
-- [ ] findByTag uses linear scan or index
-- [ ] list() with filter support
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] JSON file storage per bookmark
+- [x] Directory creation on first save
+- [x] All CRUD operations implemented
+- [x] findByTag uses linear scan or index
+- [x] list() with filter support
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
 ### TASK-004: In-Memory Bookmark Repository
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-001, TASK-002)
 **Deliverables**: `src/repository/in-memory/bookmark-repository.ts`
 **Estimated Effort**: Small
 
 **Completion Criteria**:
-- [ ] Map-based storage
-- [ ] All repository methods implemented
-- [ ] clear() method for tests
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] Map-based storage
+- [x] All repository methods implemented
+- [x] clear() method for tests
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
@@ -310,9 +310,9 @@ Then: TASK-003, TASK-004
 
 ## Completion Criteria
 
-- [ ] All subtasks marked as Completed
-- [ ] All unit tests passing
-- [ ] Type checking passes
+- [x] All subtasks marked as Completed
+- [x] All unit tests passing
+- [x] Type checking passes
 
 ---
 
@@ -342,3 +342,80 @@ Then: TASK-003, TASK-004
 - JSDoc comments added for all public types and interfaces
 - File formatted with prettier
 - No tests needed for pure type definitions
+
+---
+
+### Session: 2026-01-07
+
+**Tasks Completed**: TASK-004 (In-Memory Bookmark Repository)
+
+**Summary**:
+- Created `src/repository/in-memory/bookmark-repository.ts` with complete implementation
+- Implemented all BookmarkRepository interface methods:
+  - findById, findBySession, findByTag
+  - list with filtering (type, sessionId, tags, nameContains, since) and sorting
+  - search with relevance ranking (exact name matches first)
+  - save, update, delete
+  - getAllTags, count
+  - clear() for test cleanup
+- Used Map<string, Bookmark> for storage
+- Implemented pagination support (offset, limit)
+- All filtering uses functional programming (filter, map, Array.from)
+- Created comprehensive unit tests (33 tests, all passing)
+- Type checking passes
+
+**Notes**:
+- Used Array.from() to convert Map iterators for TypeScript compatibility
+- Search prioritizes exact name matches over partial matches
+- Filter by tags requires bookmark to have ALL specified tags (AND logic)
+- Sort supports name, createdAt, updatedAt fields with asc/desc direction
+- Clear method provided specifically for test cleanup
+- All methods return Promise for interface compatibility
+
+---
+
+### Session: 2026-01-06 20:42
+
+**Tasks Completed**: TASK-003 (File Bookmark Repository)
+
+**Summary**:
+- Created `src/repository/file/bookmark-repository.ts` with complete file-based implementation
+- Implemented all BookmarkRepository interface methods:
+  - findById, findBySession, findByTag
+  - list with filtering (type, sessionId, tags, nameContains, since) and sorting
+  - search in metadata (name, description, tags)
+  - save, update, delete
+  - getAllTags, count
+- Storage location: `~/.local/claude-code-agent/metadata/bookmarks/{bookmark-id}.json`
+- Each bookmark stored as individual JSON file
+- Directory creation on first save via ensureDirectory()
+- Created comprehensive unit tests (49 tests, all passing)
+- Added export to `src/repository/file/index.ts`
+- Type checking passes
+
+**Implementation Details**:
+- Used FileSystem interface from Container for testability
+- Linear scan approach for filtering (suitable for bookmark volumes)
+- findByTag uses linear scan over all bookmarks
+- list() applies filters progressively with functional programming
+- Search supports case-insensitive matching in name, description, and tags
+- Handles invalid JSON files gracefully (skips during listing)
+- Ignores non-JSON files in bookmarks directory
+- Update method ensures ID cannot be changed
+- Delete returns boolean indicating success
+
+**Test Coverage**:
+- CRUD operations for all bookmark types (session, message, range)
+- Filtering by type, sessionId, tags, nameContains, since
+- Sorting by name, createdAt, updatedAt (asc/desc)
+- Search in metadata fields
+- Edge cases: empty directory, invalid JSON, non-JSON files
+- Pagination with offset and limit
+- getAllTags with deduplication and sorting
+- Count with and without filters
+
+**Notes**:
+- Followed FileGroupRepository pattern for consistency
+- All tests use MockFileSystem from test infrastructure
+- Storage path follows established metadata directory structure
+- Ready for BookmarkManager implementation (next plan)

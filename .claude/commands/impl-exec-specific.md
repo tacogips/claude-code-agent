@@ -122,6 +122,12 @@ Available tasks in <plan-name>:
    - Overall progress (X/Y tasks completed)
    - Next executable tasks
 
-3. If plan completed:
+3. **Update PROGRESS.json** (with lock):
+   - Acquire lock: `while [ -f impl-plans/.progress.lock ]; do sleep 1; done && echo "<plan>:<task>" > impl-plans/.progress.lock`
+   - Change completed task status from "Not Started" to "Completed"
+   - Update `lastUpdated` timestamp
+   - Release lock: `rm -f impl-plans/.progress.lock`
+
+4. If plan completed:
    - Confirm plan moved to `impl-plans/completed/`
    - Suggest next implementation plan

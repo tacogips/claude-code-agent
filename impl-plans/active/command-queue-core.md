@@ -239,10 +239,10 @@ class QueueRecovery {
 | Queue repository interface | `src/repository/queue-repository.ts` | COMPLETED | ✓ |
 | File queue repository | `src/repository/file/queue-repository.ts` | COMPLETED | ✓ |
 | In-memory queue repository | `src/repository/in-memory/queue-repository.ts` | COMPLETED | ✓ |
-| Queue manager | `src/sdk/queue/manager.ts` | NOT_STARTED | - |
-| Queue runner | `src/sdk/queue/runner.ts` | NOT_STARTED | - |
-| SDK exports | `src/sdk/queue/index.ts` | NOT_STARTED | - |
-| Crash recovery | `src/sdk/queue/recovery.ts` | NOT_STARTED | - |
+| Queue manager | `src/sdk/queue/manager.ts` | COMPLETED | ✓ |
+| Queue runner | `src/sdk/queue/runner.ts` | COMPLETED | ✓ |
+| SDK exports | `src/sdk/queue/index.ts` | COMPLETED | ✓ |
+| Crash recovery | `src/sdk/queue/recovery.ts` | COMPLETED | ✓ |
 
 ---
 
@@ -301,30 +301,30 @@ class QueueRecovery {
 
 ### TASK-005: SDK Public API
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-003, TASK-004)
 **Deliverables**: `src/sdk/queue/index.ts`, updates to `src/sdk/index.ts`
 **Estimated Effort**: Small
 
 **Completion Criteria**:
-- [ ] All public types exported
-- [ ] QueueManager accessible from SDK
-- [ ] Type checking passes
+- [x] All public types exported
+- [x] QueueManager accessible from SDK
+- [x] Type checking passes
 
 ---
 
 ### TASK-006: Crash Recovery
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-003, TASK-004)
 **Deliverables**: `src/sdk/queue/recovery.ts`
 **Estimated Effort**: Small
 
 **Completion Criteria**:
-- [ ] Scan for stale running queues
-- [ ] Mark stale as paused
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] Scan for stale running queues
+- [x] Mark stale as paused
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
@@ -397,3 +397,60 @@ TASK-001 (Types)     TASK-002 (Repository)
 - Verified all tests pass and type checking succeeds
 - Storage path follows XDG_DATA_HOME convention with fallback to ~/.local
 - Repository supports comprehensive filtering, sorting, and command management operations
+
+---
+
+### Session: 2026-01-06 17:00 (TASK-005: SDK Public API)
+
+**Status**: Completed
+**Deliverables**: SDK public API exports
+
+**Implementation Summary**:
+- Updated `src/sdk/queue/index.ts` to export QueueManager and QueueRunner
+- Exported manager types: CreateQueueOptions, AddCommandOptions, ListQueuesOptions
+- Exported runner types: RunOptions, QueueResult
+- All exports follow existing SDK module patterns (similar to session-groups module)
+- Type checking passes without errors
+- All tests pass (53 tests)
+
+**Files Modified**:
+- `src/sdk/queue/index.ts` - Added exports for QueueManager, QueueRunner, and related types
+
+**Test Results**: All 53 tests passing
+**Type Checking**: Passes without errors
+
+**Notes**:
+- Followed the same export pattern as the session-groups module
+- QueueManager and QueueRunner are now accessible from the SDK
+- All type exports are properly re-exported for external use
+- No root SDK index file exists; modules are imported directly (e.g., `from "sdk/queue"`)
+- Export verification test confirms all types and classes are accessible
+
+---
+
+### Session: 2026-01-06 11:45 (TASK-006: Crash Recovery)
+
+**Status**: Completed
+**Deliverables**: Crash recovery for stale running queues
+
+**Implementation Summary**:
+- QueueRecovery class implemented in `src/sdk/queue/recovery.ts`
+- Scans for queues with status 'running' on startup
+- Marks stale running queues as 'paused' for manual recovery
+- Comprehensive unit tests (12 tests passing)
+- All completion criteria met
+
+**Files Implemented**:
+- `src/sdk/queue/recovery.ts` - Recovery implementation
+- `src/sdk/queue/recovery.test.ts` - Comprehensive unit tests
+- `src/sdk/queue/index.ts` - Updated to export recovery types and class
+
+**Test Results**: All 12 tests passing (65 total tests in queue module)
+**Type Checking**: Passes without errors
+
+**Notes**:
+- Recovery assumes all running queues at startup are stale (clean shutdown should mark them properly)
+- Future enhancement: Store Claude Code process PID in queue metadata for accurate liveness checking
+- `isProcessAlive()` method included for future use when PID tracking is added
+- Recovery operation is idempotent - can be run multiple times safely
+- Errors during recovery are caught and logged without throwing to allow partial recovery

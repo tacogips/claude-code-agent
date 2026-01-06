@@ -1,6 +1,6 @@
 # Markdown Parser Core Implementation Plan
 
-**Status**: Ready
+**Status**: Completed
 **Design Reference**: design-docs/spec-sdk-api.md#10-markdown-to-json-parsing
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-06
@@ -96,7 +96,7 @@ class MarkdownParser {
 
 #### src/sdk/markdown-parser/index.ts
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 ```typescript
 // Re-export all public types
@@ -119,10 +119,10 @@ export { parseMarkdown } from './parser';
 ```
 
 **Checklist**:
-- [ ] Module index exports parseMarkdown and all types
-- [ ] SDK index exports markdown parser
-- [ ] Example usage in JSDoc comments
-- [ ] Type checking passes
+- [x] Module index exports parseMarkdown and all types
+- [x] SDK index exports markdown parser
+- [x] Example usage in JSDoc comments
+- [x] Type checking passes
 
 ---
 
@@ -130,8 +130,8 @@ export { parseMarkdown } from './parser';
 
 | Module | File Path | Status | Tests |
 |--------|-----------|--------|-------|
-| Core parser | `src/sdk/markdown-parser/parser.ts` | NOT_STARTED | - |
-| Module exports | `src/sdk/markdown-parser/index.ts` | NOT_STARTED | - |
+| Core parser | `src/sdk/markdown-parser/parser.ts` | COMPLETED | Pass |
+| Module exports | `src/sdk/markdown-parser/index.ts` | COMPLETED | Pass |
 
 ---
 
@@ -164,16 +164,16 @@ export { parseMarkdown } from './parser';
 
 ### TASK-004: Module Exports
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-003)
 **Deliverables**: `src/sdk/markdown-parser/index.ts`, update `src/sdk/index.ts`
 **Estimated Effort**: Small
 
 **Completion Criteria**:
-- [ ] Module index exports parseMarkdown and all types
-- [ ] SDK index exports markdown parser
-- [ ] Example usage in JSDoc comments
-- [ ] Type checking passes
+- [x] Module index exports parseMarkdown and all types
+- [x] SDK index exports markdown parser
+- [x] Example usage in JSDoc comments
+- [x] Type checking passes
 
 ---
 
@@ -202,10 +202,10 @@ TASK-004 (Exports)
 
 ## Completion Criteria
 
-- [ ] All subtasks marked as Completed
-- [ ] All unit tests passing
-- [ ] Type checking passes
-- [ ] parseMarkdown function exported from SDK
+- [x] All subtasks marked as Completed
+- [x] All unit tests passing
+- [x] Type checking passes
+- [x] parseMarkdown function exported from SDK
 
 ---
 
@@ -221,4 +221,15 @@ TASK-004 (Exports)
 
 ## Progress Log
 
-(To be filled during implementation)
+### Session: 2026-01-06 16:30
+**Tasks Completed**: TASK-004
+**Review Status**: Not required (simple module exports)
+**Notes**:
+- Created `src/sdk/markdown-parser/index.ts` with comprehensive JSDoc examples
+- Created `src/sdk/index.ts` to export markdown parser module
+- All type exports working correctly
+- Type checking passes (bun run typecheck)
+- All tests pass (66 tests, 222 expectations)
+- Verified exports with manual test: parseMarkdown successfully imported and executed
+- PROGRESS.json updated with lock protocol
+- Plan status updated to Completed

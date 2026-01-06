@@ -126,6 +126,42 @@ export class MockFileSystem implements FileSystem {
   }
 
   /**
+   * Synchronously write a file (for testing).
+   *
+   * @param path - File path
+   * @param content - File content
+   */
+  writeFileSync(path: string, content: string): void {
+    this.setFile(path, content);
+  }
+
+  /**
+   * Synchronously append to a file (for testing).
+   *
+   * @param path - File path
+   * @param content - Content to append
+   */
+  appendFileSync(path: string, content: string): void {
+    const normalizedPath = this.normalizePath(path);
+    const entry = this.files.get(normalizedPath);
+
+    if (entry === undefined) {
+      // File doesn't exist, create it
+      this.setFile(path, content);
+    } else {
+      // Append to existing content
+      this.files.set(normalizedPath, {
+        content: entry.content + content,
+        mtimeMs: this.currentTime,
+        ctimeMs: entry.ctimeMs,
+      });
+    }
+
+    // Emit watch event for the file change
+    this.emitWatchEvent(path, { eventType: "change", filename: path });
+  }
+
+  /**
    * Create a directory in the mock file system.
    *
    * @param path - Directory path

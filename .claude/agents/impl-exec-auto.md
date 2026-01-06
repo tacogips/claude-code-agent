@@ -21,7 +21,7 @@ This subagent **analyzes** implementation plans and returns a list of executable
 2. Identify executable tasks (deps satisfied, status "Not Started")
 3. For each executable task, read plan file to get details
 4. Return structured task list to main conversation
-5. Main conversation spawns ts-coding/ts-review agents
+5. Main conversation uses impl-exec-specific to execute tasks
 ```
 
 ## CRITICAL: Use PROGRESS.json to Prevent Context Overflow
@@ -185,18 +185,51 @@ All tasks in READY phases have unmet dependencies or are already completed.
 ## Important Notes
 
 1. **Analysis Only**: This agent does NOT spawn subagents or update files
-2. **Main Orchestrates**: Main conversation uses the output to spawn ts-coding agents
+2. **Main Orchestrates**: Main conversation uses impl-exec-specific to execute tasks (NOT direct ts-coding spawning)
 3. **PROGRESS.json**: Main conversation updates PROGRESS.json after task completion
 4. **Context Efficient**: Only reads necessary plan files, not all plans
 
-## What Main Conversation Does After Receiving Output
+## Orchestration Protocol: Main Conversation Actions
 
-Main conversation will:
-1. Parse the executable tasks list
-2. For each task (sequentially):
-   a. Spawn `ts-coding` agent with task details
-   b. Spawn `check-and-test-after-modify` agent
-   c. Spawn `ts-review` agent (up to 3 iterations)
-   d. Update PROGRESS.json (with lock)
-   e. Update plan file status
-3. Report completion and newly unblocked tasks
+After receiving this agent's output, the **main conversation MUST use impl-exec-specific** to execute tasks.
+
+**DO NOT spawn ts-coding agents directly from the main conversation.**
+
+### Main Conversation Workflow
+
+```
+1. Receive executable tasks list from impl-exec-auto
+2. For each plan with executable tasks:
+   a. Invoke impl-exec-specific with task IDs
+      Example: /impl-exec-specific session-groups-runner TASK-008
+   b. impl-exec-specific handles:
+      - ts-coding spawning
+      - check-and-test-after-modify
+      - ts-review cycle (up to 3 iterations)
+      - Plan file status updates
+3. After impl-exec-specific completes:
+   a. Update PROGRESS.json status
+   b. Report completion and newly unblocked tasks
+4. Repeat for remaining executable tasks
+```
+
+### Why impl-exec-specific?
+
+| Approach | Problem |
+|----------|---------|
+| Main spawns ts-coding directly | Main lacks review cycle logic, plan update format |
+| impl-exec-auto spawns ts-coding | Claude Code prohibits nested subagent spawning |
+| **Main invokes impl-exec-specific** | Correct - full implementation cycle handled |
+
+### Example Main Conversation Response
+
+```markdown
+The impl-exec-auto analysis found 9 executable tasks.
+
+Executing via impl-exec-specific:
+
+1. /impl-exec-specific session-groups-runner TASK-008
+2. /impl-exec-specific command-queue-core TASK-005 TASK-006
+3. /impl-exec-specific markdown-parser-core TASK-004
+...
+```

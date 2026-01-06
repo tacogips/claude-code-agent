@@ -7,5 +7,6 @@
  * @module repository/file
  */
 
+export { FileBookmarkRepository } from "./bookmark-repository";
 export { FileGroupRepository } from "./group-repository";
 export { FileQueueRepository } from "./queue-repository";

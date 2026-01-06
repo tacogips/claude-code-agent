@@ -90,14 +90,15 @@ export class FileChangeExtractor {
 
     logger.debug(`Extracting file changes from: ${transcriptPath}`);
 
-    // Extract changed files
-    const changedFiles = await this.extractFromTranscript(
-      transcriptPath,
-      options,
-    );
+    // Extract changed files and project path
+    const result = await this.extractFromTranscript(transcriptPath, options);
 
     // Build summary
-    const summary = this.buildSummary(sessionId, changedFiles, transcriptPath);
+    const summary = this.buildSummary(
+      sessionId,
+      result.changedFiles,
+      result.projectPath,
+    );
 
     logger.debug(
       `Extracted ${summary.totalFilesChanged} files with ${summary.totalChanges} changes`,
@@ -114,12 +115,12 @@ export class FileChangeExtractor {
    *
    * @param transcriptPath - Path to transcript JSONL file
    * @param options - Extraction options
-   * @returns Promise resolving to array of ChangedFile
+   * @returns Promise resolving to object with changedFiles and projectPath
    */
   async extractFromTranscript(
     transcriptPath: string,
     options?: ExtractOptions | undefined,
-  ): Promise<readonly ChangedFile[]> {
+  ): Promise<{ changedFiles: readonly ChangedFile[]; projectPath: string }> {
     // Read transcript file
     const content = await this.fileSystem.readFile(transcriptPath);
 
@@ -160,7 +161,11 @@ export class FileChangeExtractor {
     // Filter results
     const filtered = this.applyFilters(Array.from(fileMap.values()), options);
 
-    return filtered;
+    // Use project path from session metadata, or fall back to deriving from transcript path
+    const finalProjectPath =
+      projectPath !== "" ? projectPath : this.extractProjectPath(transcriptPath);
+
+    return { changedFiles: filtered, projectPath: finalProjectPath };
   }
 
   /**
@@ -418,10 +423,9 @@ export class FileChangeExtractor {
    * Add a file change to the file map.
    *
    * Aggregates multiple changes to the same file.
-   * The file path is extracted from the change's changeId field.
    *
    * @param fileMap - Map of file paths to ChangedFile
-   * @param change - File change to add (changeId contains filePath)
+   * @param change - File change to add
    * @param projectPath - Project root path for normalization
    */
   private addChangeToMap(
@@ -429,14 +433,17 @@ export class FileChangeExtractor {
     change: FileChange,
     projectPath: string,
   ): void {
-    // Extract file path from changeId (format: toolUseId-filePath)
-    const parts = change.changeId.split("-");
-    if (parts.length < 2) {
+    // Extract file path from changeId
+    // changeId format: "toolUseId-filePath" but toolUseId may contain dashes (e.g., "tool-001")
+    // File paths always start with "/" for absolute paths
+    // Find the index of the first "/" in the changeId
+    const slashIndex = change.changeId.indexOf("/");
+    if (slashIndex === -1) {
       return;
     }
 
-    // Reconstruct file path (everything after first dash)
-    const filePath = parts.slice(1).join("-");
+    // Everything from the first "/" is the file path
+    const filePath = change.changeId.slice(slashIndex);
     const normalizedPath = this.normalizePath(filePath, projectPath);
     const existing = fileMap.get(normalizedPath);
 
@@ -575,13 +582,13 @@ export class FileChangeExtractor {
    *
    * @param sessionId - Session identifier
    * @param changedFiles - Array of changed files
-   * @param transcriptPath - Transcript file path
+   * @param projectPath - Project path from session metadata (or derived from transcript path)
    * @returns ChangedFilesSummary
    */
   private buildSummary(
     sessionId: string,
     changedFiles: readonly ChangedFile[],
-    transcriptPath: string,
+    projectPath: string,
   ): ChangedFilesSummary {
     const totalFilesChanged = changedFiles.length;
     const totalChanges = changedFiles.reduce(
@@ -604,7 +611,7 @@ export class FileChangeExtractor {
       byDirectory[dir] = (byDirectory[dir] ?? 0) + 1;
     }
 
-    // Determine session start/end
+    // Determine session start/end from timestamps
     const timestamps = changedFiles.flatMap((file) =>
       file.changes.map((c) => c.timestamp),
     );
@@ -614,9 +621,6 @@ export class FileChangeExtractor {
       timestamps.length > 0
         ? timestamps[timestamps.length - 1]!
         : new Date().toISOString();
-
-    // Extract project path from transcript path
-    const projectPath = this.extractProjectPath(transcriptPath);
 
     const summary: ChangedFilesSummary = {
       sessionId,

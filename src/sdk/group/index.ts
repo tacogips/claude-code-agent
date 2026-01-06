@@ -62,7 +62,18 @@ export {
   isBudgetExceeded,
 } from "./progress";
 
+// Re-export manager
+export type { CreateGroupOptions } from "./manager";
+export { GroupManager } from "./manager";
+
+// Re-export config generator
+export type { SessionConfigResult, ConfigGeneratorError } from "./config-generator";
+export { ConfigGenerator } from "./config-generator";
+
+// Re-export dependency graph
+export type { BlockedSession } from "./dependency-graph";
+export { DependencyGraph } from "./dependency-graph";
+
 // Re-export runner
 export type { RunOptions, PauseReason, RunnerState } from "./runner";
-
 export { GroupRunner } from "./runner";

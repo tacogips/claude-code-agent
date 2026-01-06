@@ -1,8 +1,8 @@
 /**
  * Command Queue module for sequential prompt execution.
  *
- * Provides types and events for managing command queues with flexible
- * session modes (continue or new session per command).
+ * Provides types, events, manager, and runner for managing command queues
+ * with flexible session modes (continue or new session per command).
  *
  * @module sdk/queue
  */
@@ -38,3 +38,22 @@ export type {
   CommandModeChangedEvent,
   QueueEvent,
 } from "./events";
+
+// Manager types and class
+export type {
+  CreateQueueOptions,
+  AddCommandOptions,
+  ListQueuesOptions,
+} from "./manager";
+
+export { QueueManager } from "./manager";
+
+// Runner types and class
+export type { RunOptions, QueueResult } from "./runner";
+
+export { QueueRunner } from "./runner";
+
+// Recovery types and class
+export type { RecoveryResult } from "./recovery";
+
+export { QueueRecovery } from "./recovery";

@@ -98,30 +98,48 @@ Focuses on tasks within the specified plan only.
 /impl-exec-auto foundation-and-core --dry-run
 ```
 
-### What the Subagent Does
+### What the Subagent Does (Analysis Only)
+
+**IMPORTANT**: The `impl-exec-auto` subagent is **analysis-only**. It does NOT execute tasks - it returns a structured list of executable tasks. The main conversation then uses `impl-exec-specific` to execute them.
 
 #### Cross-Plan Mode (no argument)
 
-1. **Reads impl-plans/README.md** for phase dependencies
-2. **Scans all plans in impl-plans/active/**
-3. **Determines phase eligibility**:
-   - Phase 1 (foundation-and-core): Always eligible
-   - Phase 2: Eligible when Phase 1 plan is Completed
-   - Phase 3: Eligible when Phase 2 plans have critical tasks Completed
-   - Phase 4: Eligible when Phase 3 is Completed
-4. **Builds cross-plan dependency graph**
-5. **Selects executable tasks from ALL eligible plans**
-6. **Spawns ts-coding agents** sequentially for selected tasks
-7. **Updates each plan's progress log and status**
-8. **Reports** overall progress and newly unblocked tasks/plans
+1. **Reads impl-plans/PROGRESS.json** (~2K tokens) for phase/task status
+2. **Determines phase eligibility** from PROGRESS.json phases:
+   - Phase 1: Check if COMPLETED
+   - Phase 2: READY when Phase 1 is COMPLETED
+   - Phase 3: BLOCKED until Phase 2 critical tasks complete
+   - Phase 4: BLOCKED until Phase 3 is COMPLETED
+3. **Reads ONLY plan files for executable tasks** (not all plans)
+4. **Returns structured task list** to main conversation
 
 #### Single-Plan Mode (with argument)
 
 1. **Reads the implementation plan file**
 2. **Builds dependency graph** from task definitions
 3. **Identifies executable tasks** within that plan only
-4. **Spawns ts-coding agents** sequentially (one at a time)
-5. **Updates plan status**
+4. **Returns structured task list** to main conversation
+
+### Main Conversation Orchestration
+
+After receiving the executable tasks list from `impl-exec-auto`, the main conversation:
+
+1. **Groups tasks by plan name**
+2. **For each plan with executable tasks**:
+   - Invokes `impl-exec-specific` with task IDs
+   - Example: `/impl-exec-specific session-groups-runner TASK-008`
+3. **impl-exec-specific handles internally**:
+   - ts-coding spawning
+   - check-and-test-after-modify
+   - ts-review cycle (up to 3 iterations)
+   - Plan file status updates
+4. **Main conversation updates PROGRESS.json** (with lock) after each plan
+5. **Reports completion and newly unblocked tasks**
+
+**Why this architecture?**
+- impl-exec-auto cannot spawn subagents (Claude Code limitation)
+- impl-exec-specific has the full implementation cycle logic
+- Main conversation coordinates between the two
 
 ### Cross-Plan Dependencies (from impl-plans/README.md)
 
@@ -162,26 +180,24 @@ Recommended Actions:
 2. Use /impl-exec-specific to run specific tasks
 ```
 
-### After Subagent Completes
+### After impl-exec-auto Analysis Completes
 
-1. Report execution results:
-   - Plans analyzed
-   - Tasks selected for execution (grouped by plan)
+1. **Parse executable tasks** from the subagent output
+2. **Group tasks by plan name**
+3. **Execute via impl-exec-specific** for each plan:
+   ```
+   /impl-exec-specific <plan-name> <TASK-IDs>
+   ```
+4. **Update PROGRESS.json** after each impl-exec-specific completes
+5. **Report results**:
    - Tasks completed successfully
    - Tasks failed (if any)
    - Tasks/Plans now unblocked
-
-2. Show updated status:
-   - Overall progress by phase
-   - Execution summary
-
-3. If more tasks available:
+6. **If more tasks available**:
    - List next executable tasks/plans
    - Suggest re-running `/impl-exec-auto`
-
-4. If a plan completed:
+7. **If a plan completed**:
    - Confirm plan moved to `impl-plans/completed/`
    - Note newly unblocked plans
-
-5. If all plans completed:
-   - Congratulate on implementation completion
+8. **If all plans completed**:
+   - Report implementation completion
