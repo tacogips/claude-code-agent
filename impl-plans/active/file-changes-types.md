@@ -153,16 +153,16 @@ class FileChangeExtractor {
 ```
 
 **Checklist**:
-- [ ] Parse Edit tool calls (old_string, new_string)
-- [ ] Parse Write tool calls (full content)
-- [ ] Parse MultiEdit tool calls (multiple edits)
-- [ ] Parse NotebookEdit tool calls
-- [ ] Handle file-history-snapshot enrichment
-- [ ] Path normalization to absolute paths
-- [ ] Build ChangedFilesSummary with statistics
-- [ ] Filter by extension and directory
-- [ ] Unit tests with sample transcripts
-- [ ] Type checking passes
+- [x] Parse Edit tool calls (old_string, new_string)
+- [x] Parse Write tool calls (full content)
+- [x] Parse MultiEdit tool calls (multiple edits)
+- [x] Parse NotebookEdit tool calls
+- [x] Handle file-history-snapshot enrichment
+- [x] Path normalization to absolute paths
+- [x] Build ChangedFilesSummary with statistics
+- [x] Filter by extension and directory
+- [x] Unit tests with sample transcripts
+- [x] Type checking passes
 
 ---
 
@@ -170,8 +170,8 @@ class FileChangeExtractor {
 
 | Module | File Path | Status | Tests |
 |--------|-----------|--------|-------|
-| File change types | `src/sdk/file-changes/types.ts` | NOT_STARTED | - |
-| File change extractor | `src/sdk/file-changes/extractor.ts` | NOT_STARTED | - |
+| File change types | `src/sdk/file-changes/types.ts` | COMPLETED | ✓ |
+| File change extractor | `src/sdk/file-changes/extractor.ts` | COMPLETED | ✓ (11 tests) |
 
 ---
 
@@ -199,22 +199,22 @@ class FileChangeExtractor {
 
 ### TASK-002: File Change Extractor
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-001)
 **Deliverables**: `src/sdk/file-changes/extractor.ts`
 **Estimated Effort**: Large
 
 **Completion Criteria**:
-- [ ] Parse Edit tool calls (old_string, new_string)
-- [ ] Parse Write tool calls (full content)
-- [ ] Parse MultiEdit tool calls (multiple edits)
-- [ ] Parse NotebookEdit tool calls
-- [ ] Handle file-history-snapshot enrichment
-- [ ] Path normalization to absolute paths
-- [ ] Build ChangedFilesSummary with statistics
-- [ ] Filter by extension and directory
-- [ ] Unit tests with sample transcripts
-- [ ] Type checking passes
+- [x] Parse Edit tool calls (old_string, new_string)
+- [x] Parse Write tool calls (full content)
+- [x] Parse MultiEdit tool calls (multiple edits)
+- [x] Parse NotebookEdit tool calls
+- [x] Handle file-history-snapshot enrichment
+- [x] Path normalization to absolute paths
+- [x] Build ChangedFilesSummary with statistics
+- [x] Filter by extension and directory
+- [x] Unit tests with sample transcripts
+- [x] Type checking passes
 
 ---
 
@@ -271,3 +271,38 @@ The file change types were already fully implemented with all required interface
 
 **Next Steps**:
 TASK-002 (File Change Extractor) is now unblocked and ready for implementation.
+
+### Session: 2026-01-06 17:00
+**Tasks Completed**: TASK-002 (File Change Extractor)
+**Status**: COMPLETED
+**Files Modified**:
+- `src/sdk/file-changes/extractor.ts` (created, 781 lines)
+- `src/sdk/file-changes/extractor.test.ts` (created, 11 test cases)
+- `impl-plans/active/file-changes-types.md` (updated status)
+
+**Implementation Details**:
+- Implemented FileChangeExtractor class with full transcript parsing
+- Parses Edit, Write, MultiEdit, and NotebookEdit tool calls
+- Handles multiple changes to the same file via aggregation
+- Enriches file changes with file-history-snapshot data (version, backup file name)
+- Normalizes file paths to absolute paths for consistent indexing
+- Builds ChangedFilesSummary with statistics (byExtension, byDirectory)
+- Supports filtering by extension and directory
+- Includes content in FileChange when requested via ExtractOptions
+- All 11 unit tests passing
+- Type checking passes without errors
+- Code formatted with prettier
+
+**Notes**:
+- Used bracket notation for all index signature access (`noPropertyAccessFromIndexSignature` compliance)
+- Gracefully handles malformed JSON lines in transcripts
+- Uses logging via tagged logger for debugging
+- Follows TypeScript coding standards:
+  - All properties use `readonly` modifier
+  - Optional properties explicitly include `| undefined`
+  - No use of `any` type
+  - Explicit type guards for runtime validation
+  - Result type pattern for error handling (in future enhancements)
+
+**Next Steps**:
+All TASK-002 completion criteria are met. The implementation plan for file-changes-types is now complete.

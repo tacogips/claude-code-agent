@@ -302,9 +302,6 @@ export class FileGroupRepository implements GroupRepository {
           compareValue =
             new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
           break;
-        case "totalCostUsd":
-          compareValue = a.totalCostUsd - b.totalCostUsd;
-          break;
       }
 
       return compareValue * direction;

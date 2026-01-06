@@ -34,7 +34,8 @@ describe("FileGroupRepository", () => {
     projectPath: "/project",
     prompt: "Test prompt",
     dependsOn: [],
-    status: "pending",
+    status: "paused",
+    createdAt: "2026-01-01T00:00:00Z",
     ...overrides,
   });
 
@@ -43,11 +44,16 @@ describe("FileGroupRepository", () => {
   ): SessionGroup => ({
     id: "group-1",
     name: "Test Group",
-    status: "pending",
+    slug: "test-group",
+    status: "created",
     sessions: [createTestSession()],
-    maxConcurrent: 3,
-    respectDependencies: true,
-    totalCostUsd: 0,
+    config: {
+      model: "sonnet",
+      maxBudgetUsd: 10.0,
+      maxConcurrentSessions: 3,
+      onBudgetExceeded: "pause",
+      warningThreshold: 0.8,
+    },
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     ...overrides,
@@ -130,11 +136,11 @@ describe("FileGroupRepository", () => {
 
   describe("findByStatus", () => {
     test("finds all groups with a status", async () => {
-      await repo.save(createTestGroup({ id: "g1", status: "pending" }));
+      await repo.save(createTestGroup({ id: "g1", status: "created" }));
       await repo.save(createTestGroup({ id: "g2", status: "running" }));
-      await repo.save(createTestGroup({ id: "g3", status: "pending" }));
+      await repo.save(createTestGroup({ id: "g3", status: "created" }));
 
-      const groups = await repo.findByStatus("pending");
+      const groups = await repo.findByStatus("created");
       expect(groups).toHaveLength(2);
       expect(groups.map((g) => g.id)).toEqual(
         expect.arrayContaining(["g1", "g3"]),
@@ -153,9 +159,9 @@ describe("FileGroupRepository", () => {
         createTestGroup({
           id: "g1",
           name: "Alpha",
-          status: "pending",
+          status: "created",
           createdAt: "2026-01-01T00:00:00Z",
-          totalCostUsd: 1.0,
+          updatedAt: "2026-01-01T00:00:00Z",
         }),
       );
       await repo.save(
@@ -164,16 +170,16 @@ describe("FileGroupRepository", () => {
           name: "Beta",
           status: "running",
           createdAt: "2026-01-02T00:00:00Z",
-          totalCostUsd: 2.0,
+          updatedAt: "2026-01-02T00:00:00Z",
         }),
       );
       await repo.save(
         createTestGroup({
           id: "g3",
           name: "Gamma",
-          status: "pending",
+          status: "created",
           createdAt: "2026-01-03T00:00:00Z",
-          totalCostUsd: 3.0,
+          updatedAt: "2026-01-03T00:00:00Z",
         }),
       );
     });
@@ -192,9 +198,9 @@ describe("FileGroupRepository", () => {
     });
 
     test("filters by status", async () => {
-      const groups = await repo.list({ status: "pending" });
+      const groups = await repo.list({ status: "created" });
       expect(groups).toHaveLength(2);
-      expect(groups.every((g) => g.status === "pending")).toBe(true);
+      expect(groups.every((g) => g.status === "created")).toBe(true);
     });
 
     test("filters by nameContains", async () => {
@@ -241,10 +247,10 @@ describe("FileGroupRepository", () => {
       expect(groups.map((g) => g.id)).toEqual(["g1", "g2", "g3"]);
     });
 
-    test("sorts by totalCostUsd", async () => {
+    test("sorts by updatedAt", async () => {
       const groups = await repo.list(
         {},
-        { field: "totalCostUsd", direction: "desc" },
+        { field: "updatedAt", direction: "desc" },
       );
       expect(groups.map((g) => g.id)).toEqual(["g3", "g2", "g1"]);
     });
@@ -265,31 +271,31 @@ describe("FileGroupRepository", () => {
     test("updates a session within a group", async () => {
       const group = createTestGroup({
         sessions: [
-          createTestSession({ id: "s1", status: "pending" }),
-          createTestSession({ id: "s2", status: "pending" }),
+          createTestSession({ id: "s1", status: "paused" }),
+          createTestSession({ id: "s2", status: "paused" }),
         ],
       });
       await repo.save(group);
 
       const updated = await repo.updateSession("group-1", "s1", {
-        status: "running",
+        status: "active",
         claudeSessionId: "claude-123",
       });
       expect(updated).toBe(true);
 
       const found = await repo.findById("group-1");
       const session1 = found?.sessions.find((s) => s.id === "s1");
-      expect(session1?.status).toBe("running");
+      expect(session1?.status).toBe("active");
       expect(session1?.claudeSessionId).toBe("claude-123");
 
       // Other session unchanged
       const session2 = found?.sessions.find((s) => s.id === "s2");
-      expect(session2?.status).toBe("pending");
+      expect(session2?.status).toBe("paused");
     });
 
     test("returns false for non-existent group", async () => {
       const updated = await repo.updateSession("non-existent", "s1", {
-        status: "running",
+        status: "active",
       });
       expect(updated).toBe(false);
     });
@@ -299,7 +305,7 @@ describe("FileGroupRepository", () => {
       await repo.save(group);
 
       const updated = await repo.updateSession("group-1", "non-existent", {
-        status: "running",
+        status: "active",
       });
       expect(updated).toBe(false);
     });
@@ -311,7 +317,7 @@ describe("FileGroupRepository", () => {
       });
       await repo.save(group);
 
-      await repo.updateSession("group-1", "s1", { status: "running" });
+      await repo.updateSession("group-1", "s1", { status: "active" });
 
       const found = await repo.findById("group-1");
       expect(found?.updatedAt).not.toBe("2026-01-01T00:00:00Z");
@@ -319,7 +325,7 @@ describe("FileGroupRepository", () => {
 
     test("persists changes to filesystem", async () => {
       const group = createTestGroup({
-        sessions: [createTestSession({ id: "s1", status: "pending" })],
+        sessions: [createTestSession({ id: "s1", status: "paused" })],
       });
       await repo.save(group);
 
@@ -335,9 +341,9 @@ describe("FileGroupRepository", () => {
 
   describe("count", () => {
     beforeEach(async () => {
-      await repo.save(createTestGroup({ id: "g1", status: "pending" }));
+      await repo.save(createTestGroup({ id: "g1", status: "created" }));
       await repo.save(createTestGroup({ id: "g2", status: "running" }));
-      await repo.save(createTestGroup({ id: "g3", status: "pending" }));
+      await repo.save(createTestGroup({ id: "g3", status: "created" }));
     });
 
     test("counts all groups without filter", async () => {
@@ -346,7 +352,7 @@ describe("FileGroupRepository", () => {
     });
 
     test("counts filtered groups", async () => {
-      const count = await repo.count({ status: "pending" });
+      const count = await repo.count({ status: "created" });
       expect(count).toBe(2);
     });
   });

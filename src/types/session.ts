@@ -14,7 +14,12 @@ import type { Task } from "./task";
 /**
  * The lifecycle status of a session.
  */
-export type SessionStatus = "active" | "paused" | "completed" | "failed";
+export type SessionStatus =
+  | "pending"
+  | "active"
+  | "paused"
+  | "completed"
+  | "failed";
 
 /**
  * Token usage tracking for a session.
@@ -120,4 +125,14 @@ export function isTerminalStatus(status: SessionStatus): boolean {
  */
 export function canResume(status: SessionStatus): boolean {
   return status === "paused";
+}
+
+/**
+ * Check if a session is pending (not yet started).
+ *
+ * @param status - Session status to check
+ * @returns True if session is pending
+ */
+export function isPending(status: SessionStatus): boolean {
+  return status === "pending";
 }

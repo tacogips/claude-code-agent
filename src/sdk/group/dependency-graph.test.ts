@@ -21,10 +21,11 @@ function createSession(
     prompt: `Prompt for ${id}`,
     dependsOn,
     status,
-    costUsd: undefined,
+    createdAt: new Date().toISOString(),
+    cost: undefined,
+    tokens: undefined,
     startedAt: undefined,
     completedAt: undefined,
-    error: undefined,
     claudeSessionId: undefined,
     template: undefined,
   };
@@ -223,7 +224,7 @@ describe("DependencyGraph", () => {
 
     test("excludes non-pending sessions", () => {
       const sessions = [
-        createSession("s1", [], "running"),
+        createSession("s1", [], "active"),
         createSession("s2", [], "completed"),
         createSession("s3", [], "failed"),
         createSession("s4", [], "pending"),
@@ -427,7 +428,7 @@ describe("DependencyGraph", () => {
     test("excludes non-pending sessions from blocked list", () => {
       const sessions = [
         createSession("s1"),
-        createSession("s2", ["s1"], "running"),
+        createSession("s2", ["s1"], "active"),
         createSession("s3", ["s1"], "completed"),
         createSession("s4", ["s1"], "pending"),
       ];

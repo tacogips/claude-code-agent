@@ -6,30 +6,26 @@
  * @module repository/bookmark-repository
  */
 
-import type { Bookmark, BookmarkType } from "../sdk/bookmarks/types";
+import type {
+  Bookmark,
+  BookmarkFilter as SdkBookmarkFilter,
+  BookmarkType,
+} from "../sdk/bookmarks/types";
 
 // Re-export types for convenience
 export type { Bookmark, BookmarkType };
 
 /**
- * Filter criteria for listing bookmarks.
+ * Extended filter criteria for repository-level operations.
  *
- * This is the repository-level filter interface, which may differ
- * from the SDK-level BookmarkFilter in terms of implementation details.
+ * Extends the SDK BookmarkFilter with repository-specific options
+ * like name search.
  */
-export interface BookmarkFilter {
-  /** Filter by session ID */
-  readonly sessionId?: string | undefined;
-  /** Filter by bookmark type */
-  readonly type?: BookmarkType | undefined;
-  /** Filter by tags (any match) */
-  readonly tags?: readonly string[] | undefined;
+export interface BookmarkFilter extends Omit<SdkBookmarkFilter, "since"> {
   /** Filter by name (partial match) */
   readonly nameContains?: string | undefined;
-  /** Maximum number of results to return */
-  readonly limit?: number | undefined;
-  /** Number of results to skip (for pagination) */
-  readonly offset?: number | undefined;
+  /** Filter bookmarks created after this date (ISO string or Date) */
+  readonly since?: Date | string | undefined;
 }
 
 /**
@@ -58,7 +54,7 @@ export interface BookmarkSearchOptions {
  * Repository interface for bookmark data access.
  *
  * Provides CRUD operations for bookmark storage with
- * filtering and search capabilities.
+ * filtering, search, and tag management capabilities.
  */
 export interface BookmarkRepository {
   /**
@@ -70,9 +66,9 @@ export interface BookmarkRepository {
   findById(id: string): Promise<Bookmark | null>;
 
   /**
-   * Find all bookmarks for a session.
+   * Find bookmarks by session ID.
    *
-   * @param sessionId - Session ID
+   * @param sessionId - Session ID to filter by
    * @returns Array of bookmarks for the session
    */
   findBySession(sessionId: string): Promise<readonly Bookmark[]>;
@@ -80,8 +76,8 @@ export interface BookmarkRepository {
   /**
    * Find bookmarks by tag.
    *
-   * @param tag - Tag to search for
-   * @returns Array of bookmarks with the tag
+   * @param tag - Tag to filter by
+   * @returns Array of bookmarks containing the tag
    */
   findByTag(tag: string): Promise<readonly Bookmark[]>;
 
@@ -117,12 +113,10 @@ export interface BookmarkRepository {
   /**
    * Update a bookmark by ID.
    *
-   * Updates mutable fields (name, description, tags) of an existing bookmark.
-   *
    * @param id - Bookmark ID to update
-   * @param updates - Partial bookmark data to update
+   * @param updates - Partial bookmark updates (id cannot be changed)
    */
-  update(id: string, updates: Partial<Bookmark>): Promise<void>;
+  update(id: string, updates: Partial<Omit<Bookmark, "id">>): Promise<void>;
 
   /**
    * Delete a bookmark by ID.

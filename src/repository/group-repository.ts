@@ -6,76 +6,14 @@
  * @module repository/group-repository
  */
 
-/**
- * Session group status.
- */
-export type GroupStatus =
-  | "pending"
-  | "running"
-  | "paused"
-  | "completed"
-  | "failed"
-  | "archived";
+import type {
+  GroupStatus,
+  SessionGroup,
+  GroupSession,
+} from "../sdk/group/types";
 
-/**
- * Session within a group.
- */
-export interface GroupSession {
-  /** Session ID */
-  readonly id: string;
-  /** Project path for this session */
-  readonly projectPath: string;
-  /** Prompt for this session */
-  readonly prompt: string;
-  /** Template name (optional) */
-  readonly template?: string | undefined;
-  /** IDs of sessions this depends on */
-  readonly dependsOn: readonly string[];
-  /** Current status */
-  readonly status: "pending" | "running" | "completed" | "failed" | "skipped";
-  /** Claude Code session ID once started */
-  readonly claudeSessionId?: string | undefined;
-  /** Total cost in USD */
-  readonly costUsd?: number | undefined;
-  /** ISO timestamp when started */
-  readonly startedAt?: string | undefined;
-  /** ISO timestamp when completed */
-  readonly completedAt?: string | undefined;
-  /** Error message if failed */
-  readonly error?: string | undefined;
-}
-
-/**
- * Represents a session group for orchestrating multiple sessions.
- */
-export interface SessionGroup {
-  /** Unique group identifier (slug) */
-  readonly id: string;
-  /** Human-readable name */
-  readonly name: string;
-  /** Optional description */
-  readonly description?: string | undefined;
-  /** Current group status */
-  readonly status: GroupStatus;
-  /** Sessions in this group */
-  readonly sessions: readonly GroupSession[];
-  /** Maximum concurrent sessions (default: 3) */
-  readonly maxConcurrent: number;
-  /** Whether to respect dependency graph */
-  readonly respectDependencies: boolean;
-  /** Total budget limit in USD */
-  readonly budgetLimit?: number | undefined;
-  /** Total cost so far in USD */
-  readonly totalCostUsd: number;
-  /** ISO timestamp when created */
-  readonly createdAt: string;
-  /** ISO timestamp when last updated */
-  readonly updatedAt: string;
-  /** ISO timestamp when started */
-  readonly startedAt?: string | undefined;
-  /** ISO timestamp when completed */
-  readonly completedAt?: string | undefined;
-}
+// Re-export types for convenience
+export type { GroupStatus, SessionGroup, GroupSession };
 
 /**
  * Filter criteria for listing groups.
@@ -98,7 +36,7 @@ export interface GroupFilter {
  */
 export interface GroupSort {
   /** Field to sort by */
-  readonly field: "name" | "createdAt" | "updatedAt" | "totalCostUsd";
+  readonly field: "name" | "createdAt" | "updatedAt";
   /** Sort direction */
   readonly direction: "asc" | "desc";
 }
