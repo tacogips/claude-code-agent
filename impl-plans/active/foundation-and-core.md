@@ -3,7 +3,7 @@
 **Status**: In Progress
 **Design Reference**: design-docs/DESIGN.md, design-docs/spec-infrastructure.md
 **Created**: 2026-01-04
-**Last Updated**: 2026-01-05
+**Last Updated**: 2026-01-06
 
 ---
 
@@ -726,7 +726,7 @@ Define all core type definitions for the SDK.
 
 ### TASK-004: Mock Implementations
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-001)
 **Deliverables**:
 - `src/test/mocks/filesystem.ts`
@@ -739,12 +739,12 @@ Define all core type definitions for the SDK.
 Implement mock versions of all interfaces for testing.
 
 **Completion Criteria**:
-- [ ] MockFileSystem with in-memory storage
-- [ ] MockFileSystem helper methods (setFile, clearFiles)
-- [ ] MockProcessManager with configurable behavior
-- [ ] MockClock with advance() method
-- [ ] Unit tests for all mocks
-- [ ] Type checking passes
+- [x] MockFileSystem with in-memory storage
+- [x] MockFileSystem helper methods (setFile, clearFiles)
+- [x] MockProcessManager with configurable behavior
+- [x] MockClock with advance() method
+- [x] Unit tests for all mocks
+- [x] Type checking passes
 
 ---
 
@@ -772,7 +772,7 @@ Implement dependency injection container and test utilities.
 
 ### TASK-006: Production Implementations
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-001)
 **Deliverables**:
 - `src/interfaces/bun-filesystem.ts`
@@ -784,17 +784,17 @@ Implement dependency injection container and test utilities.
 Implement production versions using Bun APIs.
 
 **Completion Criteria**:
-- [ ] BunFileSystem using Bun.file and fs APIs
-- [ ] BunProcessManager using Bun.spawn
-- [ ] SystemClock using Date and Bun.sleep
-- [ ] Integration tests (optional, marked slow)
-- [ ] Type checking passes
+- [x] BunFileSystem using Bun.file and fs APIs
+- [x] BunProcessManager using Bun.spawn
+- [x] SystemClock using Date and Bun.sleep
+- [x] Integration tests (optional, marked slow)
+- [x] Type checking passes
 
 ---
 
 ### TASK-007: Repository Interfaces
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-003)
 **Deliverables**:
 - `src/repository/session-repository.ts`
@@ -808,13 +808,13 @@ Implement production versions using Bun APIs.
 Define repository interfaces for data access.
 
 **Completion Criteria**:
-- [ ] SessionRepository interface defined
-- [ ] BookmarkRepository interface defined
-- [ ] GroupRepository interface defined
-- [ ] QueueRepository interface defined
-- [ ] All filter types defined
-- [ ] All interfaces exported
-- [ ] Type checking passes
+- [x] SessionRepository interface defined
+- [x] BookmarkRepository interface defined
+- [x] GroupRepository interface defined
+- [x] QueueRepository interface defined
+- [x] All filter types defined
+- [x] All interfaces exported
+- [x] Type checking passes
 
 ---
 
@@ -846,7 +846,7 @@ Implement in-memory versions of all repositories for testing and initial develop
 
 ### TASK-009: JSONL Parser
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-002)
 **Deliverables**:
 - `src/sdk/jsonl-parser.ts`
@@ -856,12 +856,12 @@ Implement in-memory versions of all repositories for testing and initial develop
 Implement JSONL parsing with error recovery.
 
 **Completion Criteria**:
-- [ ] parseJsonl function implemented
-- [ ] parseJsonlWithRecovery function implemented
-- [ ] Error recovery on malformed lines
-- [ ] Unit tests with valid JSONL
-- [ ] Unit tests with invalid lines
-- [ ] Type checking passes
+- [x] parseJsonl function implemented
+- [x] parseJsonlWithRecovery function implemented
+- [x] Error recovery on malformed lines
+- [x] Unit tests with valid JSONL
+- [x] Unit tests with invalid lines
+- [x] Type checking passes
 
 ---
 
@@ -983,6 +983,42 @@ Parallelizable groups:
 - Type checking passes
 - Fixed src/lib.test.ts to use vitest instead of bun:test
 - 4 parallelizable tasks executed concurrently
+
+---
+
+### Session: 2026-01-06 09:40
+**Execution Mode**: Cross-plan auto-select
+**Tasks Completed**: TASK-004, TASK-006, TASK-007, TASK-009
+**Files Created**:
+- `src/test/mocks/filesystem.ts` - MockFileSystem with in-memory storage
+- `src/test/mocks/process-manager.ts` - MockProcessManager with configurable behavior
+- `src/test/mocks/clock.ts` - MockClock with advance() and auto-advance mode
+- `src/test/mocks/index.ts` - Module exports
+- `src/test/mocks/filesystem.test.ts` - 33 unit tests for MockFileSystem
+- `src/test/mocks/process-manager.test.ts` - 21 unit tests for MockProcessManager
+- `src/test/mocks/clock.test.ts` - 20 unit tests for MockClock
+- `src/interfaces/bun-filesystem.ts` - BunFileSystem using Bun.file and fs APIs
+- `src/interfaces/bun-process-manager.ts` - BunProcessManager using Bun.spawn
+- `src/interfaces/system-clock.ts` - SystemClock using Date and Bun.sleep
+- `src/repository/session-repository.ts` - SessionRepository interface with filter/sort
+- `src/repository/bookmark-repository.ts` - BookmarkRepository interface
+- `src/repository/group-repository.ts` - GroupRepository interface with GroupSession
+- `src/repository/queue-repository.ts` - QueueRepository interface with command management
+- `src/repository/index.ts` - Module exports
+- `src/sdk/jsonl-parser.ts` - parseJsonl, parseJsonlWithRecovery, parseJsonlStream, toJsonl
+- `src/sdk/jsonl-parser.test.ts` - 26 unit tests for JSONL parser
+**Review Summary**:
+- All implementations APPROVED on first iteration (no issues found)
+- Type checking passes
+- All 182 tests passing
+**Parallelization Summary**:
+- Tasks analyzed: 11
+- Tasks executed: 4 (all parallelizable)
+- Concurrent execution: 4 tasks in parallel
+**Newly Unblocked Tasks**:
+- TASK-005 (Container and Test Helpers) - was waiting on TASK-001, TASK-004 (both now completed)
+- TASK-008 (In-Memory Repositories) - was waiting on TASK-007 (now completed)
+- TASK-010 (Session Reader) - was waiting on TASK-001, TASK-009 (both now completed)
 
 ---
 

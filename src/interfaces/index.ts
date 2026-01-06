@@ -26,3 +26,8 @@ export type {
 
 // Clock interface
 export type { Clock } from "./clock";
+
+// Production implementations
+export { BunFileSystem } from "./bun-filesystem";
+export { BunProcessManager } from "./bun-process-manager";
+export { SystemClock } from "./system-clock";
