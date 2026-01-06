@@ -435,7 +435,7 @@ Implement JSON stream output for CLI.
 
 ### TASK-008: Module Exports
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on all above)
 **Deliverables**: `src/polling/index.ts`
 **Estimated Effort**: Small
@@ -444,9 +444,9 @@ Implement JSON stream output for CLI.
 Create module exports.
 
 **Completion Criteria**:
-- [ ] All public classes exported
-- [ ] All public types exported
-- [ ] Type checking passes
+- [x] All public classes exported
+- [x] All public types exported
+- [x] Type checking passes
 
 ---
 
@@ -520,6 +520,16 @@ Parallelizable groups:
 - Configured TranscriptWatcher with includeExisting: true by default for monitoring use case
 - All tests passing (9/9)
 - Type checking passes
+
+### Session: 2026-01-06 22:49
+**Tasks Completed**: TASK-008
+**Notes**:
+- Created src/polling/index.ts module exports file
+- Exported all public classes: EventParser, StateManager, SessionMonitor, GroupMonitor, JsonStreamOutput
+- Exported all public types: MonitorEvent (and constituent types), TaskState, SubagentState, SessionState
+- Type checking passes (index.ts builds without errors)
+- All polling module tests passing (134 pass, 2 skip, 0 fail)
+- Verified exports are accessible via build test
 
 ---
 

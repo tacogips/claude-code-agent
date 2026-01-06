@@ -186,3 +186,29 @@ export {
   type MarkdownMetadata,
   type ParseOptions,
 } from "./markdown-parser";
+
+// File Changes
+export type {
+  // Tool and operation types
+  ModifyingTool,
+  FileOperation,
+  // File change
+  FileChange,
+  ChangedFile,
+  // Session summary
+  ChangedFilesSummary,
+  // File history
+  FileSessionMatch,
+  FileHistory,
+  // Index statistics
+  IndexStats,
+} from "./file-changes";
+
+export {
+  FileChangeService,
+  type GetFilesOptions,
+  type FindOptions,
+  FileChangeExtractor,
+  type ExtractOptions,
+  FileChangeIndex,
+} from "./file-changes";

@@ -178,9 +178,9 @@ export { FileChangeService } from './service';
 
 | Module | File Path | Status | Tests |
 |--------|-----------|--------|-------|
-| File change index | `src/sdk/file-changes/index-manager.ts` | NOT_STARTED | - |
-| File change service | `src/sdk/file-changes/service.ts` | NOT_STARTED | - |
-| Module exports | `src/sdk/file-changes/index.ts` | NOT_STARTED | - |
+| File change index | `src/sdk/file-changes/index-manager.ts` | Completed | Pass |
+| File change service | `src/sdk/file-changes/service.ts` | Completed | Pass |
+| Module exports | `src/sdk/file-changes/index.ts` | Completed | Pass |
 
 ---
 
@@ -225,16 +225,16 @@ export { FileChangeService } from './service';
 
 ### TASK-005: Module Exports
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-004)
 **Deliverables**: `src/sdk/file-changes/index.ts`, update `src/sdk/index.ts`
 **Estimated Effort**: Small
 
 **Completion Criteria**:
-- [ ] All public types exported
-- [ ] FileChangeService exported
-- [ ] SDK index includes file-changes
-- [ ] Type checking passes
+- [x] All public types exported
+- [x] FileChangeService exported
+- [x] SDK index includes file-changes
+- [x] Type checking passes
 
 ---
 
@@ -274,6 +274,17 @@ TASK-005 (Exports)
 ---
 
 ## Progress Log
+
+### Session: 2026-01-06 22:30
+**Tasks Completed**: TASK-005
+**Review Iterations**: 1 (APPROVED)
+**Notes**:
+- Created src/sdk/file-changes/index.ts with comprehensive exports
+- Updated src/sdk/index.ts to include file-changes module
+- All types, service, extractor, and index manager exported
+- Added JSDoc with usage examples
+- Type checking passes (no new errors introduced)
+- Export verification successful
 
 ### Session: 2026-01-06 21:00
 **Tasks Completed**: TASK-003
