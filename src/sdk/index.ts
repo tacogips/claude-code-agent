@@ -212,3 +212,20 @@ export {
   type ExtractOptions,
   FileChangeIndex,
 } from "./file-changes";
+
+// Bookmarks
+export type {
+  // Core types
+  Bookmark,
+  BookmarkType,
+  MessageRange,
+  CreateBookmarkOptions,
+  BookmarkFilter,
+  MatchType,
+  BookmarkSearchResult,
+  // Manager types
+  SearchOptions,
+  BookmarkWithContent,
+} from "./bookmarks";
+
+export { BookmarkManager } from "./bookmarks";

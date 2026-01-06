@@ -266,7 +266,7 @@ DaemonServer
 
 ### TASK-001: Daemon Types
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes
 **Deliverables**: `src/daemon/types.ts`
 **Estimated Effort**: Small
@@ -275,18 +275,18 @@ DaemonServer
 Define all type definitions for the daemon server.
 
 **Completion Criteria**:
-- [ ] DaemonConfig interface defined
-- [ ] DaemonStatus interface defined
-- [ ] CreateTokenOptions interface defined
-- [ ] ApiToken interface defined
-- [ ] Permission type defined
-- [ ] Type checking passes
+- [x] DaemonConfig interface defined
+- [x] DaemonStatus interface defined
+- [x] CreateTokenOptions interface defined
+- [x] ApiToken interface defined
+- [x] Permission type defined
+- [x] Type checking passes
 
 ---
 
 ### TASK-002: Token Manager
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes
 **Deliverables**: `src/daemon/auth.ts`
 **Estimated Effort**: Medium
@@ -295,19 +295,19 @@ Define all type definitions for the daemon server.
 Implement TokenManager for API key authentication.
 
 **Completion Criteria**:
-- [ ] Token generation with cca_ prefix
-- [ ] SHA-256 hashing for storage
-- [ ] createToken() returns full token
-- [ ] validateToken() checks hash
-- [ ] listTokens() returns metadata (no secrets)
-- [ ] revokeToken() removes token
-- [ ] rotateToken() creates new token, revokes old
-- [ ] hasPermission() checks permission array
-- [ ] Token expiration support
-- [ ] lastUsedAt tracking
-- [ ] File storage in JSON format
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] Token generation with cca_ prefix
+- [x] SHA-256 hashing for storage
+- [x] createToken() returns full token
+- [x] validateToken() checks hash
+- [x] listTokens() returns metadata (no secrets)
+- [x] revokeToken() removes token
+- [x] rotateToken() creates new token, revokes old
+- [x] hasPermission() checks permission array
+- [x] Token expiration support
+- [x] lastUsedAt tracking
+- [x] File storage in JSON format
+- [x] Unit tests
+- [x] Type checking passes
 
 ---
 
@@ -418,7 +418,36 @@ Parallelizable groups:
 
 ## Progress Log
 
-(To be filled during implementation)
+### Session: 2026-01-06 16:30
+**Tasks Completed**: TASK-001
+**Review Iterations**: 1
+**Review Summary**:
+- Iteration 1: APPROVED (no critical issues)
+**Notes**:
+- Implemented all daemon core types: DaemonConfig, DaemonStatus, CreateTokenOptions, ApiToken, Permission
+- Used readonly modifiers throughout for immutability
+- Permission type uses union of literal strings for type safety
+- Comprehensive JSDoc documentation added
+- Type checking passes successfully
+- No breaking changes to existing code
+- Minor improvement suggestions noted but non-blocking (style/documentation enhancements)
+
+### Session: 2026-01-06 23:50
+**Tasks Completed**: TASK-002
+**Tasks In Progress**: None
+**Blockers**: None
+**Notes**:
+- Implemented TokenManager class with full token lifecycle management
+- Token generation uses crypto.getRandomValues for secure random tokens (32 bytes, base64url encoded)
+- SHA-256 hashing via Web Crypto API for secure token storage
+- Comprehensive test suite with 27 passing tests covering all scenarios
+- Supports token expiration with flexible duration parsing (d, w, y, h, m units)
+- Permission checking supports wildcard patterns (e.g., queue:*)
+- Token ID extracted as first 8 chars of base64 portion (not full token for security)
+- lastUsedAt tracking implemented and updated on each validation
+- File-based JSON storage with proper error handling and initialization
+- All completion criteria met and verified
+- Type checking passes with strict TypeScript configuration
 
 ---
 
