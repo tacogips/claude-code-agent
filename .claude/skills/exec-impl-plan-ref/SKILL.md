@@ -533,50 +533,59 @@ If only some tasks complete:
 
 ## Cross-Plan Execution
 
-When running `/impl-exec-auto` without arguments, the system analyzes all active plans and respects phase dependencies.
+When running `/impl-exec-auto` without arguments, the system analyzes active plans with **lazy loading** to prevent OOM.
+
+### CRITICAL: Lazy Loading to Prevent OOM
+
+**DO NOT read all plan files.** Only read plans from eligible phases.
+
+1. Read `impl-plans/README.md` FIRST
+2. Extract Phase Status table and PHASE_TO_PLANS mapping
+3. Identify READY phases (not BLOCKED)
+4. Read ONLY plans from READY phases
+
+```python
+# Step 1: From README.md, get phase status
+PHASE_STATUS = {
+    1: "COMPLETED",
+    2: "READY",       # Only this phase is eligible
+    3: "BLOCKED",
+    4: "BLOCKED"
+}
+
+# Step 2: Get plan list for eligible phases from PHASE_TO_PLANS
+eligible_phases = [p for p, s in PHASE_STATUS.items() if s == "READY"]
+plans_to_read = PHASE_TO_PLANS[eligible_phases[0]]  # Only Phase 2 plans
+
+# Step 3: Read ONLY these plans (12 files, not 25)
+# DO NOT read Phase 3/4 plans - they are BLOCKED
+```
 
 ### Phase Dependency Rules
 
 From `impl-plans/README.md`:
 
 ```
-Phase 1: foundation-and-core (no dependencies)
+Phase 1: foundation-* (COMPLETED)
     |
     v
-Phase 2: session-groups, command-queue, markdown-parser,
-         realtime-monitoring, bookmarks, file-changes
+Phase 2: session-groups-*, command-queue-*, markdown-parser-*,
+         realtime-*, bookmarks-*, file-changes-*
     |    (can run in parallel with each other)
     v
-Phase 3: daemon-and-http-api
+Phase 3: daemon-core, http-api, sse-events
     |
     v
-Phase 4: browser-viewer, cli
+Phase 4: browser-viewer-*, cli-*
 ```
 
-### Phase Eligibility Check
+### Cross-Plan Task Selection (with Lazy Loading)
 
-```python
-PHASE_DEPS = {
-    1: [],                              # Always eligible
-    2: ["foundation-and-core"],         # Needs Phase 1 complete
-    3: ["session-groups", "command-queue", "markdown-parser",
-        "realtime-monitoring", "bookmarks", "file-changes"],
-    4: ["daemon-and-http-api"],
-}
-
-def is_phase_eligible(phase: int, plan_statuses: dict) -> bool:
-    for dep_plan in PHASE_DEPS.get(phase, []):
-        if plan_statuses.get(dep_plan) != "Completed":
-            return False
-    return True
-```
-
-### Cross-Plan Task Selection
-
-1. Determine which phases are eligible
-2. For each eligible plan, find executable tasks
-3. Combine all executable tasks from all eligible plans
-4. Execute ALL combined tasks in a single parallel batch
+1. Read README.md to get Phase Status and PHASE_TO_PLANS
+2. Identify READY phases (skip BLOCKED phases entirely)
+3. Read ONLY plan files from READY phases
+4. Build task graph from those plans only
+5. Execute ALL parallelizable tasks
 
 ### Cross-Plan Progress Tracking
 

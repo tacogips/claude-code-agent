@@ -1,9 +1,16 @@
-# Real-Time Monitoring Implementation Plan
+# Real-Time Monitoring - Event Emission and State Management
 
 **Status**: Ready
 **Design Reference**: design-docs/spec-viewers.md#3-real-time-monitoring
-**Created**: 2026-01-04
-**Last Updated**: 2026-01-04
+**Created**: 2026-01-06
+**Last Updated**: 2026-01-06
+
+---
+
+## Related Plans
+
+This plan is part of the real-time monitoring system. See also:
+- `impl-plans/active/realtime-watcher.md` - File watching and JSONL parsing
 
 ---
 
@@ -13,19 +20,20 @@
 
 ### Summary
 
-Implement the real-time monitoring system that watches Claude Code transcript files and provides live updates on session progress. Uses fs.watch for file monitoring, parses JSONL streams, and maintains task state for progress tracking.
+Implement event parsing, state management, and high-level monitoring APIs for Claude Code sessions. This module transforms raw transcript events into meaningful state updates and provides monitoring interfaces for viewers and SDK consumers.
 
 ### Scope
 
 **Included**:
-- File watcher using fs.watch
-- JSONL stream parser with buffering
+- Event parsing from transcript entries
 - State manager for task/subagent tracking
 - Progress aggregation
 - Event emission for consumers (viewers, SDK)
+- High-level SessionMonitor and GroupMonitor APIs
 - JSON stream output for CLI
 
 **Excluded**:
+- File watching and JSONL parsing (covered in realtime-watcher.md)
 - TUI output display (deferred, low priority)
 - Browser WebSocket integration (covered in browser-viewer.md)
 
@@ -35,24 +43,24 @@ Implement the real-time monitoring system that watches Claude Code transcript fi
 
 ### Approach
 
-Build a three-stage pipeline:
-1. File Watcher - detects changes to transcript files
-2. Event Parser - parses JSONL and extracts events
-3. State Manager - maintains current task/subagent state
+Build on the file watching foundation with three layers:
+1. Event Parser - extracts meaningful events from transcript entries
+2. State Manager - maintains current task/subagent state
+3. Monitor APIs - high-level interfaces for session and group monitoring
 
 ### Key Decisions
 
-- Use fs.watch for cross-platform file monitoring
-- Buffer incomplete lines until newline received
-- Track file offset to read only new content
-- Graceful handling of parse errors (skip malformed lines)
 - Event-driven architecture for loose coupling
+- Discriminated unions for MonitorEvent types
+- Stateful tracking of tasks and subagents
+- AsyncIterable interface for streaming events
 
 ### Dependencies
 
 | Dependency | Type | Status |
 |------------|------|--------|
-| FileSystem interface | Required | foundation-and-core.md |
+| TranscriptWatcher | Required | realtime-watcher.md |
+| JsonlStreamParser | Required | realtime-watcher.md |
 | Event system | Required | foundation-and-core.md |
 | Session types | Required | foundation-and-core.md |
 
@@ -60,134 +68,7 @@ Build a three-stage pipeline:
 
 ## Deliverables
 
-### Deliverable 1: src/polling/watcher.ts
-
-**Purpose**: Watch transcript files for changes
-
-**Exports**:
-
-| Name | Type | Purpose | Called By |
-|------|------|---------|-----------|
-| `TranscriptWatcher` | class | Watch and emit file changes | SessionMonitor |
-| `WatcherConfig` | interface | Watcher configuration | TranscriptWatcher |
-
-**Class Definition**:
-
-```
-TranscriptWatcher
-  Purpose: Watch transcript files and emit change events
-  Constructor: (container: Container, config: WatcherConfig)
-  Public Methods:
-    - watch(transcriptPath: string): AsyncIterable<FileChange>
-    - watchMultiple(paths: string[]): AsyncIterable<FileChange>
-    - stop(): void
-  Private Methods:
-    - handleChange(path: string, event: WatchEvent): void
-    - readNewContent(path: string): Promise<string>
-  Private Properties:
-    - fileSystem: FileSystem
-    - watchers: Map<string, FSWatcher>
-    - offsets: Map<string, number>
-  Used by: SessionMonitor, GroupMonitor
-
-WatcherConfig
-  Purpose: Configuration for file watching
-  Properties:
-    - debounceMs?: number - Debounce rapid changes (default: 50)
-    - includeExisting?: boolean - Emit existing content on start
-  Used by: TranscriptWatcher
-
-FileChange
-  Purpose: Represents new content in transcript
-  Properties:
-    - path: string - Transcript file path
-    - content: string - New content since last read
-    - timestamp: string - ISO timestamp of change
-  Used by: TranscriptWatcher consumers
-```
-
-**Function Signatures**:
-
-```
-watch(transcriptPath: string): AsyncIterable<FileChange>
-  Purpose: Watch a single transcript file for changes
-  Called by: SessionMonitor.watch()
-
-watchMultiple(paths: string[]): AsyncIterable<FileChange>
-  Purpose: Watch multiple transcript files, merging changes
-  Called by: GroupMonitor.watch()
-
-stop(): void
-  Purpose: Stop all file watchers and clean up
-  Called by: Cleanup handlers
-```
-
-**Dependencies**: `src/interfaces/filesystem.ts`
-
-**Dependents**: SessionMonitor, GroupMonitor
-
----
-
-### Deliverable 2: src/polling/parser.ts
-
-**Purpose**: Parse JSONL stream from transcripts
-
-**Exports**:
-
-| Name | Type | Purpose | Called By |
-|------|------|---------|-----------|
-| `JsonlStreamParser` | class | Parse JSONL with buffering | EventParser |
-| `TranscriptEvent` | interface | Parsed transcript event | JsonlStreamParser |
-
-**Class Definition**:
-
-```
-JsonlStreamParser
-  Purpose: Parse JSONL stream with line buffering
-  Constructor: ()
-  Public Methods:
-    - feed(content: string): TranscriptEvent[]
-    - flush(): TranscriptEvent[]
-  Private Methods:
-    - parseLine(line: string): TranscriptEvent | null
-  Private Properties:
-    - buffer: string - Incomplete line buffer
-  Used by: EventParser
-
-TranscriptEvent
-  Purpose: Represents a parsed transcript entry
-  Properties:
-    - type: string - Event type (user, assistant, tool_use, etc.)
-    - uuid?: string - Message UUID
-    - timestamp?: string - Event timestamp
-    - content?: unknown - Event-specific content
-    - raw: object - Original parsed object
-  Used by: EventParser, StateManager
-```
-
-**Function Signatures**:
-
-```
-feed(content: string): TranscriptEvent[]
-  Purpose: Feed new content, return complete parsed events
-  Called by: EventParser on file change
-
-flush(): TranscriptEvent[]
-  Purpose: Flush any remaining buffered content (force parse)
-  Called by: On watcher close
-
-parseLine(line: string): TranscriptEvent | null
-  Purpose: Parse a single line, return event or null if invalid
-  Called by: feed(), flush()
-```
-
-**Dependencies**: None
-
-**Dependents**: EventParser
-
----
-
-### Deliverable 3: src/polling/event-parser.ts
+### Deliverable 1: src/polling/event-parser.ts
 
 **Purpose**: Extract meaningful events from transcript entries
 
@@ -272,7 +153,7 @@ TaskUpdateEvent
 
 ---
 
-### Deliverable 4: src/polling/state.ts
+### Deliverable 2: src/polling/state.ts
 
 **Purpose**: Maintain current task and subagent state
 
@@ -342,7 +223,7 @@ SubagentState
 
 ---
 
-### Deliverable 5: src/polling/monitor.ts
+### Deliverable 3: src/polling/monitor.ts
 
 **Purpose**: High-level session monitoring API
 
@@ -404,7 +285,7 @@ GroupMonitor.watch(groupId: string): AsyncIterable<MonitorEvent>
 
 ---
 
-### Deliverable 6: src/polling/output.ts
+### Deliverable 4: src/polling/output.ts
 
 **Purpose**: JSON stream output for CLI
 
@@ -438,54 +319,20 @@ Output format:
 
 ---
 
+### Deliverable 5: src/polling/index.ts
+
+**Purpose**: Module exports
+
+**Exports**: All public classes and types from polling modules
+
+---
+
 ## Subtasks
-
-### TASK-001: File Watcher
-
-**Status**: Not Started
-**Parallelizable**: Yes
-**Deliverables**: `src/polling/watcher.ts`
-**Estimated Effort**: Medium
-
-**Description**:
-Implement transcript file watching with fs.watch.
-
-**Completion Criteria**:
-- [ ] watch() monitors single file
-- [ ] watchMultiple() monitors multiple files
-- [ ] Offset tracking reads only new content
-- [ ] Debounce rapid changes
-- [ ] Handle file truncation/rotation
-- [ ] stop() cleans up watchers
-- [ ] Unit tests with MockFileSystem
-- [ ] Type checking passes
-
----
-
-### TASK-002: JSONL Stream Parser
-
-**Status**: Not Started
-**Parallelizable**: Yes
-**Deliverables**: `src/polling/parser.ts`
-**Estimated Effort**: Small
-
-**Description**:
-Implement JSONL stream parser with line buffering.
-
-**Completion Criteria**:
-- [ ] feed() parses complete lines
-- [ ] Buffer incomplete lines until newline
-- [ ] flush() handles remaining content
-- [ ] Handle malformed JSON gracefully
-- [ ] Unit tests with various inputs
-- [ ] Type checking passes
-
----
 
 ### TASK-003: Event Parser
 
 **Status**: Not Started
-**Parallelizable**: No (depends on TASK-002)
+**Parallelizable**: No (depends on TASK-002 in realtime-watcher.md)
 **Deliverables**: `src/polling/event-parser.ts`
 **Estimated Effort**: Medium
 
@@ -530,7 +377,7 @@ Implement state management for monitored sessions.
 ### TASK-005: Session Monitor
 
 **Status**: Not Started
-**Parallelizable**: No (depends on TASK-001, TASK-003, TASK-004)
+**Parallelizable**: No (depends on TASK-001 in realtime-watcher.md, TASK-003, TASK-004)
 **Deliverables**: `src/polling/monitor.ts`
 **Estimated Effort**: Medium
 
@@ -606,9 +453,7 @@ Create module exports.
 ## Task Dependency Graph
 
 ```
-TASK-001 (Watcher)     TASK-002 (JSONL Parser)     TASK-007 (JSON Output)
-    |                         |
-    +-------+-----------------+
+(TASK-001, TASK-002 from realtime-watcher.md)
             |
             v
       TASK-003 (Event Parser)
@@ -617,20 +462,22 @@ TASK-001 (Watcher)     TASK-002 (JSONL Parser)     TASK-007 (JSON Output)
       TASK-004 (State Manager)
             |
             v
-      TASK-005 (Session Monitor)
-            |
-            v
-      TASK-006 (Group Monitor)
-            |
-            v
-      TASK-008 (Exports)
+      TASK-005 (Session Monitor)     TASK-007 (JSON Output)
+            |                              |
+            v                              |
+      TASK-006 (Group Monitor)            |
+            |                              |
+            +---------------+--------------+
+                            |
+                            v
+                      TASK-008 (Exports)
 ```
 
 Parallelizable groups:
-- Group A: TASK-001, TASK-002, TASK-007
-- Group B: TASK-003 (after TASK-002)
+- Group A: TASK-007 (can run anytime)
+- Group B: TASK-003 (after TASK-002 from realtime-watcher.md)
 - Group C: TASK-004 (after TASK-003)
-- Group D: TASK-005 (after TASK-001, TASK-003, TASK-004)
+- Group D: TASK-005 (after TASK-001 from realtime-watcher.md, TASK-003, TASK-004)
 - Group E: TASK-006 (after TASK-005)
 - Group F: TASK-008 (after all)
 
@@ -645,6 +492,7 @@ Parallelizable groups:
 - [ ] Integration tests passing
 - [ ] Type checking passes without errors
 - [ ] Code follows project coding standards
+- [ ] Integrates with realtime-watcher.md modules
 
 ### Verification Steps
 
@@ -652,7 +500,8 @@ Parallelizable groups:
 2. Run `bun test`
 3. Test with actual Claude Code session
 4. Verify events stream correctly
-5. Review implementation against spec-viewers.md
+5. Verify state updates accurately
+6. Review implementation against spec-viewers.md
 
 ---
 
@@ -670,8 +519,7 @@ None at this time.
 
 ### Technical Debt
 
-- Consider adding rate limiting for very active sessions
-- Consider file rotation handling
+None at this time.
 
 ### Future Enhancements
 

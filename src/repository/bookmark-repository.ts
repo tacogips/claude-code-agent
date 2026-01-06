@@ -6,46 +6,16 @@
  * @module repository/bookmark-repository
  */
 
-/**
- * Bookmark type indicating what is being bookmarked.
- */
-export type BookmarkType = "session" | "message" | "range";
+import type { Bookmark, BookmarkType } from "../sdk/bookmarks/types";
 
-/**
- * Represents a bookmark to session content.
- *
- * Bookmarks can reference:
- * - An entire session
- * - A specific message within a session
- * - A range of messages within a session
- */
-export interface Bookmark {
-  /** Unique bookmark identifier */
-  readonly id: string;
-  /** User-defined name for the bookmark */
-  readonly name: string;
-  /** Type of bookmark */
-  readonly type: BookmarkType;
-  /** Session ID being bookmarked */
-  readonly sessionId: string;
-  /** Message ID (for single message bookmarks) */
-  readonly messageId?: string | undefined;
-  /** Start message ID (for range bookmarks) */
-  readonly rangeStart?: string | undefined;
-  /** End message ID (for range bookmarks) */
-  readonly rangeEnd?: string | undefined;
-  /** User-defined tags for categorization */
-  readonly tags: readonly string[];
-  /** Optional notes about the bookmark */
-  readonly notes?: string | undefined;
-  /** ISO timestamp when bookmark was created */
-  readonly createdAt: string;
-  /** ISO timestamp when bookmark was last updated */
-  readonly updatedAt: string;
-}
+// Re-export types for convenience
+export type { Bookmark, BookmarkType };
 
 /**
  * Filter criteria for listing bookmarks.
+ *
+ * This is the repository-level filter interface, which may differ
+ * from the SDK-level BookmarkFilter in terms of implementation details.
  */
 export interface BookmarkFilter {
   /** Filter by session ID */
@@ -78,7 +48,7 @@ export interface BookmarkSort {
 export interface BookmarkSearchOptions {
   /** Search query string */
   readonly query: string;
-  /** Search in metadata only (name, tags, notes) */
+  /** Search in metadata only (name, description, tags) */
   readonly metadataOnly?: boolean | undefined;
   /** Maximum results */
   readonly limit?: number | undefined;
@@ -143,6 +113,16 @@ export interface BookmarkRepository {
    * @param bookmark - Bookmark to save
    */
   save(bookmark: Bookmark): Promise<void>;
+
+  /**
+   * Update a bookmark by ID.
+   *
+   * Updates mutable fields (name, description, tags) of an existing bookmark.
+   *
+   * @param id - Bookmark ID to update
+   * @param updates - Partial bookmark data to update
+   */
+  update(id: string, updates: Partial<Bookmark>): Promise<void>;
 
   /**
    * Delete a bookmark by ID.

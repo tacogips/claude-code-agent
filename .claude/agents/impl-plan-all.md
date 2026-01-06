@@ -191,3 +191,39 @@ Do not generate plans for:
 6. **TypeScript-first format**: Plans must use actual TypeScript code blocks, not prose descriptions
 7. **Simple tables**: Use simple status tables (Module | File Path | Status | Tests)
 8. **Checklist-based**: Use checkboxes for completion tracking
+9. **File size limits**: Each plan MUST stay under 400 lines - split large features
+
+## File Size Limits (CRITICAL)
+
+**Large implementation plan files cause Claude Code OOM errors.**
+
+### Hard Limits Per Plan
+
+| Metric | Limit |
+|--------|-------|
+| **Line count** | MAX 400 lines |
+| **Modules per plan** | MAX 8 modules |
+| **Tasks per plan** | MAX 10 tasks |
+
+### Splitting Large Features
+
+When a feature would exceed limits, create multiple plans:
+
+```
+BEFORE (one large feature):
+foundation-and-core.md (1100+ lines) -> OOM RISK
+
+AFTER (split by phase):
+foundation-interfaces.md (~200 lines)
+foundation-mocks.md (~150 lines)
+foundation-types.md (~150 lines)
+foundation-core-services.md (~200 lines)
+```
+
+### Updated Mapping Example
+
+| Design Document(s) | Implementation Plans | Line Estimate |
+|-------------------|---------------------|---------------|
+| DESIGN.md, spec-infrastructure.md | foundation-interfaces.md, foundation-mocks.md, foundation-types.md, foundation-services.md | ~200 each |
+| spec-session-groups.md | session-groups-types.md, session-groups-runner.md | ~250 each |
+| spec-command-queue.md | command-queue.md | ~300 |

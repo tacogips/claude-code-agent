@@ -25,12 +25,6 @@ export type {
   GroupSessionCompletedEvent,
   BudgetWarningEvent,
   BudgetExceededEvent,
-  QueueCreatedEvent,
-  QueueStartedEvent,
-  QueueCompletedEvent,
-  QueuePausedEvent,
-  CommandStartedEvent,
-  CommandCompletedEvent,
   SessionEvent,
   GroupEvent,
   QueueEvent,
@@ -38,6 +32,25 @@ export type {
   EventMap,
   EventType,
 } from "./types";
+
+// Queue events (re-exported for convenience)
+export type {
+  QueueCreatedEvent,
+  QueueStartedEvent,
+  QueuePausedEvent,
+  QueueResumedEvent,
+  QueueStoppedEvent,
+  QueueCompletedEvent,
+  QueueFailedEvent,
+  CommandStartedEvent,
+  CommandCompletedEvent,
+  CommandFailedEvent,
+  CommandAddedEvent,
+  CommandUpdatedEvent,
+  CommandRemovedEvent,
+  CommandReorderedEvent,
+  CommandModeChangedEvent,
+} from "../queue/events";
 
 // Event emitter
 export type { EventHandler, Subscription } from "./emitter";

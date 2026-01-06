@@ -84,157 +84,54 @@ export interface TasksUpdatedEvent extends BaseEvent {
 // Session Group Events
 // ============================================================================
 
-/**
- * Emitted when a session group is created.
- */
-export interface GroupCreatedEvent extends BaseEvent {
-  readonly type: "group_created";
-  readonly groupId: string;
-  readonly name: string;
-}
+// NOTE: Group event types are now defined in src/sdk/group/events.ts
+// Import and re-export them for backward compatibility
+import type {
+  GroupCreatedEvent,
+  GroupStartedEvent,
+  GroupCompletedEvent,
+  GroupPausedEvent,
+  GroupResumedEvent,
+  GroupFailedEvent,
+  GroupSessionStartedEvent,
+  GroupSessionCompletedEvent,
+  GroupSessionFailedEvent,
+  BudgetWarningEvent,
+  BudgetExceededEvent,
+  DependencyWaitingEvent,
+  DependencyResolvedEvent,
+  SessionProgressEvent,
+  GroupProgressEvent,
+  GroupEvent,
+} from "../group/events";
 
-/**
- * Emitted when a session group starts execution.
- */
-export interface GroupStartedEvent extends BaseEvent {
-  readonly type: "group_started";
-  readonly groupId: string;
-  readonly totalSessions: number;
-}
-
-/**
- * Emitted when a session group completes.
- */
-export interface GroupCompletedEvent extends BaseEvent {
-  readonly type: "group_completed";
-  readonly groupId: string;
-  readonly completedSessions: number;
-  readonly failedSessions: number;
-  readonly totalCostUsd: number;
-}
-
-/**
- * Emitted when a session group is paused.
- */
-export interface GroupPausedEvent extends BaseEvent {
-  readonly type: "group_paused";
-  readonly groupId: string;
-  readonly runningSessions: number;
-}
-
-/**
- * Emitted when a session group is resumed.
- */
-export interface GroupResumedEvent extends BaseEvent {
-  readonly type: "group_resumed";
-  readonly groupId: string;
-}
-
-/**
- * Emitted when a session within a group starts.
- */
-export interface GroupSessionStartedEvent extends BaseEvent {
-  readonly type: "group_session_started";
-  readonly groupId: string;
-  readonly sessionId: string;
-  readonly projectPath: string;
-}
-
-/**
- * Emitted when a session within a group completes.
- */
-export interface GroupSessionCompletedEvent extends BaseEvent {
-  readonly type: "group_session_completed";
-  readonly groupId: string;
-  readonly sessionId: string;
-  readonly status: "completed" | "failed";
-  readonly costUsd?: number | undefined;
-}
-
-/**
- * Emitted when budget warning threshold is reached.
- */
-export interface BudgetWarningEvent extends BaseEvent {
-  readonly type: "budget_warning";
-  readonly groupId: string;
-  readonly currentUsage: number;
-  readonly limit: number;
-  readonly percentUsed: number;
-}
-
-/**
- * Emitted when budget is exceeded.
- */
-export interface BudgetExceededEvent extends BaseEvent {
-  readonly type: "budget_exceeded";
-  readonly groupId: string;
-  readonly usage: number;
-  readonly limit: number;
-}
+export type {
+  GroupCreatedEvent,
+  GroupStartedEvent,
+  GroupCompletedEvent,
+  GroupPausedEvent,
+  GroupResumedEvent,
+  GroupFailedEvent,
+  GroupSessionStartedEvent,
+  GroupSessionCompletedEvent,
+  GroupSessionFailedEvent,
+  BudgetWarningEvent,
+  BudgetExceededEvent,
+  DependencyWaitingEvent,
+  DependencyResolvedEvent,
+  SessionProgressEvent,
+  GroupProgressEvent,
+  GroupEvent,
+};
 
 // ============================================================================
 // Command Queue Events
 // ============================================================================
 
-/**
- * Emitted when a command queue is created.
- */
-export interface QueueCreatedEvent extends BaseEvent {
-  readonly type: "queue_created";
-  readonly queueId: string;
-  readonly name: string;
-  readonly projectPath: string;
-}
+// NOTE: Queue event types are now defined in src/sdk/queue/events.ts
+// Re-export them here for backward compatibility
 
-/**
- * Emitted when a command queue starts execution.
- */
-export interface QueueStartedEvent extends BaseEvent {
-  readonly type: "queue_started";
-  readonly queueId: string;
-  readonly totalCommands: number;
-}
-
-/**
- * Emitted when a command queue completes.
- */
-export interface QueueCompletedEvent extends BaseEvent {
-  readonly type: "queue_completed";
-  readonly queueId: string;
-  readonly completedCommands: number;
-  readonly failedCommands: number;
-}
-
-/**
- * Emitted when a command queue is paused.
- */
-export interface QueuePausedEvent extends BaseEvent {
-  readonly type: "queue_paused";
-  readonly queueId: string;
-  readonly currentCommandIndex: number;
-}
-
-/**
- * Emitted when a command in a queue starts.
- */
-export interface CommandStartedEvent extends BaseEvent {
-  readonly type: "command_started";
-  readonly queueId: string;
-  readonly commandId: string;
-  readonly commandIndex: number;
-  readonly isNewSession: boolean;
-}
-
-/**
- * Emitted when a command in a queue completes.
- */
-export interface CommandCompletedEvent extends BaseEvent {
-  readonly type: "command_completed";
-  readonly queueId: string;
-  readonly commandId: string;
-  readonly commandIndex: number;
-  readonly status: "completed" | "failed";
-}
+import type { QueueEvent as QueueEventType } from "../queue/events";
 
 // ============================================================================
 // Union Types
@@ -252,29 +149,9 @@ export type SessionEvent =
   | TasksUpdatedEvent;
 
 /**
- * All session group events.
- */
-export type GroupEvent =
-  | GroupCreatedEvent
-  | GroupStartedEvent
-  | GroupCompletedEvent
-  | GroupPausedEvent
-  | GroupResumedEvent
-  | GroupSessionStartedEvent
-  | GroupSessionCompletedEvent
-  | BudgetWarningEvent
-  | BudgetExceededEvent;
-
-/**
  * All command queue events.
  */
-export type QueueEvent =
-  | QueueCreatedEvent
-  | QueueStartedEvent
-  | QueueCompletedEvent
-  | QueuePausedEvent
-  | CommandStartedEvent
-  | CommandCompletedEvent;
+export type QueueEvent = QueueEventType;
 
 /**
  * Union of all SDK events.
@@ -296,16 +173,32 @@ export interface EventMap {
   group_completed: GroupCompletedEvent;
   group_paused: GroupPausedEvent;
   group_resumed: GroupResumedEvent;
+  group_failed: GroupFailedEvent;
   group_session_started: GroupSessionStartedEvent;
   group_session_completed: GroupSessionCompletedEvent;
+  group_session_failed: GroupSessionFailedEvent;
   budget_warning: BudgetWarningEvent;
   budget_exceeded: BudgetExceededEvent;
-  queue_created: QueueCreatedEvent;
-  queue_started: QueueStartedEvent;
-  queue_completed: QueueCompletedEvent;
-  queue_paused: QueuePausedEvent;
-  command_started: CommandStartedEvent;
-  command_completed: CommandCompletedEvent;
+  dependency_waiting: DependencyWaitingEvent;
+  dependency_resolved: DependencyResolvedEvent;
+  session_progress: SessionProgressEvent;
+  group_progress: GroupProgressEvent;
+  // Queue events - imported from sdk/queue/events
+  queue_created: Extract<QueueEvent, { type: "queue_created" }>;
+  queue_started: Extract<QueueEvent, { type: "queue_started" }>;
+  queue_completed: Extract<QueueEvent, { type: "queue_completed" }>;
+  queue_paused: Extract<QueueEvent, { type: "queue_paused" }>;
+  queue_resumed: Extract<QueueEvent, { type: "queue_resumed" }>;
+  queue_stopped: Extract<QueueEvent, { type: "queue_stopped" }>;
+  queue_failed: Extract<QueueEvent, { type: "queue_failed" }>;
+  command_started: Extract<QueueEvent, { type: "command_started" }>;
+  command_completed: Extract<QueueEvent, { type: "command_completed" }>;
+  command_failed: Extract<QueueEvent, { type: "command_failed" }>;
+  command_added: Extract<QueueEvent, { type: "command_added" }>;
+  command_updated: Extract<QueueEvent, { type: "command_updated" }>;
+  command_removed: Extract<QueueEvent, { type: "command_removed" }>;
+  command_reordered: Extract<QueueEvent, { type: "command_reordered" }>;
+  command_mode_changed: Extract<QueueEvent, { type: "command_mode_changed" }>;
 }
 
 /**

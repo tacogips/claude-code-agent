@@ -75,74 +75,71 @@ Step 7: Update All Plans and Report
 ### Step 1: Read Dependencies and Skill
 
 1. Read `.claude/skills/exec-impl-plan-ref/SKILL.md`
-2. Read `impl-plans/README.md` for phase dependencies
+2. Read `impl-plans/README.md` for phase status and plan mapping
 
-### Step 2: Scan All Active Plans
+### Step 2: Determine Eligible Phases (LAZY LOADING)
 
-List and read all plans in `impl-plans/active/`:
-```
-impl-plans/active/
-  foundation-and-core.md    -> Phase 1
-  session-groups.md         -> Phase 2
-  command-queue.md          -> Phase 2
-  markdown-parser.md        -> Phase 2
-  realtime-monitoring.md    -> Phase 2
-  bookmarks.md              -> Phase 2
-  file-changes.md           -> Phase 2
-  daemon-and-http-api.md    -> Phase 3
-  browser-viewer.md         -> Phase 4
-  cli.md                    -> Phase 4
-```
+**CRITICAL: DO NOT read all plans. Only read plans from eligible phases to prevent OOM.**
 
-### Step 3: Determine Phase Eligibility
-
-Apply phase dependency rules:
+From README.md, extract:
+1. **Phase Status table** - Which phases are READY vs BLOCKED
+2. **PHASE_TO_PLANS mapping** - Which files belong to each phase
 
 ```python
-# Phase dependency rules
-PHASE_DEPS = {
-    1: [],                              # No dependencies
-    2: ["foundation-and-core"],         # Depends on Phase 1
-    3: ["session-groups", "command-queue", "markdown-parser",
-        "realtime-monitoring", "bookmarks", "file-changes"],  # Depends on Phase 2
-    4: ["daemon-and-http-api"],         # Depends on Phase 3
+# From README.md Phase Status table:
+PHASE_STATUS = {
+    1: "COMPLETED",
+    2: "READY",      # <-- Current eligible phase
+    3: "BLOCKED",
+    4: "BLOCKED"
 }
 
-PLAN_TO_PHASE = {
-    "foundation-and-core": 1,
-    "session-groups": 2,
-    "command-queue": 2,
-    "markdown-parser": 2,
-    "realtime-monitoring": 2,
-    "bookmarks": 2,
-    "file-changes": 2,
-    "daemon-and-http-api": 3,
-    "browser-viewer": 4,
-    "cli": 4,
-}
-
-def is_phase_eligible(phase: int, plan_statuses: dict) -> bool:
-    """Check if a phase can have tasks executed."""
-    for dep_plan in PHASE_DEPS[phase]:
-        if plan_statuses[dep_plan] != "Completed":
-            return False
-    return True
+# Only read plans from READY phases
+eligible_phases = [phase for phase, status in PHASE_STATUS.items() if status == "READY"]
+# Result: [2]
 ```
 
-### Step 4: Build Cross-Plan Task Graph
+### Step 3: Read ONLY Eligible Phase Plans
 
-For each eligible plan:
+**DO NOT read blocked phase plans (Phase 3, 4).**
+
+From PHASE_TO_PLANS in README.md:
+```python
+# Phase 2 is READY, so only read these 12 files:
+plans_to_read = [
+    "session-groups-types.md",
+    "session-groups-runner.md",
+    "command-queue-types.md",
+    "command-queue-core.md",
+    "markdown-parser-types.md",
+    "markdown-parser-core.md",
+    "realtime-watcher.md",
+    "realtime-events.md",
+    "bookmarks-types.md",
+    "bookmarks-manager.md",
+    "file-changes-types.md",
+    "file-changes-service.md"
+]
+
+# DO NOT read these (Phase 3/4 are BLOCKED):
+# - daemon-core.md, http-api.md, sse-events.md
+# - browser-viewer-*.md, cli-*.md
+```
+
+### Step 4: Build Task Graph from Eligible Plans Only
+
+For each plan in eligible phases:
 1. Parse all tasks with their status and dependencies
-2. Build combined dependency graph across all eligible plans
+2. Build dependency graph
 3. Identify executable tasks (Not Started + dependencies satisfied)
 
 ```
-Eligible Plans (Phase 1 in progress, Phase 2-4 blocked):
-  foundation-and-core:
+Eligible Plans (Phase 2 only - 12 files):
+  session-groups-types:
     TASK-001 (Not Started, no deps)     -> EXECUTABLE
-    TASK-002 (Not Started, no deps)     -> EXECUTABLE
-    TASK-003 (Not Started, deps: 001)   -> BLOCKED
-    TASK-004 (Completed)                -> SKIP
+  command-queue-types:
+    TASK-001 (Not Started, no deps)     -> EXECUTABLE
+  ...
 ```
 
 ### Step 5: Execute Tasks in Parallel

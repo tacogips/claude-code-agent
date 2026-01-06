@@ -39,6 +39,61 @@ Implementation plans bridge the gap between design documents (what to build) and
 - Each plan should have 3-10 subtasks
 - Maximize parallelizable subtasks
 
+## File Size Limits
+
+**CRITICAL**: Large implementation plan files cause Claude Code OOM (Out of Memory) errors.
+
+### Hard Limits
+
+| Metric | Limit | Reason |
+|--------|-------|--------|
+| **Line count** | MAX 400 lines | Prevents memory issues when agents read files |
+| **Modules per plan** | MAX 8 modules | Keeps plans focused and manageable |
+| **Tasks per plan** | MAX 10 tasks | Enables completion in 1-3 sessions |
+
+### When to Split Plans
+
+Split a plan into multiple files when ANY of these conditions are met:
+
+1. **Line count exceeds 400 lines**: Split by phase or module category
+2. **More than 8 modules**: Group related modules into separate plans
+3. **More than 10 tasks**: Break into logical sub-plans
+4. **Multiple phases with dependencies**: Create separate plans per phase
+
+### Splitting Strategy
+
+```
+BEFORE (one large plan):
+impl-plans/active/foundation-and-core.md (1100+ lines)
+
+AFTER (split by phase):
+impl-plans/active/foundation-interfaces.md (~200 lines)
+impl-plans/active/foundation-mocks.md (~150 lines)
+impl-plans/active/foundation-types.md (~150 lines)
+impl-plans/active/foundation-core-services.md (~200 lines)
+```
+
+### Split Plan Naming Convention
+
+When splitting, use consistent naming:
+- `{feature}-{phase}.md` - For phase-based splits
+- `{feature}-{category}.md` - For category-based splits
+
+Example:
+- `session-groups-types.md`
+- `session-groups-repository.md`
+- `session-groups-manager.md`
+
+### Cross-References Between Split Plans
+
+Each split plan MUST include:
+```markdown
+## Related Plans
+- **Previous**: `impl-plans/active/foundation-interfaces.md` (Phase 1)
+- **Next**: `impl-plans/active/foundation-core-services.md` (Phase 3)
+- **Depends On**: `foundation-interfaces.md`, `foundation-types.md`
+```
+
 ## Output Location
 
 **IMPORTANT**: All implementation plans MUST be stored under `impl-plans/` subdirectories.

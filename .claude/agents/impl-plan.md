@@ -270,3 +270,38 @@ What needs to be resolved before retrying.
 4. **Scannable format**: Plans should be easy to scan and understand quickly
 5. **Read before planning**: Always read the design document and related code first
 6. **Follow skill guidelines**: Adhere to `.claude/skills/impl-plan/SKILL.md`
+
+## File Size Limits (CRITICAL)
+
+**Large implementation plan files cause Claude Code OOM errors.**
+
+### Hard Limits
+
+| Metric | Limit |
+|--------|-------|
+| **Line count** | MAX 400 lines |
+| **Modules per plan** | MAX 8 modules |
+| **Tasks per plan** | MAX 10 tasks |
+
+### Split Strategy
+
+If a plan would exceed these limits, split into multiple files:
+
+```
+BEFORE: foundation-and-core.md (1100+ lines)
+
+AFTER:
+- foundation-interfaces.md (~200 lines)
+- foundation-mocks.md (~150 lines)
+- foundation-types.md (~150 lines)
+- foundation-core-services.md (~200 lines)
+```
+
+### Validation Before Writing
+
+Before writing a plan file, estimate:
+1. Count modules - if > 8, split by category
+2. Count tasks - if > 10, split by phase
+3. Estimate lines - if > 400, split
+
+If splitting is needed, create multiple plan files with cross-references.
