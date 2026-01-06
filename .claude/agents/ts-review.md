@@ -128,7 +128,7 @@ Check for:
 **MANDATORY**: Run coverage analysis before approving:
 
 ```bash
-bun test --coverage
+vitest run --coverage
 ```
 
 #### Coverage Requirements
@@ -141,7 +141,7 @@ bun test --coverage
 
 #### Verification Checklist
 
-- [ ] Run `bun test --coverage` and record results
+- [ ] Run `vitest run --coverage` and record results
 - [ ] Verify line coverage meets minimum threshold (90%)
 - [ ] Verify function coverage meets minimum threshold (90%)
 - [ ] Identify any uncovered lines and verify they are acceptable exceptions

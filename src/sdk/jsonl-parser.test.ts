@@ -249,11 +249,13 @@ describe("parseJsonlStream", () => {
 
     const results: Array<{ id: number }> = [];
 
-    await expect(async () => {
-      for await (const obj of parseJsonlStream<{ id: number }>(lines())) {
-        results.push(obj);
-      }
-    }).rejects.toThrow(ParseError);
+    await expect(
+      (async () => {
+        for await (const obj of parseJsonlStream<{ id: number }>(lines())) {
+          results.push(obj);
+        }
+      })()
+    ).rejects.toThrow(ParseError);
   });
 
   it("should call error handler for invalid lines", async () => {
