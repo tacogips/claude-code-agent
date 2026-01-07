@@ -10,6 +10,7 @@ import {
   TokenManager,
   authMiddleware,
   requirePermission,
+  AuthError,
 } from "./auth";
 import { createTestContainer } from "../container";
 import type { Container } from "../container";
@@ -191,7 +192,7 @@ describe("TokenManager", () => {
         tokenFilePath,
         JSON.stringify({
           tokens: [{ ...stored, expiresAt: pastDate }],
-        })
+        }),
       );
 
       // Reload tokens
@@ -270,9 +271,9 @@ describe("TokenManager", () => {
     });
 
     test("throws error for non-existent token", async () => {
-      await expect(
-        tokenManager.revokeToken("cca_nonexistent")
-      ).rejects.toThrow("Token not found");
+      await expect(tokenManager.revokeToken("cca_nonexistent")).rejects.toThrow(
+        "Token not found",
+      );
     });
 
     test("persists revocation to file", async () => {
@@ -329,9 +330,9 @@ describe("TokenManager", () => {
     });
 
     test("throws error for non-existent token", async () => {
-      await expect(
-        tokenManager.rotateToken("cca_nonexistent")
-      ).rejects.toThrow("Token not found");
+      await expect(tokenManager.rotateToken("cca_nonexistent")).rejects.toThrow(
+        "Token not found",
+      );
     });
   });
 
@@ -346,7 +347,7 @@ describe("TokenManager", () => {
       expect(validated).not.toBeNull();
 
       expect(tokenManager.hasPermission(validated!, "session:create")).toBe(
-        true
+        true,
       );
       expect(tokenManager.hasPermission(validated!, "session:read")).toBe(true);
     });
@@ -361,7 +362,7 @@ describe("TokenManager", () => {
       expect(validated).not.toBeNull();
 
       expect(tokenManager.hasPermission(validated!, "session:create")).toBe(
-        false
+        false,
       );
     });
 
@@ -447,7 +448,7 @@ describe("authMiddleware", () => {
     });
   });
 
-  test("returns 401 for missing Authorization header", async () => {
+  test("throws AuthError for missing Authorization header", async () => {
     const middleware = authMiddleware(tokenManager);
     const mockRequest = new Request("http://localhost/api/test");
     const mockContext: { request: Request; set: { status?: number } } = {
@@ -455,16 +456,17 @@ describe("authMiddleware", () => {
       set: {},
     };
 
-    const result = await middleware(mockContext);
-
-    expect(mockContext.set.status).toBe(401);
-    expect(result).toEqual({
-      error: "Missing Authorization header",
-      status: 401,
-    });
+    try {
+      await middleware(mockContext);
+      expect.unreachable("Expected AuthError to be thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AuthError);
+      expect((error as AuthError).message).toBe("Missing Authorization header");
+      expect((error as AuthError).statusCode).toBe(401);
+    }
   });
 
-  test("returns 401 for invalid Authorization header format", async () => {
+  test("throws AuthError for invalid Authorization header format", async () => {
     const middleware = authMiddleware(tokenManager);
     const mockRequest = new Request("http://localhost/api/test", {
       headers: { Authorization: "InvalidFormat token123" },
@@ -474,16 +476,19 @@ describe("authMiddleware", () => {
       set: {},
     };
 
-    const result = await middleware(mockContext);
-
-    expect(mockContext.set.status).toBe(401);
-    expect(result).toEqual({
-      error: "Invalid Authorization header format. Expected: Bearer <token>",
-      status: 401,
-    });
+    try {
+      await middleware(mockContext);
+      expect.unreachable("Expected AuthError to be thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AuthError);
+      expect((error as AuthError).message).toBe(
+        "Invalid Authorization header format. Expected: Bearer <token>",
+      );
+      expect((error as AuthError).statusCode).toBe(401);
+    }
   });
 
-  test("returns 401 for Bearer without token", async () => {
+  test("throws AuthError for Bearer without token", async () => {
     const middleware = authMiddleware(tokenManager);
     const mockRequest = new Request("http://localhost/api/test", {
       headers: { Authorization: "Bearer" },
@@ -493,12 +498,19 @@ describe("authMiddleware", () => {
       set: {},
     };
 
-    await middleware(mockContext);
-
-    expect(mockContext.set.status).toBe(401);
+    try {
+      await middleware(mockContext);
+      expect.unreachable("Expected AuthError to be thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AuthError);
+      expect((error as AuthError).message).toBe(
+        "Invalid Authorization header format. Expected: Bearer <token>",
+      );
+      expect((error as AuthError).statusCode).toBe(401);
+    }
   });
 
-  test("returns 401 for invalid token", async () => {
+  test("throws AuthError for invalid token", async () => {
     const middleware = authMiddleware(tokenManager);
     const mockRequest = new Request("http://localhost/api/test", {
       headers: { Authorization: "Bearer cca_invalid_token_xxx" },
@@ -508,16 +520,17 @@ describe("authMiddleware", () => {
       set: {},
     };
 
-    const result = await middleware(mockContext);
-
-    expect(mockContext.set.status).toBe(401);
-    expect(result).toEqual({
-      error: "Invalid or expired token",
-      status: 401,
-    });
+    try {
+      await middleware(mockContext);
+      expect.unreachable("Expected AuthError to be thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AuthError);
+      expect((error as AuthError).message).toBe("Invalid or expired token");
+      expect((error as AuthError).statusCode).toBe(401);
+    }
   });
 
-  test("returns ApiToken for valid token", async () => {
+  test("returns object with token property for valid token", async () => {
     const middleware = authMiddleware(tokenManager);
     const mockRequest = new Request("http://localhost/api/test", {
       headers: { Authorization: `Bearer ${validToken}` },
@@ -529,12 +542,13 @@ describe("authMiddleware", () => {
 
     const result = await middleware(mockContext);
 
-    // Should return the validated token
+    // Should return object with token property
     expect(result).toBeDefined();
     expect(typeof result).toBe("object");
-    expect((result as ApiToken).name).toBe("Test Token");
-    expect((result as ApiToken).permissions).toContain("session:create");
-    expect((result as ApiToken).permissions).toContain("session:read");
+    expect(result.token).toBeDefined();
+    expect(result.token.name).toBe("Test Token");
+    expect(result.token.permissions).toContain("session:create");
+    expect(result.token.permissions).toContain("session:read");
   });
 
   test("updates lastUsedAt on successful validation", async () => {
@@ -551,13 +565,13 @@ describe("authMiddleware", () => {
     const result = await middleware(mockContext);
     const after = Date.now();
 
-    expect((result as ApiToken).lastUsedAt).toBeDefined();
-    const lastUsed = new Date((result as ApiToken).lastUsedAt!).getTime();
+    expect(result.token.lastUsedAt).toBeDefined();
+    const lastUsed = new Date(result.token.lastUsedAt!).getTime();
     expect(lastUsed).toBeGreaterThanOrEqual(before);
     expect(lastUsed).toBeLessThanOrEqual(after);
   });
 
-  test("handles expired token", async () => {
+  test("throws AuthError for expired token", async () => {
     // Create a token with expiration
     const expiredToken = await tokenManager.createToken({
       name: "Expired Token",
@@ -574,7 +588,7 @@ describe("authMiddleware", () => {
       tokenFilePath,
       JSON.stringify({
         tokens: [{ ...stored, expiresAt: pastDate }],
-      })
+      }),
     );
 
     // Reload tokens
@@ -590,13 +604,14 @@ describe("authMiddleware", () => {
       set: {},
     };
 
-    const result = await middleware(mockContext);
-
-    expect(mockContext.set.status).toBe(401);
-    expect(result).toEqual({
-      error: "Invalid or expired token",
-      status: 401,
-    });
+    try {
+      await middleware(mockContext);
+      expect.unreachable("Expected AuthError to be thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AuthError);
+      expect((error as AuthError).message).toBe("Invalid or expired token");
+      expect((error as AuthError).statusCode).toBe(401);
+    }
   });
 });
 

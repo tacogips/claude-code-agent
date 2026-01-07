@@ -8,11 +8,13 @@
  */
 
 import type { Container } from "../container";
-import type { Session } from "../types/session";
+import type { Session, SessionMetadata } from "../types/session";
 import type { Message, ToolCall, ToolResult } from "../types/message";
 import { type Result, ok, err } from "../result";
 import { FileNotFoundError, type AgentError } from "../errors";
 import { parseJsonl } from "./jsonl-parser";
+import { toSessionMetadata } from "../types/session";
+import { getDefaultConfig } from "../types/config";
 
 /**
  * SessionReader reads and parses Claude Code session files.
@@ -228,6 +230,84 @@ export class SessionReader {
     }
 
     return sessionFiles;
+  }
+
+  /**
+   * List all sessions with optional filtering by project path.
+   *
+   * Returns lightweight SessionMetadata objects (without full messages)
+   * suitable for listing and indexing. If no projectPath is provided,
+   * searches all sessions in the default Claude data directory.
+   *
+   * @param projectPath - Optional path to filter sessions by project
+   * @returns Array of session metadata objects
+   */
+  async listSessions(
+    projectPath?: string,
+  ): Promise<readonly SessionMetadata[]> {
+    const searchPath = projectPath ?? this.getDefaultClaudeProjectsDir();
+    const sessionFiles = await this.findSessionFiles(searchPath);
+    const sessions: SessionMetadata[] = [];
+
+    for (const filePath of sessionFiles) {
+      const result = await this.readSession(filePath);
+      if (result.isOk()) {
+        sessions.push(toSessionMetadata(result.value));
+      }
+    }
+
+    return sessions;
+  }
+
+  /**
+   * Get a single session by its ID.
+   *
+   * Searches for the session in the Claude data directory and returns
+   * the full Session object if found.
+   *
+   * @param sessionId - Unique session identifier
+   * @returns Session object if found, null otherwise
+   */
+  async getSession(sessionId: string): Promise<Session | null> {
+    const claudeDir = this.getDefaultClaudeProjectsDir();
+    const sessionFiles = await this.findSessionFiles(claudeDir);
+
+    for (const filePath of sessionFiles) {
+      const result = await this.readSession(filePath);
+      if (result.isOk() && result.value.id === sessionId) {
+        return result.value;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get messages for a specific session by ID.
+   *
+   * Convenience method that finds the session and returns only its messages.
+   *
+   * @param sessionId - Unique session identifier
+   * @returns Array of messages if session found, empty array otherwise
+   */
+  async getMessages(sessionId: string): Promise<readonly Message[]> {
+    const session = await this.getSession(sessionId);
+    return session?.messages ?? [];
+  }
+
+  /**
+   * Get the default Claude projects directory.
+   *
+   * Returns the path to ~/.claude/projects where Claude Code stores sessions.
+   *
+   * @returns Path to Claude projects directory
+   * @private
+   */
+  private getDefaultClaudeProjectsDir(): string {
+    const config = getDefaultConfig();
+    const claudeDataDir =
+      config.claudeDataDir ?? `${process.env["HOME"] ?? ""}/.claude`;
+    return `${claudeDataDir}/projects`;
   }
 
   /**

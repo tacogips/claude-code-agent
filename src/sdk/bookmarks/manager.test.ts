@@ -12,7 +12,10 @@ import { InMemoryBookmarkRepository } from "../../repository/in-memory/bookmark-
 import { MockFileSystem } from "../../test/mocks/filesystem";
 import { MockProcessManager } from "../../test/mocks/process-manager";
 import { MockClock } from "../../test/mocks/clock";
-import { InMemoryGroupRepository } from "../../repository/in-memory";
+import {
+  InMemoryGroupRepository,
+  InMemoryQueueRepository,
+} from "../../repository/in-memory";
 
 describe("BookmarkManager", () => {
   let manager: BookmarkManager;
@@ -26,6 +29,8 @@ describe("BookmarkManager", () => {
       processManager: new MockProcessManager(),
       clock: new MockClock(),
       groupRepository: new InMemoryGroupRepository(),
+      queueRepository: new InMemoryQueueRepository(),
+      bookmarkRepository: repository,
     };
     manager = new BookmarkManager(container, repository);
   });
@@ -560,9 +565,9 @@ describe("BookmarkManager", () => {
     });
 
     test("throws error for non-existent bookmark", async () => {
-      await expect(
-        manager.removeTag("non-existent-id", "tag"),
-      ).rejects.toThrow("Bookmark not found");
+      await expect(manager.removeTag("non-existent-id", "tag")).rejects.toThrow(
+        "Bookmark not found",
+      );
     });
   });
 });

@@ -7,8 +7,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { SessionReader } from "./session-reader";
 import { MockFileSystem } from "../test/mocks/filesystem";
-import { MockProcessManager } from "../test/mocks/process-manager";
-import { MockClock } from "../test/mocks/clock";
+import { createTestContainer } from "../container";
 import type { Container } from "../container";
 import { FileNotFoundError } from "../errors";
 
@@ -19,11 +18,7 @@ describe("SessionReader", () => {
 
   beforeEach(() => {
     fs = new MockFileSystem();
-    container = {
-      fileSystem: fs,
-      processManager: new MockProcessManager(),
-      clock: new MockClock(),
-    };
+    container = createTestContainer({ fileSystem: fs });
     reader = new SessionReader(container);
   });
 
@@ -456,6 +451,250 @@ describe("SessionReader", () => {
       expect(files).toHaveLength(2);
       expect(files).toContain("/root/session.jsonl");
       expect(files).toContain("/root/subdir/session.jsonl");
+    });
+  });
+
+  describe("listSessions", () => {
+    it("should list all sessions from specified directory", async () => {
+      // Create multiple session files
+      const session1 = JSON.stringify({
+        id: "msg-1",
+        role: "user",
+        content: "Hello",
+        timestamp: "2026-01-01T00:00:00Z",
+        sessionId: "session-abc",
+        projectPath: "/project-a",
+        status: "completed",
+        createdAt: "2026-01-01T00:00:00Z",
+      });
+
+      const session2 = JSON.stringify({
+        id: "msg-2",
+        role: "user",
+        content: "World",
+        timestamp: "2026-01-02T00:00:00Z",
+        sessionId: "session-def",
+        projectPath: "/project-b",
+        status: "active",
+        createdAt: "2026-01-02T00:00:00Z",
+      });
+
+      fs.setFile("/claude/projects/abc/session.jsonl", session1);
+      fs.setFile("/claude/projects/def/session.jsonl", session2);
+
+      const sessions = await reader.listSessions("/claude/projects");
+
+      expect(sessions).toHaveLength(2);
+      expect(sessions[0]?.id).toBe("session-abc");
+      expect(sessions[0]?.projectPath).toBe("/project-a");
+      expect(sessions[0]?.messageCount).toBe(1);
+      expect(sessions[1]?.id).toBe("session-def");
+      expect(sessions[1]?.projectPath).toBe("/project-b");
+      expect(sessions[1]?.messageCount).toBe(1);
+    });
+
+    it("should return empty array when no sessions exist", async () => {
+      fs.setDirectory("/claude/projects");
+
+      const sessions = await reader.listSessions("/claude/projects");
+
+      expect(sessions).toHaveLength(0);
+    });
+
+    it("should skip sessions that fail to parse", async () => {
+      const validSession = JSON.stringify({
+        id: "msg-1",
+        role: "user",
+        content: "Valid",
+        timestamp: "2026-01-01T00:00:00Z",
+        sessionId: "session-valid",
+        projectPath: "/project",
+      });
+
+      fs.setFile("/claude/projects/valid/session.jsonl", validSession);
+      fs.setFile("/claude/projects/invalid/session.jsonl", "{ invalid json");
+
+      const sessions = await reader.listSessions("/claude/projects");
+
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0]?.id).toBe("session-valid");
+    });
+
+    it("should include message count in metadata", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          id: "msg-1",
+          role: "user",
+          content: "First",
+          timestamp: "2026-01-01T00:00:00Z",
+          sessionId: "session-multi",
+        }),
+        JSON.stringify({
+          id: "msg-2",
+          role: "assistant",
+          content: "Second",
+          timestamp: "2026-01-01T00:00:01Z",
+        }),
+        JSON.stringify({
+          id: "msg-3",
+          role: "user",
+          content: "Third",
+          timestamp: "2026-01-01T00:00:02Z",
+        }),
+      ].join("\n");
+
+      fs.setFile("/claude/projects/multi/session.jsonl", sessionContent);
+
+      const sessions = await reader.listSessions("/claude/projects");
+
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0]?.messageCount).toBe(3);
+    });
+  });
+
+  describe("getSession", () => {
+    beforeEach(() => {
+      // Mock HOME environment variable for default directory
+      process.env["HOME"] = "/home/testuser";
+    });
+
+    it("should find and return session by ID", async () => {
+      const sessionContent = JSON.stringify({
+        id: "msg-1",
+        role: "user",
+        content: "Test",
+        timestamp: "2026-01-01T00:00:00Z",
+        sessionId: "target-session",
+        projectPath: "/project",
+        status: "active",
+        createdAt: "2026-01-01T00:00:00Z",
+      });
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/target/session.jsonl",
+        sessionContent,
+      );
+
+      const session = await reader.getSession("target-session");
+
+      expect(session).not.toBeNull();
+      expect(session?.id).toBe("target-session");
+      expect(session?.projectPath).toBe("/project");
+      expect(session?.messages).toHaveLength(1);
+    });
+
+    it("should return null when session ID not found", async () => {
+      const sessionContent = JSON.stringify({
+        id: "msg-1",
+        role: "user",
+        content: "Test",
+        timestamp: "2026-01-01T00:00:00Z",
+        sessionId: "session-abc",
+      });
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/abc/session.jsonl",
+        sessionContent,
+      );
+
+      const session = await reader.getSession("nonexistent-session");
+
+      expect(session).toBeNull();
+    });
+
+    it("should search all sessions and return first match", async () => {
+      const session1 = JSON.stringify({
+        id: "msg-1",
+        role: "user",
+        content: "First",
+        timestamp: "2026-01-01T00:00:00Z",
+        sessionId: "session-1",
+      });
+
+      const session2 = JSON.stringify({
+        id: "msg-2",
+        role: "user",
+        content: "Second",
+        timestamp: "2026-01-02T00:00:00Z",
+        sessionId: "session-2",
+      });
+
+      fs.setFile("/home/testuser/.claude/projects/s1/session.jsonl", session1);
+      fs.setFile("/home/testuser/.claude/projects/s2/session.jsonl", session2);
+
+      const session = await reader.getSession("session-2");
+
+      expect(session).not.toBeNull();
+      expect(session?.id).toBe("session-2");
+    });
+
+    it("should return null when projects directory does not exist", async () => {
+      const session = await reader.getSession("any-session");
+
+      expect(session).toBeNull();
+    });
+  });
+
+  describe("getMessages", () => {
+    beforeEach(() => {
+      process.env["HOME"] = "/home/testuser";
+    });
+
+    it("should return messages for session by ID", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          id: "msg-1",
+          role: "user",
+          content: "Hello",
+          timestamp: "2026-01-01T00:00:00Z",
+          sessionId: "target-session",
+        }),
+        JSON.stringify({
+          id: "msg-2",
+          role: "assistant",
+          content: "Hi",
+          timestamp: "2026-01-01T00:00:01Z",
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/target/session.jsonl",
+        sessionContent,
+      );
+
+      const messages = await reader.getMessages("target-session");
+
+      expect(messages).toHaveLength(2);
+      expect(messages[0]?.id).toBe("msg-1");
+      expect(messages[0]?.content).toBe("Hello");
+      expect(messages[1]?.id).toBe("msg-2");
+      expect(messages[1]?.content).toBe("Hi");
+    });
+
+    it("should return empty array when session not found", async () => {
+      const messages = await reader.getMessages("nonexistent-session");
+
+      expect(messages).toHaveLength(0);
+    });
+
+    it("should return empty array when session exists but has no messages", async () => {
+      fs.setFile("/home/testuser/.claude/projects/empty/session.jsonl", "");
+
+      // First, we need to know the session ID - let's use derived ID from path
+      const sessionContent = JSON.stringify({
+        sessionId: "empty",
+        projectPath: "/project",
+        status: "active",
+        createdAt: "2026-01-01T00:00:00Z",
+      });
+      fs.setFile(
+        "/home/testuser/.claude/projects/empty/session.jsonl",
+        sessionContent,
+      );
+
+      const messages = await reader.getMessages("empty");
+
+      expect(messages).toHaveLength(0);
     });
   });
 });

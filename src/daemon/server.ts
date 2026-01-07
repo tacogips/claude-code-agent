@@ -12,9 +12,19 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import type { Container } from "../container";
 import type { DaemonConfig, DaemonStatus } from "./types";
-import { TokenManager, authMiddleware } from "./auth";
+import {
+  TokenManager,
+  authMiddleware,
+  AuthError,
+  type AuthenticatedApp,
+} from "./auth";
 import { ClaudeCodeAgent } from "../sdk";
-import { sessionRoutes, groupRoutes, queueRoutes, bookmarkRoutes } from "./routes";
+import {
+  sessionRoutes,
+  groupRoutes,
+  queueRoutes,
+  bookmarkRoutes,
+} from "./routes";
 
 /**
  * HTTP daemon server with REST API.
@@ -99,8 +109,15 @@ export class DaemonServer {
 
     // Error handling middleware
     this.app.onError(({ code, error, set }) => {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(`[DaemonServer] Error ${code}:`, errorMessage);
+
+      // Handle authentication errors
+      if (error instanceof AuthError) {
+        set.status = error.statusCode;
+        return { error: "Unauthorized", message: errorMessage };
+      }
 
       if (code === "NOT_FOUND") {
         set.status = 404;
@@ -163,19 +180,12 @@ export class DaemonServer {
     }
 
     // API routes with authentication
-    // Create authenticated app instance using derive to attach token
-    const authenticatedApp = this.app.derive(async (context) => {
-      const result = await authMiddleware(this.tokenManager)(context);
-
-      // If result has error property, it's an error response
-      if (typeof result === "object" && "error" in result) {
-        context.set.status = result.status;
-        return result;
-      }
-
-      // Otherwise, result is the validated token
-      return { token: result };
-    });
+    // Use derive to attach validated token to context
+    // authMiddleware returns { token: ApiToken } or throws AuthError
+    // Type assertion needed due to Elysia's complex type inference
+    const authenticatedApp = this.app.derive(
+      authMiddleware(this.tokenManager),
+    ) as unknown as AuthenticatedApp;
 
     // Register API routes with authentication
     // Session routes
@@ -236,7 +246,12 @@ export class DaemonServer {
         port: this.config.port,
       };
 
-      if (hasTlsCert && hasTlsKey && this.config.tlsCert && this.config.tlsKey) {
+      if (
+        hasTlsCert &&
+        hasTlsKey &&
+        this.config.tlsCert &&
+        this.config.tlsKey
+      ) {
         // Read TLS files
         const certContent = await this.container.fileSystem.readFile(
           this.config.tlsCert,

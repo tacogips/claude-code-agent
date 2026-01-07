@@ -10,6 +10,11 @@ import { MockFileSystem } from "../test/mocks/filesystem";
 import { MockProcessManager } from "../test/mocks/process-manager";
 import { MockClock } from "../test/mocks/clock";
 import type { Container } from "../container";
+import {
+  InMemoryGroupRepository,
+  InMemoryQueueRepository,
+  InMemoryBookmarkRepository,
+} from "../repository/in-memory";
 
 describe("TranscriptWatcher", () => {
   let fs: MockFileSystem;
@@ -22,6 +27,9 @@ describe("TranscriptWatcher", () => {
       fileSystem: fs,
       processManager: new MockProcessManager(),
       clock: new MockClock(),
+      groupRepository: new InMemoryGroupRepository(),
+      queueRepository: new InMemoryQueueRepository(),
+      bookmarkRepository: new InMemoryBookmarkRepository(),
     };
   });
 

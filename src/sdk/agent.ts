@@ -93,11 +93,31 @@ export class ClaudeCodeAgent {
 
     // Initialize managers
     this.sessions = new SessionReader(container);
-    this.groups = new GroupManager(container, container.groupRepository, this.events);
-    this.groupRunner = new GroupRunner(container, container.groupRepository, this.events);
-    this.queues = new QueueManager(container, container.queueRepository, this.events);
-    this.queueRunner = new QueueRunner(container, container.queueRepository, this.events);
-    this.bookmarks = new BookmarkManager(container);
+    this.groups = new GroupManager(
+      container,
+      container.groupRepository,
+      this.events,
+    );
+    this.groupRunner = new GroupRunner(
+      container,
+      container.groupRepository,
+      this.events,
+    );
+    this.queues = new QueueManager(
+      container,
+      container.queueRepository,
+      this.events,
+    );
+    this.queueRunner = new QueueRunner(
+      container,
+      container.queueRepository,
+      this.queues,
+      this.events,
+    );
+    this.bookmarks = new BookmarkManager(
+      container,
+      container.bookmarkRepository,
+    );
   }
 
   /**

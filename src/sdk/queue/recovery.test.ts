@@ -8,6 +8,10 @@ import { QueueManager } from "./manager";
 import type { Container } from "../../container";
 import type { CommandQueue } from "../../repository/queue-repository";
 import { InMemoryQueueRepository } from "../../repository/in-memory/queue-repository";
+import {
+  InMemoryGroupRepository,
+  InMemoryBookmarkRepository,
+} from "../../repository/in-memory";
 import { EventEmitter } from "../events/emitter";
 import { MockClock } from "../../test/mocks/clock";
 import { MockProcessManager } from "../../test/mocks/process-manager";
@@ -30,6 +34,9 @@ describe("QueueRecovery", () => {
       clock,
       processManager,
       fileSystem: filesystem,
+      groupRepository: new InMemoryGroupRepository(),
+      queueRepository: new InMemoryQueueRepository(),
+      bookmarkRepository: new InMemoryBookmarkRepository(),
     };
 
     repository = new InMemoryQueueRepository();

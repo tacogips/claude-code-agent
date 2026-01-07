@@ -91,7 +91,9 @@ export class QueueRecovery {
       };
     }
 
-    logger.info(`Found ${staleQueuesFound} running queues, checking for stale processes`);
+    logger.info(
+      `Found ${staleQueuesFound} running queues, checking for stale processes`,
+    );
 
     const recoveredQueueIds: string[] = [];
 
@@ -130,52 +132,18 @@ export class QueueRecovery {
 
     const queuesRecovered = recoveredQueueIds.length;
 
-    logger.info(`Crash recovery complete: ${queuesRecovered}/${staleQueuesFound} queues recovered`, {
-      recoveredQueueIds,
-    });
+    logger.info(
+      `Crash recovery complete: ${queuesRecovered}/${staleQueuesFound} queues recovered`,
+      {
+        recoveredQueueIds,
+      },
+    );
 
     return {
       staleQueuesFound,
       queuesRecovered,
       recoveredQueueIds,
     };
-  }
-
-  /**
-   * Check if a process is alive by PID.
-   *
-   * Uses process.kill(pid, 0) which checks if a process exists
-   * without actually sending a signal.
-   *
-   * NOTE: This is a private utility method not currently used in
-   * the implementation. It's included for future enhancement when
-   * we store PIDs in queue metadata.
-   *
-   * @param pid - Process ID to check
-   * @returns True if process is alive, false otherwise
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private isProcessAlive(pid: number): boolean {
-    try {
-      // Send signal 0 to check if process exists
-      // This doesn't actually send a signal, just checks permissions
-      process.kill(pid, 0);
-      return true;
-    } catch (error: unknown) {
-      // ESRCH means process doesn't exist
-      // EPERM means process exists but we don't have permission
-      if (
-        error !== null &&
-        typeof error === "object" &&
-        "code" in error &&
-        error.code === "ESRCH"
-      ) {
-        return false;
-      }
-      // Process exists but we don't have permission to signal it
-      // In this case, assume it's alive
-      return true;
-    }
   }
 
   /**

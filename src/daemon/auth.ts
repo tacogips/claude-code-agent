@@ -7,12 +7,9 @@
  * @module daemon/auth
  */
 
+import type { Elysia } from "elysia";
 import type { Container } from "../container";
-import type {
-  ApiToken,
-  CreateTokenOptions,
-  Permission,
-} from "./types";
+import type { ApiToken, CreateTokenOptions, Permission } from "./types";
 
 /**
  * Token storage file format.
@@ -48,8 +45,8 @@ function parseDuration(duration: string): number {
   const amount = parseInt(amountStr, 10);
 
   const multipliers: Record<string, number> = {
-    m: 60 * 1000,          // minutes
-    h: 60 * 60 * 1000,     // hours
+    m: 60 * 1000, // minutes
+    h: 60 * 60 * 1000, // hours
     d: 24 * 60 * 60 * 1000, // days
     w: 7 * 24 * 60 * 60 * 1000, // weeks
     y: 365 * 24 * 60 * 60 * 1000, // years
@@ -148,7 +145,7 @@ export class TokenManager {
       const emptyStorage: TokenStorage = { tokens: [] };
       await fileSystem.writeFile(
         this.tokenFilePath,
-        JSON.stringify(emptyStorage, null, 2)
+        JSON.stringify(emptyStorage, null, 2),
       );
       this.tokens = [];
       return;
@@ -160,7 +157,7 @@ export class TokenManager {
       this.tokens = storage.tokens;
     } catch (error) {
       throw new Error(
-        `Failed to load tokens from ${this.tokenFilePath}: ${error}`
+        `Failed to load tokens from ${this.tokenFilePath}: ${error}`,
       );
     }
   }
@@ -175,11 +172,11 @@ export class TokenManager {
     try {
       await fileSystem.writeFile(
         this.tokenFilePath,
-        JSON.stringify(storage, null, 2)
+        JSON.stringify(storage, null, 2),
       );
     } catch (error) {
       throw new Error(
-        `Failed to save tokens to ${this.tokenFilePath}: ${error}`
+        `Failed to save tokens to ${this.tokenFilePath}: ${error}`,
       );
     }
   }
@@ -367,71 +364,99 @@ export class TokenManager {
  * Extended context interface for Elysia with authenticated token.
  *
  * Augments Elysia context with token data after successful authentication.
+ *
+ * Use this type in route handlers that require authentication.
  */
 export interface AuthContext {
   readonly token: ApiToken;
 }
 
 /**
- * Authentication middleware for Elysia.
+ * Type for Elysia app instance with authentication derived into context.
+ *
+ * Use this type for route functions that expect authenticated context.
+ * The context will include a `token` property of type ApiToken.
+ */
+export type AuthenticatedApp = Elysia<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any
+> & {
+  // Type assertion to indicate derived context includes token
+  // This is a workaround for Elysia's complex type inference
+  _derivedContext?: AuthContext;
+};
+
+/**
+ * Custom error class for authentication failures.
+ *
+ * Used to provide proper status codes for auth errors.
+ */
+export class AuthError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+  ) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
+/**
+ * Authentication middleware for Elysia using derive pattern.
  *
  * Validates Bearer token from Authorization header and attaches
  * token data to request context.
  *
- * Returns 401 for missing/invalid tokens.
- * Returns 403 for insufficient permissions (if permission check is used).
+ * Throws AuthError for invalid/missing tokens (caught by error middleware).
  *
  * @param tokenManager - TokenManager instance
- * @returns Elysia middleware plugin
+ * @returns Elysia derive function that returns token context
  */
 export function authMiddleware(tokenManager: TokenManager) {
-  return async (context: {
-    readonly request: Request;
-    readonly set: { status?: number };
-    readonly token?: ApiToken;
-  }): Promise<ApiToken | { readonly error: string; readonly status: number }> => {
-    const authHeader = context.request.headers.get("Authorization");
+  return async (context: unknown): Promise<{ readonly token: ApiToken }> => {
+    // Type narrow the context to access request
+    const ctx = context as { readonly request: Request };
+    const authHeader = ctx.request.headers.get("Authorization");
 
     // Check for Authorization header
     if (authHeader === null) {
-      context.set.status = 401;
-      return {
-        error: "Missing Authorization header",
-        status: 401,
-      };
+      throw new AuthError("Missing Authorization header", 401);
     }
 
     // Parse Bearer token format
     const parts = authHeader.split(" ");
     if (parts.length !== 2 || parts[0] !== "Bearer") {
-      context.set.status = 401;
-      return {
-        error: "Invalid Authorization header format. Expected: Bearer <token>",
-        status: 401,
-      };
+      throw new AuthError(
+        "Invalid Authorization header format. Expected: Bearer <token>",
+        401,
+      );
     }
 
     const token = parts[1];
     if (token === undefined) {
-      context.set.status = 401;
-      return {
-        error: "Missing token in Authorization header",
-        status: 401,
-      };
+      throw new AuthError("Missing token in Authorization header", 401);
     }
 
     // Validate token
     const validatedToken = await tokenManager.validateToken(token);
     if (validatedToken === null) {
-      context.set.status = 401;
-      return {
-        error: "Invalid or expired token",
-        status: 401,
-      };
+      throw new AuthError("Invalid or expired token", 401);
     }
 
     // Token is valid, return it to be attached to context
-    return validatedToken;
+    return { token: validatedToken };
   };
 }
 
@@ -447,7 +472,7 @@ export function authMiddleware(tokenManager: TokenManager) {
  */
 export function requirePermission(
   tokenManager: TokenManager,
-  requiredPermission: Permission
+  requiredPermission: Permission,
 ) {
   return (context: {
     readonly token: ApiToken;

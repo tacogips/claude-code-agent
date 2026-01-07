@@ -1,9 +1,9 @@
 # HTTP API Implementation Plan
 
-**Status**: Ready
+**Status**: Completed
 **Design Reference**: design-docs/spec-sdk-api.md#5-rest-api-endpoints, #6-authentication
 **Created**: 2026-01-06
-**Last Updated**: 2026-01-06
+**Last Updated**: 2026-01-07
 
 ---
 
@@ -335,7 +335,7 @@ Routes:
 
 ### TASK-001: Session Routes
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes (after daemon-core is complete)
 **Deliverables**: `src/daemon/routes/sessions.ts`
 **Estimated Effort**: Medium
@@ -360,7 +360,7 @@ Implement session REST API routes.
 
 ### TASK-002: Group Routes
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes (after daemon-core is complete)
 **Deliverables**: `src/daemon/routes/groups.ts`
 **Estimated Effort**: Medium
@@ -384,7 +384,7 @@ Implement session group REST API routes.
 
 ### TASK-003: Queue Routes
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes (after daemon-core is complete)
 **Deliverables**: `src/daemon/routes/queues.ts`
 **Estimated Effort**: Medium
@@ -405,7 +405,7 @@ Implement command queue REST API routes.
 
 ### TASK-004: Bookmark Routes
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes (after daemon-core is complete)
 **Deliverables**: `src/daemon/routes/bookmarks.ts`
 **Estimated Effort**: Small
