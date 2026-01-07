@@ -229,3 +229,9 @@ export type {
 } from "./bookmarks";
 
 export { BookmarkManager } from "./bookmarks";
+
+// Queue Manager and Runner (re-export from queue module)
+export { QueueManager, QueueRunner } from "./queue";
+
+// Main SDK Agent
+export { ClaudeCodeAgent } from "./agent";

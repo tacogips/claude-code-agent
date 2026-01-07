@@ -464,7 +464,34 @@ All tasks are parallelizable after daemon-core is complete.
 
 ## Progress Log
 
-(To be filled during implementation)
+### Session: 2026-01-07 10:43
+
+**Tasks Completed**: Partial implementation of TASK-001, TASK-002, TASK-003, TASK-004
+**Tasks In Progress**: All 4 tasks require refinement
+**Blockers**: Auth middleware integration with Elysia typing needs simplification
+
+**Notes**:
+- Created `src/sdk/agent.ts` - ClaudeCodeAgent wrapper class combining all SDK managers
+- Created `src/daemon/routes/sessions.ts` - Session route handlers with permission checks
+- Created `src/daemon/routes/groups.ts` - Group route handlers
+- Created `src/daemon/routes/queues.ts` - Queue route handlers
+- Created `src/daemon/routes/bookmarks.ts` - Bookmark route handlers
+- Created `src/daemon/routes/index.ts` - Route module exports
+- Updated `src/sdk/index.ts` to export ClaudeCodeAgent and QueueManager/QueueRunner
+- Updated `src/daemon/server.ts` to initialize SDK and setup API routes
+
+**Remaining Work**:
+1. Fix Elysia context typing for token attachment (auth middleware integration)
+2. Update route method calls to match actual SDK API signatures:
+   - BookmarkManager: use `add`, `list`, `get`, `getWithContent`, `delete` methods
+   - QueueManager: use correct filter/options types
+3. Add integration tests for all routes
+4. Complete type checking pass
+
+**Technical Decisions**:
+- Chose to create unified ClaudeCodeAgent class to simplify daemon route integration
+- Routes return 501 Not Implemented for session control operations (delegated to daemon-core TASK-005)
+- Permission checks implemented inline in each route handler
 
 ---
 
