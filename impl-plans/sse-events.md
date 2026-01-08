@@ -1,9 +1,9 @@
 # SSE Events Implementation Plan
 
-**Status**: Ready
+**Status**: Completed
 **Design Reference**: design-docs/spec-sdk-api.md#5-rest-api-endpoints (SSE sections)
 **Created**: 2026-01-06
-**Last Updated**: 2026-01-06
+**Last Updated**: 2026-01-08
 
 ---
 
@@ -248,7 +248,7 @@ Implement Server-Sent Events core functionality.
 
 ### TASK-003: Session SSE Routes
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-002, http-api.md TASK-001)
 **Deliverables**: Update `src/daemon/routes/sessions.ts`
 **Estimated Effort**: Small
@@ -257,17 +257,17 @@ Implement Server-Sent Events core functionality.
 Add SSE streaming endpoint to session routes.
 
 **Completion Criteria**:
-- [ ] GET /api/sessions/:id/stream implemented
-- [ ] Filters by sessionId
-- [ ] Permission check (session:read)
-- [ ] Integration test
-- [ ] Type checking passes
+- [x] GET /api/sessions/:id/stream implemented
+- [x] Filters by sessionId
+- [x] Permission check (session:read)
+- [x] Integration test
+- [x] Type checking passes
 
 ---
 
 ### TASK-004: Group SSE Routes
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-002, http-api.md TASK-002)
 **Deliverables**: Update `src/daemon/routes/groups.ts`
 **Estimated Effort**: Small
@@ -276,11 +276,11 @@ Add SSE streaming endpoint to session routes.
 Add SSE streaming endpoint to group routes.
 
 **Completion Criteria**:
-- [ ] GET /api/groups/:id/stream implemented
-- [ ] Filters by groupId
-- [ ] Permission check (session:read)
-- [ ] Integration test
-- [ ] Type checking passes
+- [x] GET /api/groups/:id/stream implemented
+- [x] Filters by groupId
+- [x] Permission check (session:read)
+- [x] Integration test
+- [x] Type checking passes
 
 ---
 
@@ -309,13 +309,13 @@ Parallelizable groups:
 
 ### Required for Completion
 
-- [ ] All subtasks marked as Completed
-- [ ] All unit tests passing
-- [ ] Integration tests passing for SSE endpoints
-- [ ] Type checking passes without errors
-- [ ] Code follows project coding standards
-- [ ] SSE streams work with real event emitter
-- [ ] Client disconnect handled gracefully
+- [x] All subtasks marked as Completed
+- [x] All unit tests passing
+- [x] Integration tests passing for SSE endpoints
+- [x] Type checking passes without errors
+- [x] Code follows project coding standards
+- [x] SSE streams work with real event emitter
+- [x] Client disconnect handled gracefully
 
 ### Verification Steps
 
@@ -362,6 +362,52 @@ Parallelizable groups:
 - All tests pass with 34 expect() assertions
 - Type checking passes with no errors in SSE module
 - Implementation follows project standards: readonly modifiers, explicit types, proper error handling
+
+---
+
+### Session: 2026-01-08 10:18
+**Tasks Completed**: TASK-003
+**Review Iterations**: 0 (direct implementation - simple route addition)
+**Review Summary**: Implementation verified via integration tests
+**Notes**:
+- Added GET /api/sessions/:id/stream endpoint to sessions.ts
+- Imported createSSEStream from src/daemon/sse.ts
+- Route filters events by sessionId using EventFilter
+- Proper permission check (session:read) implemented
+- Comprehensive integration tests with 5 test cases:
+  1. Authentication requirement
+  2. Permission check
+  3. SSE headers verification
+  4. Event streaming with filtering
+  5. Cross-session filtering validation
+- All tests pass (5/5)
+- Type checking passes with no errors
+- Follows existing route patterns in sessions.ts
+- Implementation aligns with design spec (spec-sdk-api.md Section 5.1)
+
+---
+
+### Session: 2026-01-08 10:24
+**Tasks Completed**: TASK-004
+**Review Iterations**: 0 (direct implementation - simple route addition)
+**Review Summary**: Implementation verified via integration tests
+**Notes**:
+- Added GET /api/groups/:id/stream endpoint to groups.ts
+- Imported createSSEStream from src/daemon/sse.ts
+- Route filters events by groupId using EventFilter
+- Proper permission check (session:read) implemented
+- Created comprehensive integration test file (groups.test.ts) with 5 test cases:
+  1. Authentication requirement
+  2. Permission check
+  3. SSE headers verification
+  4. Event streaming with filtering by groupId
+  5. Cross-group filtering validation
+- Fixed GroupStartedEvent properties to match actual type (totalSessions, maxConcurrent)
+- All tests pass (5/5 for groups, 10/10 for all daemon routes)
+- Type checking passes with no errors
+- Follows existing route patterns from sessions.ts
+- Implementation aligns with design spec (spec-sdk-api.md Section 5.2)
+- **Plan Status**: All tasks completed (TASK-001 through TASK-004)
 
 ---
 

@@ -9,6 +9,7 @@
 
 import type { ClaudeCodeAgent } from "../../sdk";
 import type { TokenManager, AuthenticatedApp } from "../auth";
+import { createSSEStream } from "../sse";
 
 /**
  * Request body for creating a new session group
@@ -251,6 +252,33 @@ export function groupRoutes(
         await sdk.groupRunner.resume();
 
         return { success: true };
+      } catch (error) {
+        set.status = 500;
+        return {
+          error: "Internal Server Error",
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    });
+
+    // GET /api/groups/:id/stream - SSE stream of group events
+    groups.get("/:id/stream", ({ params, set, token }) => {
+      // Check permission
+      if (!tokenManager.hasPermission(token, "session:read")) {
+        set.status = 403;
+        return {
+          error: "Forbidden",
+          message: "Missing permission: session:read",
+        };
+      }
+
+      try {
+        const groupId = params.id;
+
+        // Create SSE stream filtered by groupId
+        return createSSEStream(sdk.events, {
+          groupId,
+        });
       } catch (error) {
         set.status = 500;
         return {

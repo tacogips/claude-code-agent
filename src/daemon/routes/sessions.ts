@@ -9,6 +9,7 @@
 
 import type { ClaudeCodeAgent } from "../../sdk";
 import type { TokenManager, AuthenticatedApp } from "../auth";
+import { createSSEStream } from "../sse";
 
 /**
  * Request body for creating a new session
@@ -289,6 +290,33 @@ export function sessionRoutes(
           message:
             "Session resume will be implemented in daemon-core (TASK-005)",
         };
+      } catch (error) {
+        set.status = 500;
+        return {
+          error: "Internal Server Error",
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    });
+
+    // GET /api/sessions/:id/stream - SSE stream of session events
+    sessions.get("/:id/stream", ({ params, set, token }) => {
+      // Check permission
+      if (!tokenManager.hasPermission(token, "session:read")) {
+        set.status = 403;
+        return {
+          error: "Forbidden",
+          message: "Missing permission: session:read",
+        };
+      }
+
+      try {
+        const sessionId = params.id;
+
+        // Create SSE stream filtered by sessionId
+        return createSSEStream(sdk.events, {
+          sessionId,
+        });
       } catch (error) {
         set.status = 500;
         return {
