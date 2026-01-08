@@ -35,13 +35,17 @@
 
 <div class="min-h-screen flex flex-col">
   <!-- Navigation Header -->
-  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+  <header
+    class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16">
         <!-- Logo and Navigation -->
         <div class="flex">
           <div class="flex-shrink-0 flex items-center">
-            <span class="text-xl font-bold text-primary-600 dark:text-primary-400">
+            <span
+              class="text-xl font-bold text-primary-600 dark:text-primary-400"
+            >
               Claude Code Agent
             </span>
           </div>
@@ -67,7 +71,12 @@
           >
             {#if isDark}
               <!-- Sun icon for light mode -->
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -77,7 +86,12 @@
               </svg>
             {:else}
               <!-- Moon icon for dark mode -->
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -92,7 +106,9 @@
     </div>
 
     <!-- Mobile Navigation -->
-    <nav class="sm:hidden border-t border-gray-200 dark:border-gray-700 px-4 py-2">
+    <nav
+      class="sm:hidden border-t border-gray-200 dark:border-gray-700 px-4 py-2"
+    >
       <div class="flex space-x-4">
         {#each navLinks as link}
           <a
@@ -115,7 +131,9 @@
   </main>
 
   <!-- Footer -->
-  <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+  <footer
+    class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <p class="text-center text-sm text-gray-500 dark:text-gray-400">
         Claude Code Agent Viewer

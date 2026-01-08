@@ -1,4 +1,6 @@
 {
 	"/": [],
-	"/queues": []
+	"/queues": [],
+	"/queues/[id]": [],
+	"/sessions/[id]": []
 }

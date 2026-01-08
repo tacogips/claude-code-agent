@@ -1,11 +1,14 @@
 {
-  "name": "claude-code-peeper",
+  "name": "claude-code-agent",
   "version": "0.1.0",
-  "description": "peeper",
+  "description": "Monitoring, visualization, and orchestration for Claude Code sessions",
   "type": "module",
   "main": "dist/main.js",
   "module": "dist/main.js",
   "types": "dist/main.d.ts",
+  "bin": {
+    "claude-code-agent": "./bin/claude-code-agent"
+  },
   "exports": {
     ".": {
       "types": "./dist/main.d.ts",
@@ -24,7 +27,9 @@
     "lint": "bun run typecheck",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "ui:build": "cd src/viewer/browser/static && bun run build",
+    "ui:dev": "cd src/viewer/browser/static && bun run dev"
   },
   "homepage": "https://github.com/user/repo",
   "repository": {
@@ -44,6 +49,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "1.4.1",
+    "@elysiajs/static": "1.4.7",
     "commander": "14.0.2",
     "consola": "3.4.2",
     "elysia": "1.4.20",

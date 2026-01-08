@@ -1,32 +1,6 @@
 import { U as ensure_array_like, V as attr, W as attr_class, X as store_get, Y as unsubscribe_stores } from "../../chunks/index2.js";
-import { g as getContext, e as escape_html } from "../../chunks/context.js";
-import "clsx";
-import "@sveltejs/kit/internal";
-import "../../chunks/exports.js";
-import "../../chunks/utils.js";
-import "@sveltejs/kit/internal/server";
-import "../../chunks/state.svelte.js";
-const getStores = () => {
-  const stores$1 = getContext("__svelte__");
-  return {
-    /** @type {typeof page} */
-    page: {
-      subscribe: stores$1.page.subscribe
-    },
-    /** @type {typeof navigating} */
-    navigating: {
-      subscribe: stores$1.navigating.subscribe
-    },
-    /** @type {typeof updated} */
-    updated: stores$1.updated
-  };
-};
-const page = {
-  subscribe(fn) {
-    const store = getStores().page;
-    return store.subscribe(fn);
-  }
-};
+import { p as page } from "../../chunks/stores.js";
+import { e as escape_html } from "../../chunks/context.js";
 function _layout($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     var $$store_subs;

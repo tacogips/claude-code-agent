@@ -1,6 +1,6 @@
 # CLI Core Implementation Plan
 
-**Status**: In Progress
+**Status**: Completed
 **Design Reference**: design-docs/spec-sdk-api.md#7-cli-command-reference, design-docs/DESIGN.md
 **Created**: 2026-01-06
 **Last Updated**: 2026-01-06
@@ -188,7 +188,7 @@ Implement main CLI entry point with command registration.
 
 ### TASK-003: Binary Entry Point
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: No (depends on TASK-002)
 **Deliverables**: `bin/claude-code-agent`, update `package.json`
 **Estimated Effort**: Small
@@ -197,10 +197,10 @@ Implement main CLI entry point with command registration.
 Create binary entry point and configure package.json.
 
 **Completion Criteria**:
-- [ ] Shebang and main() call
-- [ ] package.json bin entry
-- [ ] Global install works
-- [ ] Type checking passes
+- [x] Shebang and main() call
+- [x] package.json bin entry
+- [x] Global install works
+- [x] Type checking passes
 
 ---
 

@@ -9,10 +9,25 @@
 
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { staticPlugin } from "@elysiajs/static";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import type { ClaudeCodeAgent } from "../../sdk";
 import { createTaggedLogger } from "../../logger";
 
 const logger = createTaggedLogger("viewer");
+
+/**
+ * Get the directory path for this module.
+ * Required for resolving the static build directory.
+ */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/**
+ * Path to the SvelteKit build output directory.
+ */
+const BUILD_DIR = resolve(__dirname, "static", "build");
 
 /**
  * Configuration for the ViewerServer.
@@ -149,22 +164,25 @@ export class ViewerServer {
   /**
    * Setup static file routes.
    *
-   * Configures serving of static assets from the static/ directory.
-   * This method prepares the static file serving configuration but
-   * does not implement actual file serving (deferred to future implementation).
+   * Configures serving of static assets from the SvelteKit build directory.
+   * Uses @elysiajs/static plugin to serve built files with SPA fallback to index.html.
    *
    * @private
    */
   private setupStaticRoutes(): void {
-    // Serve index.html at root
-    this.app.get("/", () => ({
-      message: "Browser viewer UI not implemented yet",
-      note: "Static file serving will be configured here",
-    }));
+    // Serve static files from the build directory
+    this.app.use(
+      staticPlugin({
+        assets: BUILD_DIR,
+        prefix: "/",
+        alwaysStatic: true,
+      }),
+    );
 
-    // Placeholder for static file serving
-    // TODO: Implement static file serving from static/ directory
-    // using Elysia's static plugin or custom file serving
+    // SPA fallback: serve index.html for any unmatched routes (client-side routing)
+    this.app.get("/*", () => {
+      return Bun.file(resolve(BUILD_DIR, "index.html"));
+    });
   }
 
   /**

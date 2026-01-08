@@ -1,0 +1,14 @@
+#!/usr/bin/env bun
+/**
+ * Binary entry point for claude-code-agent CLI.
+ *
+ * This script is the main executable that users invoke from the command line.
+ * It imports and runs the main() function from the CLI module.
+ *
+ * @module bin/claude-code-agent
+ */
+
+import { main } from "../src/cli/main.ts";
+
+// Execute the CLI
+await main();
