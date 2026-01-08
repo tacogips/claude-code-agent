@@ -1,0 +1,155 @@
+{
+  ".svelte-kit/generated/client-optimized/app.js": {
+    "file": "_app/immutable/entry/app.CmMg7gyM.js",
+    "name": "entry/app",
+    "src": ".svelte-kit/generated/client-optimized/app.js",
+    "isEntry": true,
+    "imports": [
+      "_q5j8a02M.js",
+      "_CZouSAYS.js",
+      "_DLLKN0vD.js",
+      "_BPjYD0r0.js",
+      "_ChFvzTa7.js"
+    ],
+    "dynamicImports": [
+      "__vite-browser-external",
+      ".svelte-kit/generated/client-optimized/nodes/0.js",
+      ".svelte-kit/generated/client-optimized/nodes/1.js",
+      ".svelte-kit/generated/client-optimized/nodes/2.js",
+      ".svelte-kit/generated/client-optimized/nodes/3.js"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/0.js": {
+    "file": "_app/immutable/nodes/0.B-JexDej.js",
+    "name": "nodes/0",
+    "src": ".svelte-kit/generated/client-optimized/nodes/0.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_ChFvzTa7.js",
+      "_CZouSAYS.js",
+      "_DLLKN0vD.js",
+      "_BPjYD0r0.js",
+      "_q5j8a02M.js",
+      "_BILOlQV3.js"
+    ],
+    "css": [
+      "_app/immutable/assets/0.Bnc6ek1w.css"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/1.js": {
+    "file": "_app/immutable/nodes/1.a1-ybjnl.js",
+    "name": "nodes/1",
+    "src": ".svelte-kit/generated/client-optimized/nodes/1.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_ChFvzTa7.js",
+      "_C5Fd-frS.js",
+      "_CZouSAYS.js",
+      "_DLLKN0vD.js",
+      "_BILOlQV3.js",
+      "_q5j8a02M.js"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/2.js": {
+    "file": "_app/immutable/nodes/2.DdKSIV0R.js",
+    "name": "nodes/2",
+    "src": ".svelte-kit/generated/client-optimized/nodes/2.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_ChFvzTa7.js",
+      "_C5Fd-frS.js",
+      "_CZouSAYS.js",
+      "_CDCc_XAl.js"
+    ]
+  },
+  ".svelte-kit/generated/client-optimized/nodes/3.js": {
+    "file": "_app/immutable/nodes/3.DLykDHSx.js",
+    "name": "nodes/3",
+    "src": ".svelte-kit/generated/client-optimized/nodes/3.js",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": [
+      "_ChFvzTa7.js",
+      "_C5Fd-frS.js",
+      "_CZouSAYS.js",
+      "_CDCc_XAl.js"
+    ]
+  },
+  "_BILOlQV3.js": {
+    "file": "_app/immutable/chunks/BILOlQV3.js",
+    "name": "entry",
+    "imports": [
+      "_q5j8a02M.js",
+      "_CZouSAYS.js"
+    ],
+    "dynamicImports": [
+      "__vite-browser-external"
+    ]
+  },
+  "_BPjYD0r0.js": {
+    "file": "_app/immutable/chunks/BPjYD0r0.js",
+    "name": "store",
+    "imports": [
+      "_CZouSAYS.js",
+      "_q5j8a02M.js"
+    ]
+  },
+  "_C5Fd-frS.js": {
+    "file": "_app/immutable/chunks/C5Fd-frS.js",
+    "name": "legacy",
+    "imports": [
+      "_CZouSAYS.js"
+    ]
+  },
+  "_CDCc_XAl.js": {
+    "file": "_app/immutable/chunks/CDCc_XAl.js",
+    "name": "svelte-head",
+    "imports": [
+      "_CZouSAYS.js"
+    ]
+  },
+  "_CZouSAYS.js": {
+    "file": "_app/immutable/chunks/CZouSAYS.js",
+    "name": "index-client"
+  },
+  "_ChFvzTa7.js": {
+    "file": "_app/immutable/chunks/ChFvzTa7.js",
+    "name": "disclose-version",
+    "imports": [
+      "_CZouSAYS.js"
+    ]
+  },
+  "_DLLKN0vD.js": {
+    "file": "_app/immutable/chunks/DLLKN0vD.js",
+    "name": "render",
+    "imports": [
+      "_CZouSAYS.js",
+      "_ChFvzTa7.js"
+    ]
+  },
+  "__vite-browser-external": {
+    "file": "_app/immutable/chunks/BIHI7g3E.js",
+    "name": "__vite-browser-external",
+    "src": "__vite-browser-external",
+    "isDynamicEntry": true
+  },
+  "_q5j8a02M.js": {
+    "file": "_app/immutable/chunks/q5j8a02M.js",
+    "name": "utils",
+    "imports": [
+      "_CZouSAYS.js"
+    ]
+  },
+  "node_modules/@sveltejs/kit/src/runtime/client/entry.js": {
+    "file": "_app/immutable/entry/start.BQGJLGNe.js",
+    "name": "entry/start",
+    "src": "node_modules/@sveltejs/kit/src/runtime/client/entry.js",
+    "isEntry": true,
+    "imports": [
+      "_BILOlQV3.js"
+    ]
+  }
+}

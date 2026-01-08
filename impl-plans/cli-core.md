@@ -1,6 +1,6 @@
 # CLI Core Implementation Plan
 
-**Status**: Ready
+**Status**: In Progress
 **Design Reference**: design-docs/spec-sdk-api.md#7-cli-command-reference, design-docs/DESIGN.md
 **Created**: 2026-01-06
 **Last Updated**: 2026-01-06
@@ -149,7 +149,7 @@ createCli(): Commander
 
 ### TASK-001: Output Utilities
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes
 **Deliverables**: `src/cli/output.ts`
 **Estimated Effort**: Small
@@ -158,18 +158,18 @@ createCli(): Commander
 Implement output formatting utilities for table and JSON output.
 
 **Completion Criteria**:
-- [ ] formatTable() creates ASCII tables
-- [ ] formatJson() outputs formatted JSON
-- [ ] printSuccess() and printError() with colors
-- [ ] formatCost() formats USD
-- [ ] Unit tests
-- [ ] Type checking passes
+- [x] formatTable() creates ASCII tables
+- [x] formatJson() outputs formatted JSON
+- [x] printSuccess() and printError() with colors
+- [x] formatCost() formats USD
+- [x] Unit tests (23 tests in src/cli/output.test.ts)
+- [x] Type checking passes
 
 ---
 
 ### TASK-002: CLI Entry Point
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes
 **Deliverables**: `src/cli/main.ts`
 **Estimated Effort**: Small
@@ -178,11 +178,11 @@ Implement output formatting utilities for table and JSON output.
 Implement main CLI entry point with command registration.
 
 **Completion Criteria**:
-- [ ] Argument parsing setup
-- [ ] Subcommand registration
-- [ ] Global options (--format, --help, --version)
-- [ ] Error handling with proper exit codes
-- [ ] Type checking passes
+- [x] Argument parsing setup (using commander)
+- [x] Subcommand registration (session, group, bookmark, server, daemon, token)
+- [x] Global options (--format, --help, --version)
+- [x] Error handling with proper exit codes
+- [x] Type checking passes (12 tests in src/cli/main.test.ts)
 
 ---
 

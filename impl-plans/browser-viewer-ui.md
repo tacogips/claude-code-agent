@@ -1,6 +1,6 @@
 # Browser Viewer UI Implementation Plan
 
-**Status**: Ready
+**Status**: In Progress
 **Design Reference**: design-docs/spec-viewers.md#2-browser-viewer
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-06
@@ -253,18 +253,18 @@ class WebSocketClient {
 
 ### TASK-004: SvelteKit Setup
 
-**Status**: Not Started
+**Status**: Completed
 **Parallelizable**: Yes
 **Deliverables**: SvelteKit project structure, configs
 **Estimated Effort**: Medium
 
 **Completion Criteria**:
-- [ ] SvelteKit project initialized
-- [ ] Tailwind CSS configured
-- [ ] Layout with navigation
-- [ ] Theme toggle (dark/light)
-- [ ] Responsive design
-- [ ] Type checking passes
+- [x] SvelteKit project initialized (src/viewer/browser/static/)
+- [x] Tailwind CSS configured (with dark mode)
+- [x] Layout with navigation (+layout.svelte)
+- [x] Theme toggle (dark/light)
+- [x] Responsive design (mobile-first)
+- [x] Type checking passes (svelte-check)
 
 ---
 
