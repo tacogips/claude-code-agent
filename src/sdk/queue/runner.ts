@@ -581,6 +581,22 @@ export class QueueRunner {
     });
 
     // Build Claude Code arguments
+    // TODO: [Future Enhancement] Process Pool per Working Directory
+    // Currently, each prompt spawns a new Claude Code process that exits after completion.
+    // A process pool mechanism could improve performance by:
+    // 1. Pre-creating default_n processes per working directory on first request
+    // 2. After prompt completion, execute /clear to reset context and return process to pool
+    // 3. Reuse pooled processes for subsequent prompts (extend_n more if pool exhausted)
+    // 4. Support removing all processes for a specific working directory
+    //
+    // Challenges identified:
+    // - Claude Code's -p mode is single-prompt: process exits after completion
+    // - No built-in support for receiving multiple prompts via stdin in one process
+    // - Session ID is returned by Claude Code, not externally specifiable
+    // - Would require Claude Code CLI changes to support long-lived interactive mode
+    //
+    // Current --resume approach provides session context continuity (not process reuse).
+    // See: design-docs/reference-claude-code-internals.md for CLI options.
     const args: string[] = ["-p", "--output-format", "stream-json"];
 
     // Add --resume flag if continuing session

@@ -509,6 +509,9 @@ export class GroupRunner {
     }
 
     // Build Claude Code command
+    // TODO: [Future Enhancement] Process Pool per Working Directory
+    // See src/sdk/queue/runner.ts for detailed description of the planned enhancement.
+    // Summary: Reuse long-lived processes via /clear instead of spawning new processes.
     const args = ["-p", "--output-format", "stream-json"];
     if (this.currentOptions.resume) {
       args.push("--resume");
