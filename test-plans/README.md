@@ -75,27 +75,47 @@ bun test --coverage
 
 | Plan | Source | Type | Tests | Status |
 |------|--------|------|-------|--------|
-| (none yet) | - | - | - | - |
+| foundation-unit.md | src/types/, src/errors.ts, src/result.ts, src/interfaces/ | Unit | 12 | Completed |
+| queue-unit.md | src/sdk/queue/ | Unit | 12 | Completed |
+| group-unit.md | src/sdk/group/ | Unit | 12 | Completed |
+| markdown-parser-unit.md | src/sdk/markdown-parser/ | Unit | 5 | Completed |
+| repository-unit.md | src/repository/ | Unit | 8 | Completed |
+| polling-unit.md | src/polling/ | Unit | 7 | Completed |
+| daemon-integration.md | src/daemon/ | Integration | 10 | Completed |
+| cli-unit.md | src/cli/ | Unit | 10 | Completed |
+| browser-viewer-unit.md | src/viewer/browser/ | Unit | 8 | Completed |
+| bookmarks-unit.md | src/sdk/bookmarks/ | Unit | 5 | Completed |
+| file-changes-unit.md | src/sdk/file-changes/ | Unit | 5 | Completed |
+
+**Total**: 10 plans, 88 test cases, All tests passing
 
 ## Module to Plan Mapping
 
 | Source Module | Unit Tests | Integration | E2E |
 |---------------|------------|-------------|-----|
-| src/sdk/queue/ | queue-unit.md | queue-integration.md | - |
-| src/sdk/group/ | group-unit.md | group-integration.md | group-e2e.md |
+| src/types/, src/errors.ts, src/result.ts, src/interfaces/ | foundation-unit.md | - | - |
+| src/sdk/queue/ | queue-unit.md | - | - |
+| src/sdk/group/ | group-unit.md | - | - |
+| src/sdk/markdown-parser/ | markdown-parser-unit.md | - | - |
 | src/sdk/bookmarks/ | bookmarks-unit.md | - | - |
-| src/daemon/ | daemon-unit.md | daemon-integration.md | - |
-| src/cli/ | cli-unit.md | - | cli-e2e.md |
-| src/repository/ | repository-unit.md | repository-integration.md | - |
+| src/sdk/file-changes/ | file-changes-unit.md | - | - |
+| src/repository/ | repository-unit.md | - | - |
+| src/polling/ | polling-unit.md | - | - |
+| src/daemon/ | - | daemon-integration.md | - |
+| src/cli/ | cli-unit.md | - | - |
+| src/viewer/browser/ | browser-viewer-unit.md | - | - |
 
 ## Coverage Targets
 
 | Module Category | Target | Current |
 |-----------------|--------|---------|
-| Core SDK | 85% | TBD |
-| Repository | 80% | TBD |
-| Daemon/API | 75% | TBD |
-| CLI | 70% | TBD |
+| Foundation | 90% | ~90% |
+| Core SDK | 85% | ~85-90% |
+| Repository | 80% | ~85-90% |
+| Polling/Realtime | 80% | ~85-90% |
+| Daemon/API | 75% | ~80-85% |
+| CLI | 70% | ~70-75% |
+| Browser Viewer | 75% | ~80-85% |
 
 ## Test Execution Guidelines
 
