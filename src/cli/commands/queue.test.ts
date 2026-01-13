@@ -4,7 +4,15 @@
  * Covers TEST-004, TEST-005, TEST-006 from cli-commands-unit test plan.
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 import { Command } from "commander";
 import { registerQueueCommands } from "./queue";
 import type { ClaudeCodeAgent } from "../../sdk/agent";
@@ -48,9 +56,11 @@ describe("Queue Commands", () => {
     // Spy on process.exit, console.log, and output functions
     exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("process.exit called");
-    }) as any);
+    }) as any) as MockInstance<(this: unknown, ...args: unknown[]) => unknown>;
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    printSuccessSpy = vi.spyOn(output, "printSuccess").mockImplementation(() => {});
+    printSuccessSpy = vi
+      .spyOn(output, "printSuccess")
+      .mockImplementation(() => {});
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
@@ -73,11 +83,14 @@ describe("Queue Commands", () => {
         commands: [],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -107,11 +120,14 @@ describe("Queue Commands", () => {
         commands: [],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -147,6 +163,7 @@ describe("Queue Commands", () => {
           ],
           status: "pending",
           currentIndex: 0,
+          totalCostUsd: 0,
           createdAt: "2024-01-01T00:00:00Z",
           updatedAt: "2024-01-01T00:00:00Z",
         },
@@ -157,12 +174,15 @@ describe("Queue Commands", () => {
           commands: [],
           status: "running",
           currentIndex: 0,
+          totalCostUsd: 0,
           createdAt: "2024-01-02T00:00:00Z",
           updatedAt: "2024-01-02T00:00:00Z",
         },
       ];
 
-      (mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueues);
+      (
+        mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueues);
 
       await program.parseAsync(["node", "test", "queue", "list"]);
 
@@ -181,12 +201,15 @@ describe("Queue Commands", () => {
           commands: [],
           status: "running",
           currentIndex: 0,
+          totalCostUsd: 0,
           createdAt: "2024-01-01T00:00:00Z",
           updatedAt: "2024-01-01T00:00:00Z",
         },
       ];
 
-      (mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueues);
+      (
+        mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueues);
 
       await program.parseAsync([
         "node",
@@ -203,7 +226,9 @@ describe("Queue Commands", () => {
     });
 
     test("displays 'No queues found' for empty results", async () => {
-      (mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      (
+        mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([]);
 
       await program.parseAsync(["node", "test", "queue", "list"]);
 
@@ -224,18 +249,22 @@ describe("Queue Commands", () => {
           } as QueueCommand,
           {
             id: "cmd-2",
-            prompt: "Second command with a very long prompt that should be truncated in the display",
+            prompt:
+              "Second command with a very long prompt that should be truncated in the display",
             sessionMode: "new",
             status: "pending",
           } as QueueCommand,
         ],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync(["node", "test", "queue", "show", "queue-123"]);
 
@@ -252,7 +281,9 @@ describe("Queue Commands", () => {
     });
 
     test("exits with code 1 for nonexistent queue on show", async () => {
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -280,11 +311,14 @@ describe("Queue Commands", () => {
         commands: [],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -302,7 +336,9 @@ describe("Queue Commands", () => {
     });
 
     test("deletes existing queue with --force", async () => {
-      (mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+      (
+        mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(true);
 
       await program.parseAsync([
         "node",
@@ -317,13 +353,13 @@ describe("Queue Commands", () => {
         "queue-123",
         true,
       );
-      expect(printSuccessSpy).toHaveBeenCalledWith(
-        "Queue deleted: queue-123",
-      );
+      expect(printSuccessSpy).toHaveBeenCalledWith("Queue deleted: queue-123");
     });
 
     test("deletes queue without --force (confirmation passed to SDK)", async () => {
-      (mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+      (
+        mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(true);
 
       await program.parseAsync([
         "node",
@@ -340,7 +376,9 @@ describe("Queue Commands", () => {
     });
 
     test("exits with code 1 when deleting nonexistent queue", async () => {
-      (mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (
+        mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(false);
 
       try {
         await program.parseAsync([
@@ -370,12 +408,15 @@ describe("Queue Commands", () => {
           commands: [],
           status: "pending",
           currentIndex: 0,
+          totalCostUsd: 0,
           createdAt: "2024-01-01T00:00:00Z",
           updatedAt: "2024-01-01T00:00:00Z",
         },
       ];
 
-      (mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueues);
+      (
+        mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueues);
 
       await program.parseAsync([
         "node",
@@ -414,6 +455,7 @@ describe("Queue Commands", () => {
         ],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
@@ -427,8 +469,12 @@ describe("Queue Commands", () => {
         totalDurationMs: 5000,
       };
 
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
-      (mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>).mockResolvedValue(mockResult);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockResult);
 
       await program.parseAsync(["node", "test", "queue", "run", "queue-run"]);
 
@@ -443,9 +489,7 @@ describe("Queue Commands", () => {
       );
 
       // Verify success message
-      expect(printSuccessSpy).toHaveBeenCalledWith(
-        "Running queue: queue-run",
-      );
+      expect(printSuccessSpy).toHaveBeenCalledWith("Running queue: queue-run");
 
       // Verify results displayed
       expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -489,6 +533,7 @@ describe("Queue Commands", () => {
         ],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
@@ -502,26 +547,28 @@ describe("Queue Commands", () => {
         totalDurationMs: 3000,
       };
 
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       // Mock run to call callbacks
-      (mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>).mockImplementation(
-        async (_queueId: string, options?: any) => {
-          if (options?.onCommandStart) {
-            options.onCommandStart(mockQueue.commands[0]!);
-          }
-          if (options?.onCommandComplete) {
-            options.onCommandComplete(mockQueue.commands[0]!);
-          }
-          if (options?.onCommandStart) {
-            options.onCommandStart(mockQueue.commands[1]!);
-          }
-          if (options?.onCommandComplete) {
-            options.onCommandComplete(mockQueue.commands[1]!);
-          }
-          return mockResult;
-        },
-      );
+      (
+        mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>
+      ).mockImplementation(async (_queueId: string, options?: any) => {
+        if (options?.onCommandStart) {
+          options.onCommandStart(mockQueue.commands[0]!);
+        }
+        if (options?.onCommandComplete) {
+          options.onCommandComplete(mockQueue.commands[0]!);
+        }
+        if (options?.onCommandStart) {
+          options.onCommandStart(mockQueue.commands[1]!);
+        }
+        if (options?.onCommandComplete) {
+          options.onCommandComplete(mockQueue.commands[1]!);
+        }
+        return mockResult;
+      });
 
       await program.parseAsync([
         "node",
@@ -561,6 +608,7 @@ describe("Queue Commands", () => {
         ],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
@@ -574,21 +622,28 @@ describe("Queue Commands", () => {
         totalDurationMs: 1000,
       };
 
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       // Mock run to call onCommandFail callback
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      (mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>).mockImplementation(
-        async (_queueId: string, options?: any) => {
-          if (options?.onCommandStart) {
-            options.onCommandStart(mockQueue.commands[0]!);
-          }
-          if (options?.onCommandFail) {
-            options.onCommandFail(mockQueue.commands[0]!, "Command execution failed");
-          }
-          return mockResult;
-        },
-      );
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      (
+        mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>
+      ).mockImplementation(async (_queueId: string, options?: any) => {
+        if (options?.onCommandStart) {
+          options.onCommandStart(mockQueue.commands[0]!);
+        }
+        if (options?.onCommandFail) {
+          options.onCommandFail(
+            mockQueue.commands[0]!,
+            "Command execution failed",
+          );
+        }
+        return mockResult;
+      });
 
       await program.parseAsync(["node", "test", "queue", "run", "queue-fail"]);
 
@@ -607,7 +662,9 @@ describe("Queue Commands", () => {
     });
 
     test("exits with code 1 for nonexistent queue on run", async () => {
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -628,7 +685,9 @@ describe("Queue Commands", () => {
     });
 
     test("pauses running queue", async () => {
-      (mockAgent.queueRunner!.pause as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.queueRunner!.pause as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync(["node", "test", "queue", "pause", "queue-123"]);
 
@@ -637,9 +696,9 @@ describe("Queue Commands", () => {
     });
 
     test("handles error when pausing nonexistent queue", async () => {
-      (mockAgent.queueRunner!.pause as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Queue not found"),
-      );
+      (
+        mockAgent.queueRunner!.pause as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Queue not found"));
 
       try {
         await program.parseAsync([
@@ -667,7 +726,9 @@ describe("Queue Commands", () => {
         totalDurationMs: 8000,
       };
 
-      (mockAgent.queueRunner!.resume as ReturnType<typeof vi.fn>).mockResolvedValue(mockResult);
+      (
+        mockAgent.queueRunner!.resume as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockResult);
 
       await program.parseAsync([
         "node",
@@ -678,9 +739,7 @@ describe("Queue Commands", () => {
       ]);
 
       expect(mockAgent.queueRunner!.resume).toHaveBeenCalledWith("queue-123");
-      expect(printSuccessSpy).toHaveBeenCalledWith(
-        "Resuming queue: queue-123",
-      );
+      expect(printSuccessSpy).toHaveBeenCalledWith("Resuming queue: queue-123");
 
       // Verify results displayed
       expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -698,9 +757,9 @@ describe("Queue Commands", () => {
     });
 
     test("handles error when resuming nonexistent queue", async () => {
-      (mockAgent.queueRunner!.resume as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Queue not found"),
-      );
+      (
+        mockAgent.queueRunner!.resume as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Queue not found"));
 
       try {
         await program.parseAsync([
@@ -719,7 +778,9 @@ describe("Queue Commands", () => {
     });
 
     test("stops queue permanently", async () => {
-      (mockAgent.queueRunner!.stop as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.queueRunner!.stop as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync(["node", "test", "queue", "stop", "queue-123"]);
 
@@ -728,9 +789,9 @@ describe("Queue Commands", () => {
     });
 
     test("handles error when stopping nonexistent queue", async () => {
-      (mockAgent.queueRunner!.stop as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Queue not found"),
-      );
+      (
+        mockAgent.queueRunner!.stop as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Queue not found"));
 
       try {
         await program.parseAsync([
@@ -775,6 +836,7 @@ describe("Queue Commands", () => {
         ],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
@@ -788,8 +850,12 @@ describe("Queue Commands", () => {
         totalDurationMs: 4500,
       };
 
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
-      (mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>).mockResolvedValue(mockResult);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queueRunner!.run as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockResult);
 
       await program.parseAsync([
         "node",
@@ -834,12 +900,17 @@ describe("Queue Commands", () => {
         commands: [mockCommand],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -891,12 +962,17 @@ describe("Queue Commands", () => {
         ],
         status: "pending",
         currentIndex: 0,
+        totalCostUsd: 0,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -927,7 +1003,9 @@ describe("Queue Commands", () => {
         status: "pending",
       };
 
-      (mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
 
       await program.parseAsync([
         "node",
@@ -960,7 +1038,9 @@ describe("Queue Commands", () => {
         status: "pending",
       };
 
-      (mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
 
       await program.parseAsync([
         "node",
@@ -993,7 +1073,9 @@ describe("Queue Commands", () => {
         status: "pending",
       };
 
-      (mockAgent.queues!.toggleSessionMode as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.toggleSessionMode as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
 
       await program.parseAsync([
         "node",
@@ -1022,7 +1104,9 @@ describe("Queue Commands", () => {
         status: "pending",
       };
 
-      (mockAgent.queues!.toggleSessionMode as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.toggleSessionMode as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
 
       await program.parseAsync([
         "node",
@@ -1044,7 +1128,9 @@ describe("Queue Commands", () => {
     });
 
     test("removes command by index", async () => {
-      (mockAgent.queues!.removeCommand as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.queues!.removeCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -1064,7 +1150,9 @@ describe("Queue Commands", () => {
     });
 
     test("moves command from one index to another", async () => {
-      (mockAgent.queues!.reorderCommand as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.queues!.reorderCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -1086,9 +1174,9 @@ describe("Queue Commands", () => {
     });
 
     test("handles error when adding command to nonexistent queue", async () => {
-      (mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Queue not found"),
-      );
+      (
+        mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Queue not found"));
 
       try {
         await program.parseAsync([
@@ -1114,9 +1202,9 @@ describe("Queue Commands", () => {
     });
 
     test("handles error when editing nonexistent command index", async () => {
-      (mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Command index out of bounds"),
-      );
+      (
+        mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Command index out of bounds"));
 
       try {
         await program.parseAsync([

@@ -163,7 +163,9 @@ export class FileChangeExtractor {
 
     // Use project path from session metadata, or fall back to deriving from transcript path
     const finalProjectPath =
-      projectPath !== "" ? projectPath : this.extractProjectPath(transcriptPath);
+      projectPath !== ""
+        ? projectPath
+        : this.extractProjectPath(transcriptPath);
 
     return { changedFiles: filtered, projectPath: finalProjectPath };
   }

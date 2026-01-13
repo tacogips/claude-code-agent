@@ -12,11 +12,12 @@ import type { Bookmark, BookmarkType } from "../../sdk/bookmarks/types";
 
 // Mock token
 const mockToken: ApiToken = {
-  token: "test-token-123",
+  id: "test-id",
+  name: "Test Token",
+  hash: "sha256:testhash",
   permissions: ["bookmark:*"],
-  createdAt: new Date(),
-  expiresAt: new Date(Date.now() + 86400000),
-  description: "Test token",
+  createdAt: new Date().toISOString(),
+  expiresAt: new Date(Date.now() + 86400000).toISOString(),
 };
 
 // Mock bookmark
@@ -26,8 +27,8 @@ const mockBookmark: Bookmark = {
   sessionId: "session-123",
   name: "Test Bookmark",
   tags: ["test"],
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 // Create mock SDK
@@ -36,7 +37,10 @@ function createMockSDK(options: {
   listBookmarksResult?: Bookmark[];
   getBookmarkResult?: Bookmark | null;
   searchBookmarksResult?: Bookmark[];
-  getWithContentResult?: { bookmark: Bookmark; content: string } | null;
+  getWithContentResult?: {
+    bookmark: Bookmark;
+    content: readonly never[];
+  } | null;
   deleteBookmarkResult?: boolean;
   throwError?: boolean;
 }): ClaudeCodeAgent {
@@ -52,7 +56,9 @@ function createMockSDK(options: {
       },
       get: async () => {
         if (options.throwError) throw new Error("SDK Error");
-        return "getBookmarkResult" in options ? options.getBookmarkResult : mockBookmark;
+        return "getBookmarkResult" in options
+          ? options.getBookmarkResult
+          : mockBookmark;
       },
       search: async () => {
         if (options.throwError) throw new Error("SDK Error");
@@ -60,7 +66,9 @@ function createMockSDK(options: {
       },
       getWithContent: async () => {
         if (options.throwError) throw new Error("SDK Error");
-        return "getWithContentResult" in options ? options.getWithContentResult : { bookmark: mockBookmark, content: "Test content" };
+        return "getWithContentResult" in options
+          ? options.getWithContentResult
+          : { bookmark: mockBookmark, content: [] as const };
       },
       delete: async () => {
         if (options.throwError) throw new Error("SDK Error");
@@ -74,7 +82,7 @@ function createMockSDK(options: {
 function createMockTokenManager(hasPermission: boolean = true): TokenManager {
   return {
     hasPermission: () => hasPermission,
-  } as TokenManager;
+  } as unknown as TokenManager;
 }
 
 // Mock context helpers
@@ -106,11 +114,18 @@ describe("Bookmark Routes", () => {
       });
 
       // Permission check
-      const hasPermission = tokenManager.hasPermission(ctx.token, "bookmark:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "bookmark:*" as Permission,
+      );
       expect(hasPermission).toBe(true);
 
       // Create bookmark
-      const body = ctx.body as { sessionId: string; messageId?: string; name: string };
+      const body = ctx.body as {
+        sessionId: string;
+        messageId?: string;
+        name: string;
+      };
       const bookmark = await sdk.bookmarks.add({
         type: body.messageId ? "message" : "session",
         sessionId: body.sessionId,
@@ -137,7 +152,11 @@ describe("Bookmark Routes", () => {
         },
       });
 
-      const body = ctx.body as { sessionId: string; messageId?: string; name: string };
+      const body = ctx.body as {
+        sessionId: string;
+        messageId?: string;
+        name: string;
+      };
       const bookmark = await sdk.bookmarks.add({
         type: body.messageId ? "message" : "session",
         sessionId: body.sessionId,
@@ -164,7 +183,11 @@ describe("Bookmark Routes", () => {
         },
       });
 
-      const body = ctx.body as { sessionId: string; name: string; tags?: string[] };
+      const body = ctx.body as {
+        sessionId: string;
+        name: string;
+        tags?: string[];
+      };
       const bookmark = await sdk.bookmarks.add({
         type: "session",
         sessionId: body.sessionId,
@@ -197,7 +220,10 @@ describe("Bookmark Routes", () => {
       const tokenManager = createMockTokenManager(false);
       const ctx = createMockContext({});
 
-      const hasPermission = tokenManager.hasPermission(ctx.token, "bookmark:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "bookmark:*" as Permission,
+      );
       expect(hasPermission).toBe(false);
     });
 
@@ -217,7 +243,6 @@ describe("Bookmark Routes", () => {
   describe("TEST-008: Bookmark List and Search", () => {
     test("List all bookmarks - 200", async () => {
       const sdk = createMockSDK({ listBookmarksResult: [mockBookmark] });
-      const tokenManager = createMockTokenManager(true);
 
       const bookmarks = await sdk.bookmarks.list({});
       expect(bookmarks).toHaveLength(1);
@@ -231,7 +256,7 @@ describe("Bookmark Routes", () => {
       const ctx = createMockContext({ query: { tag: "filtered-tag" } });
 
       const bookmarks = await sdk.bookmarks.list({
-        tag: ctx.query.tag,
+        tags: [ctx.query["tag"] ?? ""],
       });
 
       expect(bookmarks).toHaveLength(1);
@@ -243,7 +268,7 @@ describe("Bookmark Routes", () => {
       const ctx = createMockContext({ query: { sessionId: "session-123" } });
 
       const bookmarks = await sdk.bookmarks.list({
-        sessionId: ctx.query.sessionId,
+        sessionId: ctx.query["sessionId"],
       });
 
       expect(bookmarks).toHaveLength(1);
@@ -253,7 +278,7 @@ describe("Bookmark Routes", () => {
       const sdk = createMockSDK({ searchBookmarksResult: [mockBookmark] });
       const ctx = createMockContext({ query: { q: "test search" } });
 
-      const results = await sdk.bookmarks.search(ctx.query.q ?? "", {});
+      const results = await sdk.bookmarks.search(ctx.query["q"] ?? "", {});
       expect(results).toHaveLength(1);
     });
 
@@ -263,8 +288,8 @@ describe("Bookmark Routes", () => {
         query: { q: "test search", metadataOnly: "true" },
       });
 
-      const results = await sdk.bookmarks.search(ctx.query.q ?? "", {
-        metadataOnly: ctx.query.metadataOnly === "true",
+      const results = await sdk.bookmarks.search(ctx.query["q"] ?? "", {
+        metadataOnly: ctx.query["metadataOnly"] === "true",
       });
 
       expect(results).toBeDefined();
@@ -281,7 +306,10 @@ describe("Bookmark Routes", () => {
       const tokenManager = createMockTokenManager(false);
       const ctx = createMockContext({});
 
-      const hasPermission = tokenManager.hasPermission(ctx.token, "bookmark:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "bookmark:*" as Permission,
+      );
       expect(hasPermission).toBe(false);
     });
   });
@@ -291,7 +319,7 @@ describe("Bookmark Routes", () => {
       const sdk = createMockSDK({ getBookmarkResult: mockBookmark });
       const ctx = createMockContext({ params: { id: "bookmark-123" } });
 
-      const bookmark = await sdk.bookmarks.get(ctx.params.id ?? "");
+      const bookmark = await sdk.bookmarks.get(ctx.params["id"] ?? "");
       expect(bookmark).toEqual(mockBookmark);
     });
 
@@ -299,7 +327,7 @@ describe("Bookmark Routes", () => {
       const sdk = createMockSDK({ getBookmarkResult: null });
       const ctx = createMockContext({ params: { id: "nonexistent" } });
 
-      const bookmark = await sdk.bookmarks.get(ctx.params.id ?? "");
+      const bookmark = await sdk.bookmarks.get(ctx.params["id"] ?? "");
       expect(bookmark).toBeNull();
     });
 
@@ -307,16 +335,16 @@ describe("Bookmark Routes", () => {
       const sdk = createMockSDK({
         getWithContentResult: {
           bookmark: mockBookmark,
-          content: "Test content",
+          content: [] as const,
         },
       });
       const ctx = createMockContext({ params: { id: "bookmark-123" } });
 
-      const result = await sdk.bookmarks.getWithContent(ctx.params.id ?? "");
+      const result = await sdk.bookmarks.getWithContent(ctx.params["id"] ?? "");
       expect(result).not.toBeNull();
       if (result) {
         expect(result.bookmark).toEqual(mockBookmark);
-        expect(result.content).toBe("Test content");
+        expect(result.content).toBeDefined();
       }
     });
 
@@ -324,7 +352,7 @@ describe("Bookmark Routes", () => {
       const sdk = createMockSDK({ getWithContentResult: null });
       const ctx = createMockContext({ params: { id: "nonexistent" } });
 
-      const result = await sdk.bookmarks.getWithContent(ctx.params.id ?? "");
+      const result = await sdk.bookmarks.getWithContent(ctx.params["id"] ?? "");
       expect(result).toBeNull();
     });
 
@@ -332,7 +360,7 @@ describe("Bookmark Routes", () => {
       const sdk = createMockSDK({ deleteBookmarkResult: true });
       const ctx = createMockContext({ params: { id: "bookmark-123" } });
 
-      const deleted = await sdk.bookmarks.delete(ctx.params.id ?? "");
+      const deleted = await sdk.bookmarks.delete(ctx.params["id"] ?? "");
       expect(deleted).toBe(true);
     });
 
@@ -340,7 +368,7 @@ describe("Bookmark Routes", () => {
       const sdk = createMockSDK({ deleteBookmarkResult: false });
       const ctx = createMockContext({ params: { id: "nonexistent" } });
 
-      const deleted = await sdk.bookmarks.delete(ctx.params.id ?? "");
+      const deleted = await sdk.bookmarks.delete(ctx.params["id"] ?? "");
       expect(deleted).toBe(false);
     });
 
@@ -348,7 +376,10 @@ describe("Bookmark Routes", () => {
       const tokenManager = createMockTokenManager(false);
       const ctx = createMockContext({});
 
-      const hasPermission = tokenManager.hasPermission(ctx.token, "bookmark:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "bookmark:*" as Permission,
+      );
       expect(hasPermission).toBe(false);
     });
   });

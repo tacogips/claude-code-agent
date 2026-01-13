@@ -47,9 +47,14 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -124,9 +129,14 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -195,9 +205,14 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -252,7 +267,10 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/claude/projects/abc123/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/claude/projects/abc123/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
       const result = await reader.readSession(
         "/claude/projects/abc123/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
@@ -321,9 +339,14 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -409,9 +432,14 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -459,9 +487,14 @@ describe("SessionReader", () => {
         message: { role: "user", content: "Test" },
       });
 
-      fs.setFile(`/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl`, sessionContent);
+      fs.setFile(
+        `/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl`,
+        sessionContent,
+      );
 
-      const result = await reader.readSession(`/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl`);
+      const result = await reader.readSession(
+        `/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl`,
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -515,9 +548,14 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readMessages("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readMessages(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -586,8 +624,12 @@ describe("SessionReader", () => {
       const files = await reader.findSessionFiles("/project");
 
       expect(files).toHaveLength(2);
-      expect(files).toContain("/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
-      expect(files).toContain("/project/12345678-1234-1234-1234-123456789abc.jsonl");
+      expect(files).toContain(
+        "/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
+      expect(files).toContain(
+        "/project/12345678-1234-1234-1234-123456789abc.jsonl",
+      );
     });
 
     it("should find session.jsonl in single directory", async () => {
@@ -621,7 +663,9 @@ describe("SessionReader", () => {
       const files = await reader.findSessionFiles("/project");
 
       expect(files).toHaveLength(1);
-      expect(files[0]).toBe("/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      expect(files[0]).toBe(
+        "/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
     });
 
     it("should reject malformed UUID filenames", async () => {
@@ -650,14 +694,24 @@ describe("SessionReader", () => {
 
     it("should search one level deep (Claude Code structure)", async () => {
       // Claude Code structure: ~/.claude/projects/{project-hash}/{uuid}.jsonl
-      fs.setFile("/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", "{}");
-      fs.setFile("/claude/projects/def/12345678-1234-1234-1234-123456789abc.jsonl", "{}");
+      fs.setFile(
+        "/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        "{}",
+      );
+      fs.setFile(
+        "/claude/projects/def/12345678-1234-1234-1234-123456789abc.jsonl",
+        "{}",
+      );
 
       const files = await reader.findSessionFiles("/claude/projects");
 
       expect(files).toHaveLength(2);
-      expect(files).toContain("/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
-      expect(files).toContain("/claude/projects/def/12345678-1234-1234-1234-123456789abc.jsonl");
+      expect(files).toContain(
+        "/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
+      expect(files).toContain(
+        "/claude/projects/def/12345678-1234-1234-1234-123456789abc.jsonl",
+      );
     });
 
     it("should not search deeply nested directories (max one level)", async () => {
@@ -674,10 +728,14 @@ describe("SessionReader", () => {
     it("should return file directly if path is UUID session file", async () => {
       fs.setFile("/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", "{}");
 
-      const files = await reader.findSessionFiles("/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const files = await reader.findSessionFiles(
+        "/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(files).toHaveLength(1);
-      expect(files[0]).toBe("/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      expect(files[0]).toBe(
+        "/project/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
     });
 
     it("should return file directly if path is session.jsonl file", async () => {
@@ -730,8 +788,14 @@ describe("SessionReader", () => {
         message: { role: "user", content: "World" },
       });
 
-      fs.setFile("/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", session1);
-      fs.setFile("/claude/projects/def/12345678-1234-1234-1234-123456789abc.jsonl", session2);
+      fs.setFile(
+        "/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        session1,
+      );
+      fs.setFile(
+        "/claude/projects/def/12345678-1234-1234-1234-123456789abc.jsonl",
+        session2,
+      );
 
       const sessions = await reader.listSessions("/claude/projects");
 
@@ -831,7 +895,10 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/claude/projects/multi/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/claude/projects/multi/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
       const sessions = await reader.listSessions("/claude/projects");
 
@@ -1005,9 +1072,14 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1056,9 +1128,14 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1093,9 +1170,14 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1123,9 +1205,14 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1178,9 +1265,14 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1246,9 +1338,14 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1272,9 +1369,14 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1292,9 +1394,14 @@ describe("SessionReader", () => {
         // No message field
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1340,9 +1447,14 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
-      const result = await reader.readSession("/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl");
+      const result = await reader.readSession(
+        "/test/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1784,7 +1896,9 @@ describe("SessionReader", () => {
 
       fs.setFile("/test/session-mixed-cache.jsonl", sessionContent);
 
-      const result = await reader.readSession("/test/session-mixed-cache.jsonl");
+      const result = await reader.readSession(
+        "/test/session-mixed-cache.jsonl",
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -1813,7 +1927,10 @@ describe("SessionReader", () => {
         },
       });
 
-      fs.setFile("/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl", sessionContent);
+      fs.setFile(
+        "/claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
 
       const sessions = await reader.listSessions("/claude/projects");
 

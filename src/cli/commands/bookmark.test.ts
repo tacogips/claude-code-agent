@@ -4,7 +4,15 @@
  * Covers TEST-001, TEST-002, TEST-003 from cli-commands-unit test plan.
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 import { Command } from "commander";
 import { registerBookmarkCommands } from "./bookmark";
 import type { ClaudeCodeAgent } from "../../sdk/agent";
@@ -39,9 +47,11 @@ describe("Bookmark Commands", () => {
     // Spy on process.exit, console.log, and output functions
     exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("process.exit called");
-    }) as any);
+    }) as any) as MockInstance<(this: unknown, ...args: unknown[]) => unknown>;
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    printSuccessSpy = vi.spyOn(output, "printSuccess").mockImplementation(() => {});
+    printSuccessSpy = vi
+      .spyOn(output, "printSuccess")
+      .mockImplementation(() => {});
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
@@ -67,7 +77,9 @@ describe("Bookmark Commands", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -108,7 +120,9 @@ describe("Bookmark Commands", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -150,7 +164,9 @@ describe("Bookmark Commands", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -290,7 +306,9 @@ describe("Bookmark Commands", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -337,7 +355,9 @@ describe("Bookmark Commands", () => {
         },
       ];
 
-      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmarks);
+      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmarks,
+      );
 
       await program.parseAsync(["node", "test", "bookmark", "list"]);
 
@@ -358,7 +378,9 @@ describe("Bookmark Commands", () => {
         },
       ];
 
-      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmarks);
+      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmarks,
+      );
 
       await program.parseAsync([
         "node",
@@ -375,7 +397,9 @@ describe("Bookmark Commands", () => {
     });
 
     test("displays 'No bookmarks found' for empty results", async () => {
-      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue(
+        [],
+      );
 
       await program.parseAsync(["node", "test", "bookmark", "list"]);
 
@@ -400,7 +424,9 @@ describe("Bookmark Commands", () => {
         },
       ];
 
-      (mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>).mockResolvedValue(mockResults);
+      (
+        mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockResults);
 
       await program.parseAsync([
         "node",
@@ -416,7 +442,9 @@ describe("Bookmark Commands", () => {
     });
 
     test("searches with --metadata-only flag", async () => {
-      (mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      (
+        mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([]);
 
       await program.parseAsync([
         "node",
@@ -433,7 +461,9 @@ describe("Bookmark Commands", () => {
     });
 
     test("displays 'No bookmarks found' for empty search results", async () => {
-      (mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      (
+        mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([]);
 
       await program.parseAsync([
         "node",
@@ -459,7 +489,9 @@ describe("Bookmark Commands", () => {
         },
       ];
 
-      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmarks);
+      (mockAgent.bookmarks!.list as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmarks,
+      );
 
       await program.parseAsync([
         "node",
@@ -490,7 +522,9 @@ describe("Bookmark Commands", () => {
         updatedAt: "2024-01-02T00:00:00Z",
       };
 
-      (mockAgent.bookmarks!.get as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -513,7 +547,9 @@ describe("Bookmark Commands", () => {
     });
 
     test("exits with code 1 for nonexistent bookmark", async () => {
-      (mockAgent.bookmarks!.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (mockAgent.bookmarks!.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+        null,
+      );
 
       try {
         await program.parseAsync([
@@ -544,7 +580,9 @@ describe("Bookmark Commands", () => {
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.bookmarks!.get as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -562,7 +600,9 @@ describe("Bookmark Commands", () => {
     });
 
     test("deletes existing bookmark", async () => {
-      (mockAgent.bookmarks!.delete as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+      (
+        mockAgent.bookmarks!.delete as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(true);
 
       await program.parseAsync([
         "node",
@@ -579,7 +619,9 @@ describe("Bookmark Commands", () => {
     });
 
     test("exits with code 1 when deleting nonexistent bookmark", async () => {
-      (mockAgent.bookmarks!.delete as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (
+        mockAgent.bookmarks!.delete as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(false);
 
       try {
         await program.parseAsync([

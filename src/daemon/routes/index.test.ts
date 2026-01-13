@@ -5,7 +5,12 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { sessionRoutes, groupRoutes, queueRoutes, bookmarkRoutes } from "./index";
+import {
+  sessionRoutes,
+  groupRoutes,
+  queueRoutes,
+  bookmarkRoutes,
+} from "./index";
 
 describe("TEST-012: Route Registration", () => {
   test("All route modules exported", () => {
@@ -95,8 +100,12 @@ describe("TEST-012: Route Registration", () => {
       };
 
       expect(Object.keys(bookmarkRoutesMethods).length).toBeGreaterThan(0);
-      expect(bookmarkRoutesMethods["POST /api/bookmarks"]).toBe("Create bookmark");
-      expect(bookmarkRoutesMethods["GET /api/bookmarks/search"]).toBe("Search bookmarks");
+      expect(bookmarkRoutesMethods["POST /api/bookmarks"]).toBe(
+        "Create bookmark",
+      );
+      expect(bookmarkRoutesMethods["GET /api/bookmarks/search"]).toBe(
+        "Search bookmarks",
+      );
     });
 
     test("Route parameter extraction", () => {
@@ -121,15 +130,18 @@ describe("TEST-012: Route Registration", () => {
         return params;
       };
 
-      const queueParams = extractParams(queueIdPattern, "/api/queues/queue-123");
-      expect(queueParams.id).toBe("queue-123");
+      const queueParams = extractParams(
+        queueIdPattern,
+        "/api/queues/queue-123",
+      );
+      expect(queueParams["id"]).toBe("queue-123");
 
       const commandParams = extractParams(
         commandIndexPattern,
         "/api/queues/queue-123/commands/5",
       );
-      expect(commandParams.id).toBe("queue-123");
-      expect(commandParams.index).toBe("5");
+      expect(commandParams["id"]).toBe("queue-123");
+      expect(commandParams["index"]).toBe("5");
     });
   });
 });

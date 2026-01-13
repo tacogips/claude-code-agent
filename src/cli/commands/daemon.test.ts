@@ -4,7 +4,15 @@
  * Covers TEST-009 from cli-commands-unit test plan.
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 import { Command } from "commander";
 import { registerDaemonCommands } from "./daemon";
 import type { ClaudeCodeAgent } from "../../sdk/agent";
@@ -28,7 +36,7 @@ describe("Daemon Commands", () => {
     // Spy on process.exit and output functions
     exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("process.exit called");
-    }) as any);
+    }) as any) as MockInstance<(this: unknown, ...args: unknown[]) => unknown>;
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands

@@ -11,7 +11,15 @@
  * - Resource not found errors (queue, group, bookmark)
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 import { Command } from "commander";
 import { registerBookmarkCommands } from "./bookmark";
 import { registerQueueCommands } from "./queue";
@@ -23,8 +31,6 @@ describe("Error Handling - Invalid Arguments", () => {
   let program: Command;
   let mockAgent: Partial<ClaudeCodeAgent>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let printSuccessSpy: ReturnType<typeof vi.spyOn>;
   let printErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -69,12 +75,10 @@ describe("Error Handling - Invalid Arguments", () => {
       } as any,
     };
 
-    // Spy on process.exit, console.log, and output functions
+    // Spy on process.exit and output functions
     exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("process.exit called");
-    }) as any);
-    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    printSuccessSpy = vi.spyOn(output, "printSuccess").mockImplementation(() => {});
+    }) as any) as MockInstance<(this: unknown, ...args: unknown[]) => unknown>;
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register all commands
@@ -267,9 +271,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
     test("queue create - SDK throws Error", async () => {
       const testError = new Error("Invalid project path: /nonexistent");
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
 
       try {
         await program.parseAsync([
@@ -291,9 +295,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
     test("group create - SDK throws Error", async () => {
       const testError = new Error("Group validation failed");
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
 
       try {
         await program.parseAsync([
@@ -329,9 +333,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
     test("queue list - SDK throws Error", async () => {
       const testError = new Error("Failed to read queues directory");
-      (mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
 
       try {
         await program.parseAsync(["node", "test", "queue", "list"]);
@@ -345,9 +349,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
     test("group list - SDK throws Error", async () => {
       const testError = new Error("Failed to read groups directory");
-      (mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
 
       try {
         await program.parseAsync(["node", "test", "group", "list"]);
@@ -386,9 +390,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("queue create - SDK throws string", async () => {
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockRejectedValue(
-        "Invalid configuration",
-      );
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockRejectedValue("Invalid configuration");
 
       try {
         await program.parseAsync([
@@ -410,9 +414,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
     test("group create - SDK throws object", async () => {
       const errorObj = { code: "ERR_INVALID", message: "Invalid input" };
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockRejectedValue(
-        errorObj,
-      );
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(errorObj);
 
       try {
         await program.parseAsync([
@@ -432,9 +436,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("bookmark search - SDK throws number", async () => {
-      (mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>).mockRejectedValue(
-        404,
-      );
+      (
+        mockAgent.bookmarks!.search as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(404);
 
       try {
         await program.parseAsync([
@@ -453,9 +457,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("queue list - SDK throws null", async () => {
-      (mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>).mockRejectedValue(
-        null,
-      );
+      (
+        mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(null);
 
       try {
         await program.parseAsync(["node", "test", "queue", "list"]);
@@ -468,9 +472,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("group list - SDK throws undefined", async () => {
-      (mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>).mockRejectedValue(
-        undefined,
-      );
+      (
+        mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(undefined);
 
       try {
         await program.parseAsync(["node", "test", "group", "list"]);
@@ -485,9 +489,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
   describe("Queue Not Found", () => {
     test("queue show - queue not found returns null", async () => {
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(
-        null,
-      );
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -508,9 +512,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("queue run - queue not found", async () => {
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(
-        null,
-      );
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -531,9 +535,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("queue delete - queue not found returns false", async () => {
-      (mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>).mockResolvedValue(
-        false,
-      );
+      (
+        mockAgent.queues!.deleteQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(false);
 
       try {
         await program.parseAsync([
@@ -557,9 +561,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
   describe("Group Not Found", () => {
     test("group show - group not found returns null", async () => {
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(
-        null,
-      );
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -580,9 +584,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("group run - group not found", async () => {
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(
-        null,
-      );
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -604,9 +608,9 @@ describe("Error Handling - Invalid Arguments", () => {
 
     test("group delete - group not found returns null from getGroup", async () => {
       // Group delete checks getGroup() first, not deleteGroup() return value
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(
-        null,
-      );
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -653,9 +657,9 @@ describe("Error Handling - Invalid Arguments", () => {
     });
 
     test("bookmark delete - bookmark not found returns false", async () => {
-      (mockAgent.bookmarks!.delete as ReturnType<typeof vi.fn>).mockResolvedValue(
-        false,
-      );
+      (
+        mockAgent.bookmarks!.delete as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(false);
 
       try {
         await program.parseAsync([
@@ -703,9 +707,9 @@ describe("Error Handling - Invalid Arguments", () => {
       vi.clearAllMocks();
 
       // Test queue command
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
       try {
         await program.parseAsync([
           "node",
@@ -724,9 +728,9 @@ describe("Error Handling - Invalid Arguments", () => {
       vi.clearAllMocks();
 
       // Test group command
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
       try {
         await program.parseAsync(["node", "test", "group", "create", "g1"]);
       } catch (e) {
@@ -752,9 +756,9 @@ describe("Error Handling - Invalid Arguments", () => {
       vi.clearAllMocks();
 
       // Test queue
-      (mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.queues!.listQueues as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
       try {
         await program.parseAsync(["node", "test", "queue", "list"]);
       } catch (e) {
@@ -765,9 +769,9 @@ describe("Error Handling - Invalid Arguments", () => {
       vi.clearAllMocks();
 
       // Test group
-      (mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>).mockRejectedValue(
-        testError,
-      );
+      (
+        mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(testError);
       try {
         await program.parseAsync(["node", "test", "group", "list"]);
       } catch (e) {

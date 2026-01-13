@@ -10,7 +10,10 @@
 
 import type { Container } from "../../container";
 import type { ManagedProcess } from "../../interfaces/process-manager";
-import type { GroupRepository, GroupSession } from "../../repository/group-repository";
+import type {
+  GroupRepository,
+  GroupSession,
+} from "../../repository/group-repository";
 import { createTaggedLogger } from "../../logger";
 import type { EventEmitter } from "../events/emitter";
 import { DependencyGraph } from "./dependency-graph";
@@ -63,7 +66,12 @@ export type PauseReason = "manual" | "budget_exceeded" | "error_threshold";
 /**
  * Group execution state.
  */
-export type RunnerState = "idle" | "running" | "paused" | "stopped" | "completed";
+export type RunnerState =
+  | "idle"
+  | "running"
+  | "paused"
+  | "stopped"
+  | "completed";
 
 /**
  * Group Runner for executing Session Groups.
@@ -182,9 +190,7 @@ export class GroupRunner {
         group.config.concurrency?.respectDependencies ??
         true,
       pauseOnError:
-        options?.pauseOnError ??
-        group.config.concurrency?.pauseOnError ??
-        true,
+        options?.pauseOnError ?? group.config.concurrency?.pauseOnError ?? true,
       errorThreshold:
         options?.errorThreshold ??
         group.config.concurrency?.errorThreshold ??
@@ -390,10 +396,7 @@ export class GroupRunner {
    * @returns Current group progress or null if not running
    */
   getProgress(): GroupProgress | null {
-    if (
-      this.currentGroup === null ||
-      this.progressAggregator === null
-    ) {
+    if (this.currentGroup === null || this.progressAggregator === null) {
       return null;
     }
 
@@ -504,7 +507,10 @@ export class GroupRunner {
       logger.error(`Failed to generate config for session ${session.id}`, {
         error: configResult.error,
       });
-      await this.handleSessionFailure(session.id, "Configuration generation failed");
+      await this.handleSessionFailure(
+        session.id,
+        "Configuration generation failed",
+      );
       return;
     }
 
@@ -524,14 +530,10 @@ export class GroupRunner {
     };
 
     // Spawn Claude Code process
-    const process = this.container.processManager.spawn(
-      "claude",
-      args,
-      {
-        cwd: session.projectPath,
-        env,
-      },
-    );
+    const process = this.container.processManager.spawn("claude", args, {
+      cwd: session.projectPath,
+      env,
+    });
 
     // Track the worker
     const workerState: WorkerState = {
@@ -615,7 +617,10 @@ export class GroupRunner {
     });
 
     // Wait for the first completion or interrupt
-    const result = await Promise.race([...completionPromises, interruptPromise]);
+    const result = await Promise.race([
+      ...completionPromises,
+      interruptPromise,
+    ]);
 
     // Clear interrupt signal
     this.interruptSignal = null;
@@ -812,7 +817,9 @@ export class GroupRunner {
     this.state = "completed";
 
     const timestamp = this.container.clock.now().toISOString();
-    const progress = this.progressAggregator!.computeProgress(this.currentGroup!);
+    const progress = this.progressAggregator!.computeProgress(
+      this.currentGroup!,
+    );
 
     // Update group status
     await this.updateGroupStatus("completed", {
@@ -928,7 +935,9 @@ export class GroupRunner {
 
     // Update progress aggregator
     if (this.progressAggregator !== null) {
-      const session = this.currentGroup.sessions.find((s) => s.id === sessionId);
+      const session = this.currentGroup.sessions.find(
+        (s) => s.id === sessionId,
+      );
       if (session !== undefined) {
         this.progressAggregator.updateSession(createSessionProgress(session));
       }
@@ -938,7 +947,9 @@ export class GroupRunner {
   /**
    * Emit dependency resolved events for sessions unblocked by completion.
    */
-  private async emitDependencyResolved(completedSessionId: string): Promise<void> {
+  private async emitDependencyResolved(
+    completedSessionId: string,
+  ): Promise<void> {
     if (this.currentGroup === null || this.dependencyGraph === null) {
       return;
     }

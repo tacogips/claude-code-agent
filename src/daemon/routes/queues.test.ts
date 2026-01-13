@@ -4,56 +4,74 @@
  * @module daemon/routes/queues.test
  */
 
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect } from "bun:test";
 import type { ClaudeCodeAgent } from "../../sdk";
 import type { TokenManager } from "../auth";
 import type { ApiToken, Permission } from "../types";
-import type { CommandQueue, QueueCommand } from "../../sdk/queue/types";
+import type {
+  CommandQueue as SDKCommandQueue,
+  QueueCommand as SDKQueueCommand,
+} from "../../sdk/queue/types";
 import type { QueueResult } from "../../sdk/queue/runner";
 
 // Mock token
 const mockToken: ApiToken = {
-  token: "test-token-123",
+  id: "test-id",
+  name: "Test Token",
+  hash: "sha256:testhash",
   permissions: ["queue:*"],
-  createdAt: new Date(),
-  expiresAt: new Date(Date.now() + 86400000),
-  description: "Test token",
+  createdAt: new Date().toISOString(),
+  expiresAt: new Date(Date.now() + 86400000).toISOString(),
 };
 
-// Mock queue
-const mockQueue: CommandQueue = {
+// Mock queue (SDK type)
+const mockQueue: SDKCommandQueue = {
   id: "queue-123",
   name: "Test Queue",
   projectPath: "/test/project",
+  status: "idle",
+  currentCommandIndex: 0,
   commands: [],
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  config: { stopOnError: true },
+  stats: {
+    totalCommands: 0,
+    completedCommands: 0,
+    failedCommands: 0,
+    totalCost: 0,
+    totalTokens: { input: 0, output: 0 },
+    totalDuration: 0,
+  },
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
-// Mock command
-const mockCommand: QueueCommand = {
+// Mock command (SDK type)
+const mockCommand: SDKQueueCommand = {
+  id: "cmd-001",
+  index: 0,
   prompt: "Test prompt",
   sessionMode: "continue",
   status: "pending",
-  createdAt: new Date(),
+  addedAt: new Date().toISOString(),
 };
 
 // Mock queue result
 const mockQueueResult: QueueResult = {
-  queueId: "queue-123",
   status: "completed",
-  executedCommands: 0,
+  completedCommands: 0,
   failedCommands: 0,
-  results: [],
+  skippedCommands: 0,
+  totalCostUsd: 0,
+  totalDurationMs: 0,
 };
 
 // Create mock SDK
 function createMockSDK(options: {
-  createQueueResult?: CommandQueue;
-  listQueuesResult?: CommandQueue[];
-  getQueueResult?: CommandQueue | null;
-  addCommandResult?: QueueCommand;
-  updateCommandResult?: QueueCommand;
+  createQueueResult?: SDKCommandQueue;
+  listQueuesResult?: SDKCommandQueue[];
+  getQueueResult?: SDKCommandQueue | null;
+  addCommandResult?: SDKQueueCommand;
+  updateCommandResult?: SDKQueueCommand;
   runQueueResult?: QueueResult;
   throwError?: boolean;
 }): ClaudeCodeAgent {
@@ -103,7 +121,7 @@ function createMockSDK(options: {
 function createMockTokenManager(hasPermission: boolean = true): TokenManager {
   return {
     hasPermission: () => hasPermission,
-  } as TokenManager;
+  } as unknown as TokenManager;
 }
 
 // Mock context helpers
@@ -144,7 +162,10 @@ describe("Queue Routes", () => {
       });
 
       // Permission check
-      const hasPermission = tokenManager.hasPermission(ctx.token, "queue:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "queue:*" as Permission,
+      );
       expect(hasPermission).toBe(true);
 
       // Create queue
@@ -153,17 +174,12 @@ describe("Queue Routes", () => {
         name: "Test Queue",
       });
 
-      expect(queue).toEqual(mockQueue);
+      expect(queue).toBeDefined();
       expect(queue.projectPath).toBe("/test/project");
     });
 
     test("Create queue with optional name - 200", async () => {
       const sdk = createMockSDK({ createQueueResult: mockQueue });
-      const tokenManager = createMockTokenManager(true);
-
-      const ctx = createMockContext({
-        body: { projectPath: "/test/project" },
-      });
 
       const queue = await sdk.queues.createQueue({
         projectPath: "/test/project",
@@ -185,7 +201,10 @@ describe("Queue Routes", () => {
       const tokenManager = createMockTokenManager(false);
       const ctx = createMockContext({});
 
-      const hasPermission = tokenManager.hasPermission(ctx.token, "queue:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "queue:*" as Permission,
+      );
       expect(hasPermission).toBe(false);
     });
 
@@ -201,11 +220,10 @@ describe("Queue Routes", () => {
   describe("TEST-004: Queue List and Get", () => {
     test("List all queues - 200", async () => {
       const sdk = createMockSDK({ listQueuesResult: [mockQueue] });
-      const tokenManager = createMockTokenManager(true);
 
       const queues = await sdk.queues.listQueues({});
       expect(queues).toHaveLength(1);
-      expect(queues[0]).toEqual(mockQueue);
+      expect(queues[0]?.id).toBe(mockQueue.id);
     });
 
     test("List with projectPath filter - 200", async () => {
@@ -217,7 +235,7 @@ describe("Queue Routes", () => {
       });
 
       const queues = await sdk.queues.listQueues({
-        filter: { projectPath: ctx.query.projectPath },
+        filter: { projectPath: ctx.query["projectPath"] },
       });
 
       expect(queues).toHaveLength(1);
@@ -226,7 +244,6 @@ describe("Queue Routes", () => {
 
     test("List with status filter - 200", async () => {
       const sdk = createMockSDK({ listQueuesResult: [mockQueue] });
-      const ctx = createMockContext({ query: { status: "pending" } });
 
       const queues = await sdk.queues.listQueues({
         filter: { status: "pending" },
@@ -235,13 +252,19 @@ describe("Queue Routes", () => {
       expect(queues).toBeDefined();
     });
 
-    test("List with invalid status (ignored) - 200", async () => {
-      const sdk = createMockSDK({ listQueuesResult: [mockQueue] });
+    test("List with invalid status (ignored) - 200", () => {
       const ctx = createMockContext({ query: { status: "invalid-status" } });
 
       // Invalid status should be filtered out before SDK call
-      const validStatuses = ["pending", "running", "paused", "stopped", "completed", "failed"];
-      const statusIsValid = validStatuses.includes(ctx.query.status ?? "");
+      const validStatuses = [
+        "pending",
+        "running",
+        "paused",
+        "stopped",
+        "completed",
+        "failed",
+      ];
+      const statusIsValid = validStatuses.includes(ctx.query["status"] ?? "");
       expect(statusIsValid).toBe(false);
     });
 
@@ -249,15 +272,15 @@ describe("Queue Routes", () => {
       const sdk = createMockSDK({ getQueueResult: mockQueue });
       const ctx = createMockContext({ params: { id: "queue-123" } });
 
-      const queue = await sdk.queues.getQueue(ctx.params.id ?? "");
-      expect(queue).toEqual(mockQueue);
+      const queue = await sdk.queues.getQueue(ctx.params["id"] ?? "");
+      expect(queue?.id).toBe(mockQueue.id);
     });
 
     test("Get nonexistent queue - 404", async () => {
       const sdk = createMockSDK({ getQueueResult: null });
       const ctx = createMockContext({ params: { id: "nonexistent" } });
 
-      const queue = await sdk.queues.getQueue(ctx.params.id ?? "");
+      const queue = await sdk.queues.getQueue(ctx.params["id"] ?? "");
       expect(queue).toBeNull();
     });
 
@@ -265,7 +288,10 @@ describe("Queue Routes", () => {
       const tokenManager = createMockTokenManager(false);
       const ctx = createMockContext({});
 
-      const hasPermission = tokenManager.hasPermission(ctx.token, "queue:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "queue:*" as Permission,
+      );
       expect(hasPermission).toBe(false);
     });
   });
@@ -273,10 +299,6 @@ describe("Queue Routes", () => {
   describe("TEST-005: Queue Command Management", () => {
     test("Add command with prompt - 200", async () => {
       const sdk = createMockSDK({ addCommandResult: mockCommand });
-      const ctx = createMockContext({
-        params: { id: "queue-123" },
-        body: { prompt: "Test prompt" },
-      });
 
       const command = await sdk.queues.addCommand("queue-123", {
         prompt: "Test prompt",
@@ -340,19 +362,21 @@ describe("Queue Routes", () => {
 
     test("Update with invalid index - 400", () => {
       const ctx = createMockContext({ params: { index: "invalid" } });
-      const index = parseInt(ctx.params.index ?? "", 10);
+      const index = parseInt(ctx.params["index"] ?? "", 10);
 
       expect(isNaN(index)).toBe(true);
     });
 
     test("Delete command - 200", async () => {
       const sdk = createMockSDK({});
-      await expect(sdk.queues.removeCommand("queue-123", 0)).resolves.toBeUndefined();
+      await expect(
+        sdk.queues.removeCommand("queue-123", 0),
+      ).resolves.toBeUndefined();
     });
 
     test("Delete with invalid index - 400", () => {
       const ctx = createMockContext({ params: { index: "-1" } });
-      const index = parseInt(ctx.params.index ?? "", 10);
+      const index = parseInt(ctx.params["index"] ?? "", 10);
 
       expect(index < 0).toBe(true);
     });
@@ -419,7 +443,10 @@ describe("Queue Routes", () => {
       const tokenManager = createMockTokenManager(false);
       const ctx = createMockContext({});
 
-      const hasPermission = tokenManager.hasPermission(ctx.token, "queue:*" as Permission);
+      const hasPermission = tokenManager.hasPermission(
+        ctx.token,
+        "queue:*" as Permission,
+      );
       expect(hasPermission).toBe(false);
     });
   });

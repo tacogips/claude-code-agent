@@ -17,7 +17,10 @@ interface ErrorResponse {
 /**
  * Helper to create error responses like route handlers do
  */
-function createErrorResponse(statusCode: number, error: unknown): ErrorResponse {
+function createErrorResponse(
+  statusCode: number,
+  error: unknown,
+): ErrorResponse {
   const errorMap: Record<number, string> = {
     400: "Bad Request",
     401: "Unauthorized",
@@ -34,7 +37,10 @@ function createErrorResponse(statusCode: number, error: unknown): ErrorResponse 
 
 describe("TEST-010: Error Response Format", () => {
   test("400 Bad Request format", () => {
-    const response = createErrorResponse(400, new Error("Missing required field"));
+    const response = createErrorResponse(
+      400,
+      new Error("Missing required field"),
+    );
 
     expect(response).toHaveProperty("error");
     expect(response).toHaveProperty("message");

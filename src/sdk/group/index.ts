@@ -67,7 +67,10 @@ export type { CreateGroupOptions } from "./manager";
 export { GroupManager } from "./manager";
 
 // Re-export config generator
-export type { SessionConfigResult, ConfigGeneratorError } from "./config-generator";
+export type {
+  SessionConfigResult,
+  ConfigGeneratorError,
+} from "./config-generator";
 export { ConfigGenerator } from "./config-generator";
 
 // Re-export dependency graph

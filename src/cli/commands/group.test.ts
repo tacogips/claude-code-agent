@@ -4,7 +4,15 @@
  * Covers TEST-007 from cli-commands-unit test plan.
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 import { Command } from "commander";
 import { registerGroupCommands } from "./group";
 import type { ClaudeCodeAgent } from "../../sdk/agent";
@@ -45,9 +53,11 @@ describe("Group Commands", () => {
     // Spy on process.exit, console.log, and output functions
     exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("process.exit called");
-    }) as any);
+    }) as any) as MockInstance<(this: unknown, ...args: unknown[]) => unknown>;
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    printSuccessSpy = vi.spyOn(output, "printSuccess").mockImplementation(() => {});
+    printSuccessSpy = vi
+      .spyOn(output, "printSuccess")
+      .mockImplementation(() => {});
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
@@ -74,7 +84,9 @@ describe("Group Commands", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
 
       await program.parseAsync([
         "node",
@@ -107,7 +119,9 @@ describe("Group Commands", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
 
       await program.parseAsync([
         "node",
@@ -151,7 +165,9 @@ describe("Group Commands", () => {
         },
       ];
 
-      (mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroups);
+      (
+        mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroups);
 
       await program.parseAsync(["node", "test", "group", "list"]);
 
@@ -173,7 +189,9 @@ describe("Group Commands", () => {
         },
       ];
 
-      (mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroups);
+      (
+        mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroups);
 
       await program.parseAsync([
         "node",
@@ -190,7 +208,9 @@ describe("Group Commands", () => {
     });
 
     test("shows 'No groups found' for empty list", async () => {
-      (mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      (
+        mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([]);
 
       await program.parseAsync(["node", "test", "group", "list"]);
 
@@ -218,7 +238,7 @@ describe("Group Commands", () => {
             id: "session-2",
             projectPath: "/path/to/project2",
             prompt: "Another prompt",
-            status: "running",
+            status: "active",
             dependsOn: ["session-1"],
             createdAt: "2024-01-02T00:00:00Z",
           },
@@ -229,7 +249,9 @@ describe("Group Commands", () => {
         startedAt: "2024-01-01T01:00:00Z",
       };
 
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
 
       await program.parseAsync(["node", "test", "group", "show", "group-123"]);
 
@@ -246,7 +268,9 @@ describe("Group Commands", () => {
     });
 
     test("exits with code 1 when showing nonexistent group", async () => {
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -278,8 +302,12 @@ describe("Group Commands", () => {
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
-      (mockAgent.groups!.deleteGroup as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.deleteGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -306,7 +334,9 @@ describe("Group Commands", () => {
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
 
       try {
         await program.parseAsync([
@@ -328,7 +358,9 @@ describe("Group Commands", () => {
     });
 
     test("exits with code 1 when deleting nonexistent group", async () => {
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -364,7 +396,9 @@ describe("Group Commands", () => {
         },
       ];
 
-      (mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroups);
+      (
+        mockAgent.groups!.listGroups as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroups);
 
       await program.parseAsync([
         "node",
@@ -394,8 +428,12 @@ describe("Group Commands", () => {
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
-      (mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync(["node", "test", "group", "run", "group-123"]);
 
@@ -421,8 +459,12 @@ describe("Group Commands", () => {
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
-      (mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -452,8 +494,12 @@ describe("Group Commands", () => {
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
-      (mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -482,8 +528,12 @@ describe("Group Commands", () => {
         updatedAt: "2024-01-01T00:00:00Z",
       };
 
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
-      (mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groupRunner!.run as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -503,7 +553,9 @@ describe("Group Commands", () => {
     });
 
     test("exits with code 1 when running nonexistent group", async () => {
-      (mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (
+        mockAgent.groups!.getGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
 
       try {
         await program.parseAsync([
@@ -525,7 +577,9 @@ describe("Group Commands", () => {
     });
 
     test("pauses running group", async () => {
-      (mockAgent.groupRunner!.pause as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groupRunner!.pause as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync(["node", "test", "group", "pause", "group-123"]);
 
@@ -534,7 +588,9 @@ describe("Group Commands", () => {
     });
 
     test("resumes paused group", async () => {
-      (mockAgent.groupRunner!.resume as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groupRunner!.resume as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -549,7 +605,9 @@ describe("Group Commands", () => {
     });
 
     test("archives completed group", async () => {
-      (mockAgent.groups!.archiveGroup as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (
+        mockAgent.groups!.archiveGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       await program.parseAsync([
         "node",
@@ -560,9 +618,7 @@ describe("Group Commands", () => {
       ]);
 
       expect(mockAgent.groups!.archiveGroup).toHaveBeenCalledWith("group-123");
-      expect(printSuccessSpy).toHaveBeenCalledWith(
-        "Group archived: group-123",
-      );
+      expect(printSuccessSpy).toHaveBeenCalledWith("Group archived: group-123");
     });
 
     test("watch exits with code 1 (not implemented)", async () => {

@@ -229,7 +229,10 @@ export class BookmarkManager {
     });
 
     // Metadata search
-    const metadataResults = this.bookmarkSearch.searchMetadata(query, allBookmarks);
+    const metadataResults = this.bookmarkSearch.searchMetadata(
+      query,
+      allBookmarks,
+    );
 
     // If metadata-only, return metadata results
     if (options?.metadataOnly === true) {
@@ -237,7 +240,10 @@ export class BookmarkManager {
     }
 
     // Content search
-    const contentResults = await this.bookmarkSearch.searchContent(query, allBookmarks);
+    const contentResults = await this.bookmarkSearch.searchContent(
+      query,
+      allBookmarks,
+    );
 
     // Combine results (avoid duplicates, prefer higher relevance)
     const resultMap = new Map<string, BookmarkSearchResult>();

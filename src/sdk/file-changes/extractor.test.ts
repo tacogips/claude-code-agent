@@ -144,8 +144,12 @@ describe("FileChangeExtractor", () => {
       const result = await extractor.extractFromTranscript(transcriptPath);
 
       expect(result.changedFiles).toHaveLength(2);
-      expect(result.changedFiles.some((f) => f.path.includes("file1.ts"))).toBe(true);
-      expect(result.changedFiles.some((f) => f.path.includes("file2.ts"))).toBe(true);
+      expect(result.changedFiles.some((f) => f.path.includes("file1.ts"))).toBe(
+        true,
+      );
+      expect(result.changedFiles.some((f) => f.path.includes("file2.ts"))).toBe(
+        true,
+      );
     });
 
     test("aggregates multiple changes to same file", async () => {

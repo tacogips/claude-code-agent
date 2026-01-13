@@ -174,7 +174,10 @@ export class FileBookmarkRepository implements BookmarkRepository {
    * @param id - Bookmark ID to update
    * @param updates - Partial bookmark updates (id cannot be changed)
    */
-  async update(id: string, updates: Partial<Omit<Bookmark, "id">>): Promise<void> {
+  async update(
+    id: string,
+    updates: Partial<Omit<Bookmark, "id">>,
+  ): Promise<void> {
     const existing = await this.findById(id);
     if (!existing) {
       throw new Error(`Bookmark not found: ${id}`);
@@ -320,7 +323,9 @@ export class FileBookmarkRepository implements BookmarkRepository {
 
     if (filter.nameContains !== undefined) {
       const searchTerm = filter.nameContains.toLowerCase();
-      results = results.filter((b) => b.name.toLowerCase().includes(searchTerm));
+      results = results.filter((b) =>
+        b.name.toLowerCase().includes(searchTerm),
+      );
     }
 
     if (filter.since !== undefined) {

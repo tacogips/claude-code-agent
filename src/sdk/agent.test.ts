@@ -16,7 +16,6 @@ import { SessionReader } from "./session-reader";
 import { GroupManager, GroupRunner } from "./group";
 import { QueueManager, QueueRunner } from "./queue";
 import { BookmarkManager } from "./bookmarks";
-import { DEFAULT_GROUP_CONFIG, DEFAULT_CONCURRENCY_CONFIG } from "./group/types";
 
 describe("ClaudeCodeAgent", () => {
   let container: Container;

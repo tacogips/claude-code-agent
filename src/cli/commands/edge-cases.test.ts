@@ -10,7 +10,15 @@
  * - Negative index values
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 import { Command } from "commander";
 import { registerBookmarkCommands } from "./bookmark";
 import { registerQueueCommands } from "./queue";
@@ -24,8 +32,6 @@ describe("Edge Cases - Special Characters and Paths", () => {
   let program: Command;
   let mockAgent: Partial<ClaudeCodeAgent>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let printSuccessSpy: ReturnType<typeof vi.spyOn>;
   let printErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -74,12 +80,10 @@ describe("Edge Cases - Special Characters and Paths", () => {
       } as any,
     };
 
-    // Spy on process.exit, console.log, and output functions
+    // Spy on process.exit and output functions
     exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("process.exit called");
-    }) as any);
-    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    printSuccessSpy = vi.spyOn(output, "printSuccess").mockImplementation(() => {});
+    }) as any) as MockInstance<(this: unknown, ...args: unknown[]) => unknown>;
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register all command groups
@@ -110,7 +114,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -143,7 +149,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -178,7 +186,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -211,7 +221,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -245,7 +257,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -278,7 +292,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -311,7 +327,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -333,7 +351,8 @@ describe("Edge Cases - Special Characters and Paths", () => {
     });
 
     test("group create handles unicode in description", async () => {
-      const descriptionWithUnicode = "Тестовая группа mit Überprüfung والاختبار 测试 🚀";
+      const descriptionWithUnicode =
+        "Тестовая группа mit Überprüfung والاختبار 测试 🚀";
       const mockGroup: SessionGroup = {
         id: "group-unicode",
         slug: "test-group",
@@ -352,7 +371,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
 
       await program.parseAsync([
         "node",
@@ -391,7 +412,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
 
       await program.parseAsync([
         "node",
@@ -415,7 +438,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
     test("queue command add handles prompts exceeding 500 characters", async () => {
       // Create a prompt that is 550 characters long
       const veryLongPrompt =
-        "This is a very long prompt that exceeds typical display limits. ".repeat(8) +
+        "This is a very long prompt that exceeds typical display limits. ".repeat(
+          8,
+        ) +
         "Extra text to make it exactly over 500 characters for testing purposes.";
 
       expect(veryLongPrompt.length).toBeGreaterThan(500);
@@ -441,8 +466,12 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -482,8 +511,12 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>).mockResolvedValue(mockCommand);
-      (mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (
+        mockAgent.queues!.addCommand as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockCommand);
+      (
+        mockAgent.queues!.getQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
         id: "queue-extreme",
         name: "Test",
         projectPath: "/test",
@@ -531,7 +564,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(mockBookmark);
+      (mockAgent.bookmarks!.add as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockBookmark,
+      );
 
       await program.parseAsync([
         "node",
@@ -572,7 +607,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>).mockResolvedValue(mockGroup);
+      (
+        mockAgent.groups!.createGroup as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockGroup);
 
       await program.parseAsync([
         "node",
@@ -603,7 +640,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
         updatedAt: new Date().toISOString(),
       };
 
-      (mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>).mockResolvedValue(mockQueue);
+      (
+        mockAgent.queues!.createQueue as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockQueue);
 
       await program.parseAsync([
         "node",
@@ -626,9 +665,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
   describe("Scenario 6: Negative Index Values", () => {
     test("queue command edit rejects negative index", async () => {
       // Mock an error from the SDK for negative index
-      (mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Invalid index: -1"),
-      );
+      (
+        mockAgent.queues!.updateCommand as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Invalid index: -1"));
 
       try {
         await program.parseAsync([
@@ -651,9 +690,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
     });
 
     test("queue command remove rejects negative index", async () => {
-      (mockAgent.queues!.removeCommand as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Invalid index: -5"),
-      );
+      (
+        mockAgent.queues!.removeCommand as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Invalid index: -5"));
 
       try {
         await program.parseAsync([
@@ -674,9 +713,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
     });
 
     test("queue command move rejects negative from index", async () => {
-      (mockAgent.queues!.reorderCommand as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Invalid from index: -2"),
-      );
+      (
+        mockAgent.queues!.reorderCommand as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Invalid from index: -2"));
 
       try {
         await program.parseAsync([
@@ -698,9 +737,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
     });
 
     test("queue command move rejects negative to index", async () => {
-      (mockAgent.queues!.reorderCommand as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Invalid to index: -3"),
-      );
+      (
+        mockAgent.queues!.reorderCommand as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Invalid to index: -3"));
 
       try {
         await program.parseAsync([
@@ -722,9 +761,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
     });
 
     test("queue command toggle-mode rejects negative index", async () => {
-      (mockAgent.queues!.toggleSessionMode as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error("Invalid index: -10"),
-      );
+      (
+        mockAgent.queues!.toggleSessionMode as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Invalid index: -10"));
 
       try {
         await program.parseAsync([

@@ -5,17 +5,18 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { validateAuth, type AuthResult } from "./auth-helper";
+import { validateAuth } from "./auth-helper";
 import type { TokenManager } from "../auth";
 import type { ApiToken, Permission } from "../types";
 
 // Mock token for testing
 const mockToken: ApiToken = {
-  token: "test-token-123",
+  id: "test-id",
+  name: "Test Token",
+  hash: "sha256:testhash",
   permissions: ["queue:*", "bookmark:*"],
-  createdAt: new Date(),
-  expiresAt: new Date(Date.now() + 86400000),
-  description: "Test token",
+  createdAt: new Date().toISOString(),
+  expiresAt: new Date(Date.now() + 86400000).toISOString(),
 };
 
 // Create mock TokenManager
@@ -24,13 +25,13 @@ function createMockTokenManager(options: {
   hasPermissionResult?: boolean;
 }): TokenManager {
   return {
-    validateToken: async (token: string) => options.validateResult,
-    hasPermission: (token: ApiToken, permission: Permission) =>
+    validateToken: async (_token: string) => options.validateResult,
+    hasPermission: (_token: ApiToken, _permission: Permission) =>
       options.hasPermissionResult ?? true,
     generateToken: async () => mockToken,
     revokeToken: async () => true,
     listTokens: async () => [mockToken],
-  } as TokenManager;
+  } as unknown as TokenManager;
 }
 
 describe("validateAuth", () => {
@@ -40,10 +41,7 @@ describe("validateAuth", () => {
         validateResult: mockToken,
       });
 
-      const result = await validateAuth(
-        "Bearer test-token-123",
-        tokenManager,
-      );
+      const result = await validateAuth("Bearer test-token-123", tokenManager);
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -100,10 +98,7 @@ describe("validateAuth", () => {
         validateResult: null, // Token validation fails
       });
 
-      const result = await validateAuth(
-        "Bearer invalid-token",
-        tokenManager,
-      );
+      const result = await validateAuth("Bearer invalid-token", tokenManager);
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -170,26 +165,26 @@ describe("validateAuth", () => {
     test("Token with special characters", async () => {
       const specialToken: ApiToken = {
         ...mockToken,
-        token: "test-token!@#$%^&*()_+-=[]{}|;:',.<>?/",
+        id: "special-token-id",
       };
       const tokenManager = createMockTokenManager({
         validateResult: specialToken,
       });
 
       const result = await validateAuth(
-        `Bearer ${specialToken.token}`,
+        `Bearer test-token!@#$%^&*()_+-=[]{}|;:',.<>?/`,
         tokenManager,
       );
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.token.token).toBe(specialToken.token);
+        expect(result.token.id).toBe(specialToken.id);
       }
     });
 
     test("Very long token strings", async () => {
       const longToken = "a".repeat(1000);
-      const longApiToken: ApiToken = { ...mockToken, token: longToken };
+      const longApiToken: ApiToken = { ...mockToken, id: "long-token-id" };
       const tokenManager = createMockTokenManager({
         validateResult: longApiToken,
       });
@@ -198,7 +193,7 @@ describe("validateAuth", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.token.token.length).toBe(1000);
+        expect(result.token.id).toBe("long-token-id");
       }
     });
 

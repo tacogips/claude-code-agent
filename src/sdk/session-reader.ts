@@ -21,7 +21,8 @@ import { getDefaultConfig } from "../types/config";
  * Pattern for UUID-named session files.
  * Claude Code stores main session files as: {uuid}.jsonl
  */
-const UUID_SESSION_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$/;
+const UUID_SESSION_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$/;
 
 /**
  * Check if a filename matches a session file pattern.
@@ -303,7 +304,9 @@ export class SessionReader {
    * @returns Token usage stats or undefined if not present
    * @private
    */
-  private extractUsage(record: Record<string, unknown>): TokenUsage | undefined {
+  private extractUsage(
+    record: Record<string, unknown>,
+  ): TokenUsage | undefined {
     const message = record["message"] as Record<string, unknown> | undefined;
     const usage = message?.["usage"] as Record<string, unknown> | undefined;
 
@@ -329,7 +332,9 @@ export class SessionReader {
    * @returns Aggregated token usage or undefined if empty
    * @private
    */
-  private aggregateUsage(usages: readonly TokenUsage[]): TokenUsage | undefined {
+  private aggregateUsage(
+    usages: readonly TokenUsage[],
+  ): TokenUsage | undefined {
     if (usages.length === 0) {
       return undefined;
     }
@@ -719,5 +724,4 @@ export class SessionReader {
 
     return "";
   }
-
 }

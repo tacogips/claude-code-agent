@@ -48,8 +48,8 @@ describe("TEST-011: Request Body Validation", () => {
       requiredField: "value",
     });
 
-    expect(body.requiredField).toBe("value");
-    expect(body.optionalField).toBeUndefined();
+    expect(body["requiredField"]).toBe("value");
+    expect(body["optionalField"]).toBeUndefined();
   });
 
   test("Extra fields ignored", () => {
@@ -59,9 +59,9 @@ describe("TEST-011: Request Body Validation", () => {
       anotherExtra: 123,
     });
 
-    expect(body.requiredField).toBe("value");
-    expect(body.extraField).toBe("ignored");
-    expect(body.anotherExtra).toBe(123);
+    expect(body["requiredField"]).toBe("value");
+    expect(body["extraField"]).toBe("ignored");
+    expect(body["anotherExtra"]).toBe(123);
     // Route handlers should only use known fields
   });
 
@@ -98,9 +98,9 @@ describe("TEST-011: Request Body Validation", () => {
       data: largeArray,
     });
 
-    expect(body.data).toBeDefined();
-    expect(Array.isArray(body.data)).toBe(true);
-    expect((body.data as unknown[]).length).toBe(10000);
+    expect(body["data"]).toBeDefined();
+    expect(Array.isArray(body["data"])).toBe(true);
+    expect((body["data"] as unknown[]).length).toBe(10000);
   });
 
   test("Required fields validated", () => {
@@ -125,8 +125,8 @@ describe("TEST-011: Request Body Validation", () => {
       field: "",
     });
 
-    expect(body.field).toBe("");
-    expect(body.field).not.toBeUndefined();
+    expect(body["field"]).toBe("");
+    expect(body["field"]).not.toBeUndefined();
     // Empty strings are different from undefined
   });
 
@@ -136,8 +136,8 @@ describe("TEST-011: Request Body Validation", () => {
       undefinedField: undefined,
     });
 
-    expect(body.nullField).toBeNull();
-    expect(body.undefinedField).toBeUndefined();
+    expect(body["nullField"]).toBeNull();
+    expect(body["undefinedField"]).toBeUndefined();
   });
 
   test("Array fields", () => {
@@ -145,8 +145,8 @@ describe("TEST-011: Request Body Validation", () => {
       tags: ["tag1", "tag2", "tag3"],
     });
 
-    expect(Array.isArray(body.tags)).toBe(true);
-    expect((body.tags as string[]).length).toBe(3);
+    expect(Array.isArray(body["tags"])).toBe(true);
+    expect((body["tags"] as string[]).length).toBe(3);
   });
 
   test("Nested objects", () => {
@@ -158,7 +158,7 @@ describe("TEST-011: Request Body Validation", () => {
       },
     });
 
-    expect(body.config).toBeDefined();
-    expect(typeof body.config).toBe("object");
+    expect(body["config"]).toBeDefined();
+    expect(typeof body["config"]).toBe("object");
   });
 });
