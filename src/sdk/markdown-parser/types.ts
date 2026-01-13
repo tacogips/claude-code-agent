@@ -7,6 +7,51 @@
 
 /**
  * ParsedMarkdown represents the complete parsed markdown document.
+ *
+ * @example Complete parsed document
+ * ```json
+ * {
+ *   "version": "1.0",
+ *   "rawContent": "## Overview\nThis is a description.\n\n## Implementation\n- Step 1: First task\n- Step 2: Second task\n\n```typescript\nconst x = 1;\n```",
+ *   "sections": [
+ *     {
+ *       "index": 0,
+ *       "heading": { "level": 2, "text": "Overview", "lineNumber": 1 },
+ *       "content": [
+ *         { "type": "paragraph", "text": "This is a description.", "lineStart": 2, "lineEnd": 2 }
+ *       ]
+ *     },
+ *     {
+ *       "index": 1,
+ *       "heading": { "level": 2, "text": "Implementation", "lineNumber": 4 },
+ *       "content": [
+ *         {
+ *           "type": "list",
+ *           "listType": "unordered",
+ *           "items": [
+ *             { "text": "Step 1: First task", "depth": 0 },
+ *             { "text": "Step 2: Second task", "depth": 0 }
+ *           ],
+ *           "lineStart": 5
+ *         },
+ *         {
+ *           "type": "code",
+ *           "language": "typescript",
+ *           "code": "const x = 1;",
+ *           "lineStart": 8,
+ *           "lineEnd": 10
+ *         }
+ *       ]
+ *     }
+ *   ],
+ *   "metadata": {
+ *     "sectionCount": 2,
+ *     "headingLevels": [2],
+ *     "hasCodeBlocks": true,
+ *     "hasLists": true
+ *   }
+ * }
+ * ```
  */
 export interface ParsedMarkdown {
   /**
@@ -105,6 +150,17 @@ export interface ParagraphBlock {
 
 /**
  * CodeBlock represents a fenced code block.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "type": "code",
+ *   "code": "function greet(name: string): string {\n  return `Hello, ${name}!`;\n}",
+ *   "language": "typescript",
+ *   "lineStart": 15,
+ *   "lineEnd": 19
+ * }
+ * ```
  */
 export interface CodeBlock {
   readonly type: "code";
@@ -133,6 +189,33 @@ export interface CodeBlock {
 
 /**
  * ListBlock represents an ordered or unordered list.
+ *
+ * @example Unordered list
+ * ```json
+ * {
+ *   "type": "list",
+ *   "listType": "unordered",
+ *   "items": [
+ *     { "text": "First item", "depth": 0 },
+ *     { "text": "Nested item", "depth": 1 },
+ *     { "text": "Second item", "depth": 0 }
+ *   ],
+ *   "lineStart": 5
+ * }
+ * ```
+ *
+ * @example Task list
+ * ```json
+ * {
+ *   "type": "list",
+ *   "listType": "unordered",
+ *   "items": [
+ *     { "text": "Completed task", "depth": 0, "checked": true },
+ *     { "text": "Pending task", "depth": 0, "checked": false }
+ *   ],
+ *   "lineStart": 10
+ * }
+ * ```
  */
 export interface ListBlock {
   readonly type: "list";
@@ -195,6 +278,20 @@ export interface BlockquoteBlock {
 
 /**
  * TableBlock represents a markdown table.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "type": "table",
+ *   "headers": ["Name", "Type", "Description"],
+ *   "rows": [
+ *     ["id", "string", "Unique identifier"],
+ *     ["name", "string", "Display name"],
+ *     ["count", "number", "Item count"]
+ *   ],
+ *   "lineStart": 20
+ * }
+ * ```
  */
 export interface TableBlock {
   readonly type: "table";
