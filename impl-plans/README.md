@@ -142,6 +142,11 @@ Large features are split into multiple related plans with cross-references.
 | [cli-group-queue.md](cli-group-queue.md) | Ready | Group and queue commands |
 | [cli-other.md](cli-other.md) | Ready | Server, file, bookmark commands |
 
+### Bugfixes / Enhancements (Phase 5)
+| Plan | Status | Scope |
+|------|--------|-------|
+| [session-reader-fix.md](session-reader-fix.md) | Ready | Fix session file discovery, message extraction, task extraction |
+
 ## Phase Dependencies (for impl-exec-auto)
 
 **IMPORTANT**: This section is used by impl-exec-auto to determine which plans to load.
@@ -152,9 +157,10 @@ Only plans from eligible phases should be read to minimize context loading.
 | Phase | Status | Depends On |
 |-------|--------|------------|
 | 1 | COMPLETED | - |
-| 2 | READY | Phase 1 |
-| 3 | BLOCKED | Phase 2 |
-| 4 | BLOCKED | Phase 3 |
+| 2 | COMPLETED | Phase 1 |
+| 3 | COMPLETED | Phase 2 |
+| 4 | COMPLETED | Phase 3 |
+| 5 | READY | Phase 4 |
 
 ### Phase to Plans Mapping
 
@@ -192,6 +198,9 @@ PHASE_TO_PLANS = {
     "cli-session-commands.md",
     "cli-group-queue.md",
     "cli-other.md"
+  ],
+  5: [
+    "session-reader-fix.md"
   ]
 }
 ```
@@ -209,8 +218,11 @@ Can be implemented in parallel:
 ### Phase 3: API Layer (BLOCKED - waiting on Phase 2)
 - daemon-core.md, http-api.md, sse-events.md
 
-### Phase 4: User Interface (BLOCKED - waiting on Phase 3)
+### Phase 4: User Interface (COMPLETED)
 - browser-viewer-*.md, cli-*.md
+
+### Phase 5: Bugfixes / Enhancements (Current - READY)
+- session-reader-fix.md (fix session file reading)
 
 ## Workflow
 
@@ -263,3 +275,4 @@ Can be implemented in parallel:
 | Daemon & HTTP API | spec-sdk-api.md#4-6 | daemon-core, http-api, sse-events |
 | Browser Viewer | spec-viewers.md#2 | browser-viewer-server, browser-viewer-ui |
 | CLI | spec-sdk-api.md#7 | cli-core, cli-session-commands, cli-group-queue, cli-other |
+| Session Reader Fix | spec-session-reader-fix.md | session-reader-fix |
