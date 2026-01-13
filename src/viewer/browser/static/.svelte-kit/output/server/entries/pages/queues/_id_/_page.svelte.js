@@ -1,8 +1,7 @@
 import { W as attr_class, $ as attr_style, Z as stringify, U as ensure_array_like, V as attr, X as store_get, _ as head, Y as unsubscribe_stores } from "../../../../chunks/index2.js";
-import { o as onDestroy } from "../../../../chunks/index-server.js";
 import { p as page } from "../../../../chunks/stores.js";
 import { e as escape_html } from "../../../../chunks/context.js";
-import { u as unloadQueue, c as currentQueue, q as queuesError, b as isLoadingQueue } from "../../../../chunks/queues.js";
+import { c as currentQueue, q as queuesError, b as isLoadingQueue } from "../../../../chunks/queues.js";
 function QueueDetail($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     let { queue } = $$props;
@@ -165,9 +164,6 @@ function _page($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     var $$store_subs;
     store_get($$store_subs ??= {}, "$page", page).params.id;
-    onDestroy(() => {
-      unloadQueue();
-    });
     head("70uf45", $$renderer2, ($$renderer3) => {
       $$renderer3.title(($$renderer4) => {
         $$renderer4.push(`<title>

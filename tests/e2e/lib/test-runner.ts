@@ -183,28 +183,35 @@ export class E2ETestRunner {
     }
 
     if (browserPath === null) {
-      // Try to find via which
+      // Try to find via which - check each command separately
       const whichCommands = this.browserPreference === "brave"
         ? ["brave", "brave-browser"]
         : this.browserPreference === "chrome"
           ? ["chromium", "google-chrome"]
           : ["brave", "brave-browser", "chromium", "google-chrome"];
 
-      try {
-        const result = await new Promise<string>((resolve, reject) => {
-          const proc = spawn("which", whichCommands);
-          let output = "";
-          proc.stdout.on("data", (data) => { output += data.toString(); });
-          proc.on("close", (code) => {
-            if (code === 0 && output.trim()) {
-              resolve(output.trim().split("\n")[0]);
-            } else {
-              reject(new Error("Browser not found"));
-            }
+      for (const cmd of whichCommands) {
+        try {
+          const result = await new Promise<string>((resolve, reject) => {
+            const proc = spawn("which", [cmd]);
+            let output = "";
+            proc.stdout.on("data", (data) => { output += data.toString(); });
+            proc.on("close", (code) => {
+              if (code === 0 && output.trim()) {
+                resolve(output.trim().split("\n")[0]);
+              } else {
+                reject(new Error("not found"));
+              }
+            });
           });
-        });
-        browserPath = result;
-      } catch {
+          browserPath = result;
+          break;
+        } catch {
+          // Try next command
+        }
+      }
+
+      if (browserPath === null) {
         const browserName = this.browserPreference === "auto"
           ? "Brave/Chrome/Chromium"
           : this.browserPreference === "brave" ? "Brave" : "Chrome/Chromium";

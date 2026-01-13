@@ -31,11 +31,11 @@ declare module '$env/static/private' {
 	export const COREPACK_ENABLE_AUTO_PIN: string;
 	export const WINDOWID: string;
 	export const __ETC_PROFILE_DONE: string;
-	export const __HM_SESS_VARS_SOURCED: string;
 	export const COLORTERM: string;
+	export const __HM_SESS_VARS_SOURCED: string;
 	export const HYPRLAND_CMD: string;
-	export const XDG_CONFIG_DIRS: string;
 	export const GDK_DPI_SCALE: string;
+	export const XDG_CONFIG_DIRS: string;
 	export const NIX_BUILD_CORES: string;
 	export const GLFW_IM_MODULE: string;
 	export const ELECTRON_ENABLE_FONT_SUBPIXEL_POSITIONING: string;
@@ -86,6 +86,7 @@ declare module '$env/static/private' {
 	export const NIX_ENFORCE_NO_NATIVE: string;
 	export const CUPS_DATADIR: string;
 	export const NIX_PATH: string;
+	export const VIPSHOME: string;
 	export const NIXPKGS_CONFIG: string;
 	export const CXX: string;
 	export const _: string;
@@ -98,8 +99,8 @@ declare module '$env/static/private' {
 	export const HOME: string;
 	export const NIX_BINTOOLS: string;
 	export const SSH_ASKPASS: string;
-	export const LANG: string;
 	export const LC_PAPER: string;
+	export const LANG: string;
 	export const NIXOS_OZONE_WL: string;
 	export const _JAVA_AWT_WM_NONREPARENTING: string;
 	export const XDG_CURRENT_DESKTOP: string;
@@ -109,8 +110,8 @@ declare module '$env/static/private' {
 	export const WAYLAND_DISPLAY: string;
 	export const cmakeFlags: string;
 	export const BRAVE_API_KEY: string;
-	export const outputs: string;
 	export const GIO_EXTRA_MODULES: string;
+	export const outputs: string;
 	export const NIX_STORE: string;
 	export const LD: string;
 	export const buildPhase: string;
@@ -118,8 +119,8 @@ declare module '$env/static/private' {
 	export const READELF: string;
 	export const QT_QPA_PLATFORM: string;
 	export const XDG_CACHE_HOME: string;
-	export const ALACRITTY_SOCKET: string;
 	export const NIX_USER_PROFILE_DIR: string;
+	export const ALACRITTY_SOCKET: string;
 	export const INFOPATH: string;
 	export const npm_lifecycle_script: string;
 	export const doCheck: string;
@@ -130,8 +131,8 @@ declare module '$env/static/private' {
 	export const npm_package_name: string;
 	export const GTK_PATH: string;
 	export const SIZE: string;
-	export const propagatedNativeBuildInputs: string;
 	export const RUSTUP_HOME: string;
+	export const propagatedNativeBuildInputs: string;
 	export const strictDeps: string;
 	export const USER: string;
 	export const SDL_VIDEODRIVER: string;
@@ -158,8 +159,8 @@ declare module '$env/static/private' {
 	export const XDG_VTNR: string;
 	export const buildInputs: string;
 	export const XDG_SESSION_ID: string;
-	export const LOCALE_ARCHIVE: string;
 	export const preferLocalBuild: string;
+	export const LOCALE_ARCHIVE: string;
 	export const LESSKEYIN_SYSTEM: string;
 	export const npm_config_user_agent: string;
 	export const TERMINFO_DIRS: string;
@@ -246,11 +247,11 @@ declare module '$env/dynamic/private' {
 		COREPACK_ENABLE_AUTO_PIN: string;
 		WINDOWID: string;
 		__ETC_PROFILE_DONE: string;
-		__HM_SESS_VARS_SOURCED: string;
 		COLORTERM: string;
+		__HM_SESS_VARS_SOURCED: string;
 		HYPRLAND_CMD: string;
-		XDG_CONFIG_DIRS: string;
 		GDK_DPI_SCALE: string;
+		XDG_CONFIG_DIRS: string;
 		NIX_BUILD_CORES: string;
 		GLFW_IM_MODULE: string;
 		ELECTRON_ENABLE_FONT_SUBPIXEL_POSITIONING: string;
@@ -301,6 +302,7 @@ declare module '$env/dynamic/private' {
 		NIX_ENFORCE_NO_NATIVE: string;
 		CUPS_DATADIR: string;
 		NIX_PATH: string;
+		VIPSHOME: string;
 		NIXPKGS_CONFIG: string;
 		CXX: string;
 		_: string;
@@ -313,8 +315,8 @@ declare module '$env/dynamic/private' {
 		HOME: string;
 		NIX_BINTOOLS: string;
 		SSH_ASKPASS: string;
-		LANG: string;
 		LC_PAPER: string;
+		LANG: string;
 		NIXOS_OZONE_WL: string;
 		_JAVA_AWT_WM_NONREPARENTING: string;
 		XDG_CURRENT_DESKTOP: string;
@@ -324,8 +326,8 @@ declare module '$env/dynamic/private' {
 		WAYLAND_DISPLAY: string;
 		cmakeFlags: string;
 		BRAVE_API_KEY: string;
-		outputs: string;
 		GIO_EXTRA_MODULES: string;
+		outputs: string;
 		NIX_STORE: string;
 		LD: string;
 		buildPhase: string;
@@ -333,8 +335,8 @@ declare module '$env/dynamic/private' {
 		READELF: string;
 		QT_QPA_PLATFORM: string;
 		XDG_CACHE_HOME: string;
-		ALACRITTY_SOCKET: string;
 		NIX_USER_PROFILE_DIR: string;
+		ALACRITTY_SOCKET: string;
 		INFOPATH: string;
 		npm_lifecycle_script: string;
 		doCheck: string;
@@ -345,8 +347,8 @@ declare module '$env/dynamic/private' {
 		npm_package_name: string;
 		GTK_PATH: string;
 		SIZE: string;
-		propagatedNativeBuildInputs: string;
 		RUSTUP_HOME: string;
+		propagatedNativeBuildInputs: string;
 		strictDeps: string;
 		USER: string;
 		SDL_VIDEODRIVER: string;
@@ -373,8 +375,8 @@ declare module '$env/dynamic/private' {
 		XDG_VTNR: string;
 		buildInputs: string;
 		XDG_SESSION_ID: string;
-		LOCALE_ARCHIVE: string;
 		preferLocalBuild: string;
+		LOCALE_ARCHIVE: string;
 		LESSKEYIN_SYSTEM: string;
 		npm_config_user_agent: string;
 		TERMINFO_DIRS: string;

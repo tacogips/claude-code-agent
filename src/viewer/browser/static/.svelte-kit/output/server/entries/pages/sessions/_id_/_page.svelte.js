@@ -1,17 +1,11 @@
 import { X as store_get, _ as head, Y as unsubscribe_stores } from "../../../../chunks/index2.js";
-import { o as onDestroy } from "../../../../chunks/index-server.js";
 import { p as page } from "../../../../chunks/stores.js";
-import { w as ws } from "../../../../chunks/websocket.js";
+import "../../../../chunks/websocket.js";
 import { e as escape_html } from "../../../../chunks/context.js";
 function _page($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     var $$store_subs;
     const sessionId = store_get($$store_subs ??= {}, "$page", page).params.id;
-    onDestroy(() => {
-      if (sessionId !== void 0) {
-        ws.unsubscribe(sessionId);
-      }
-    });
     head("y7akim", $$renderer2, ($$renderer3) => {
       $$renderer3.title(($$renderer4) => {
         $$renderer4.push(`<title>Session ${escape_html(sessionId)} - Claude Code Agent</title>`);

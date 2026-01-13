@@ -224,7 +224,4 @@ class WebSocketClient {
     this.setConnectionState("disconnected");
   }
 }
-const ws = new WebSocketClient();
-export {
-  ws as w
-};
+new WebSocketClient();

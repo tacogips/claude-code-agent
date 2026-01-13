@@ -25,13 +25,6 @@
     "file": "chunks/false.js",
     "name": "false"
   },
-  "_index-server.js": {
-    "file": "chunks/index-server.js",
-    "name": "index-server",
-    "imports": [
-      "_context.js"
-    ]
-  },
   "_index.js": {
     "file": "chunks/index.js",
     "name": "index",
@@ -156,7 +149,6 @@
     "isEntry": true,
     "imports": [
       "_index2.js",
-      "_index-server.js",
       "_context.js"
     ],
     "css": [
@@ -181,7 +173,6 @@
     "isEntry": true,
     "imports": [
       "_index2.js",
-      "_index-server.js",
       "_stores.js",
       "_context.js",
       "_queues.js"
@@ -194,7 +185,6 @@
     "isEntry": true,
     "imports": [
       "_index2.js",
-      "_index-server.js",
       "_stores.js",
       "_websocket.js",
       "_context.js"

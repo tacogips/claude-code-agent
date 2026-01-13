@@ -1,5 +1,4 @@
 import { V as attr, U as ensure_array_like, W as attr_class, Z as stringify, _ as head } from "../../chunks/index2.js";
-import { o as onDestroy } from "../../chunks/index-server.js";
 import { e as escape_html } from "../../chunks/context.js";
 function SessionList($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
@@ -8,10 +7,12 @@ function SessionList($$renderer, $$props) {
     let selectedProject = "all";
     let sortBy = "date";
     let projects = (() => {
+      if (!sessions || !Array.isArray(sessions)) return [];
       const projectSet = new Set(sessions.map((s) => s.projectPath));
       return Array.from(projectSet).sort();
     })();
     let filteredSessions = (() => {
+      if (!sessions || !Array.isArray(sessions)) return [];
       return sessions.filter((session) => {
         if (searchQuery.trim() !== "") {
           const query = searchQuery.toLowerCase();
@@ -133,8 +134,6 @@ function _page($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     let sessions = [];
     let loading = true;
-    onDestroy(() => {
-    });
     head("1uha8ag", $$renderer2, ($$renderer3) => {
       $$renderer3.title(($$renderer4) => {
         $$renderer4.push(`<title>Sessions - Claude Code Agent</title>`);

@@ -277,6 +277,29 @@ export class CDPClient {
    */
   async navigate(url: string): Promise<void> {
     await this.enableDomain("Page");
+    await this.enableDomain("Runtime");
+
+    // Enable console API to capture console.error messages
+    await this.send("Runtime.enable");
+
+    // Listen for console errors
+    this.on("Runtime.consoleAPICalled", (params) => {
+      if (params.type === "error") {
+        const args = params.args as Array<{ value?: string; description?: string }>;
+        const message = args.map((a) => a.value ?? a.description ?? "").join(" ");
+        console.log(`[BROWSER ERROR] ${message}`);
+      }
+    });
+
+    // Listen for uncaught exceptions
+    this.on("Runtime.exceptionThrown", (params) => {
+      const details = params.exceptionDetails as {
+        text?: string;
+        exception?: { description?: string };
+      };
+      const message = details.exception?.description ?? details.text ?? "Unknown error";
+      console.log(`[BROWSER EXCEPTION] ${message}`);
+    });
 
     const loadPromise = new Promise<void>((resolve) => {
       const handler = (): void => {

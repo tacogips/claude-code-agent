@@ -50,10 +50,11 @@ runner.test(
     await ctx.goto("/");
     await ctx.wait(500);
 
-    // Check for session cards or list items
+    // Check for session cards (buttons with card class containing session data)
+    // The SessionList component uses button.card elements
     const hasSessionItems = await ctx.exists("[data-testid='session-item']") ||
       await ctx.exists(".session-item") ||
-      await ctx.exists("a[href^='/sessions/']");
+      await ctx.exists("button.card");
 
     ctx.assert(hasSessionItems, "Session items should be visible");
     await ctx.screenshot("session-metadata");
