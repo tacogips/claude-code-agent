@@ -86,8 +86,12 @@ bun test --coverage
 | browser-viewer-unit.md | src/viewer/browser/ | Unit | 8 | Completed |
 | bookmarks-unit.md | src/sdk/bookmarks/ | Unit | 5 | Completed |
 | file-changes-unit.md | src/sdk/file-changes/ | Unit | 5 | Completed |
+| cli-commands-unit.md | src/cli/commands/ | Unit | 12 | Completed |
+| daemon-routes-unit.md | src/daemon/routes/ | Unit | 12 | Completed |
+| sdk-agent-unit.md | src/sdk/agent.ts | Unit | 10 | Completed |
+| session-reader-unit.md | src/sdk/session-reader.ts | Unit | 70 | Completed |
 
-**Total**: 10 plans, 88 test cases, All tests passing
+**Total**: 15 plans, 198 test cases, All tests passing
 
 ## Module to Plan Mapping
 
@@ -99,10 +103,12 @@ bun test --coverage
 | src/sdk/markdown-parser/ | markdown-parser-unit.md | - | - |
 | src/sdk/bookmarks/ | bookmarks-unit.md | - | - |
 | src/sdk/file-changes/ | file-changes-unit.md | - | - |
+| src/sdk/session-reader.ts | session-reader-unit.md | - | - |
+| src/sdk/agent.ts | sdk-agent-unit.md | - | - |
 | src/repository/ | repository-unit.md | - | - |
 | src/polling/ | polling-unit.md | - | - |
-| src/daemon/ | - | daemon-integration.md | - |
-| src/cli/ | cli-unit.md | - | - |
+| src/daemon/ | daemon-routes-unit.md | daemon-integration.md | - |
+| src/cli/ | cli-unit.md, cli-commands-unit.md | - | - |
 | src/viewer/browser/ | browser-viewer-unit.md | - | - |
 
 ## Coverage Targets
