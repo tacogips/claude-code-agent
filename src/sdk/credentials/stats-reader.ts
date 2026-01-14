@@ -13,6 +13,7 @@ import type {
   RawModelUsage,
 } from "./stats-types";
 import { CredentialError } from "./errors";
+import { isNodeError } from "./backends/type-guards";
 
 /**
  * Reader for Claude Code usage statistics
@@ -172,17 +173,5 @@ function isRawStatsCache(value: unknown): value is RawStatsCache {
     typeof obj["firstSessionDate"] === "string" &&
     typeof obj["hourCounts"] === "object" &&
     obj["hourCounts"] !== null
-  );
-}
-
-/**
- * Type guard for Node.js error with code property
- */
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof (error as { code: unknown }).code === "string"
   );
 }

@@ -3,7 +3,7 @@
  *
  * Manages authentication and displays account information.
  * Provides subcommands for viewing account details, usage statistics,
- * authentication status, and token information.
+ * authentication status, token information, and credential management.
  *
  * @module cli/commands/auth
  */
@@ -13,6 +13,10 @@ import { createAuthInfoCommand } from "./info";
 import { createAuthStatsCommand } from "./stats";
 import { createAuthStatusCommand } from "./status";
 import { createAuthTokenCommand } from "./token";
+import { createAuthExportCommand } from "./export";
+import { createAuthImportCommand } from "./import";
+import { createAuthDeleteCommand } from "./delete";
+import { createAuthVerifyCommand } from "./verify";
 
 /**
  * Create the auth command group.
@@ -22,6 +26,10 @@ import { createAuthTokenCommand } from "./token";
  * - `stats`: Show usage statistics
  * - `status`: Check authentication status
  * - `token`: Display token information
+ * - `export`: Export credentials for transfer
+ * - `import`: Import credentials from file or options
+ * - `delete`: Delete stored credentials
+ * - `verify`: Verify credential validity
  *
  * All commands read from Claude Code's credentials stored in
  * ~/.claude/.credentials.json (Linux/Windows) or Keychain (macOS).
@@ -44,6 +52,18 @@ import { createAuthTokenCommand } from "./token";
  *
  * # Display token information
  * claude-code-agent auth token
+ *
+ * # Export credentials
+ * claude-code-agent auth export --output credentials.json
+ *
+ * # Import credentials
+ * claude-code-agent auth import credentials.json
+ *
+ * # Verify credentials
+ * claude-code-agent auth verify
+ *
+ * # Delete credentials
+ * claude-code-agent auth delete
  * ```
  */
 export function createAuthCommand(): Command {
@@ -51,8 +71,14 @@ export function createAuthCommand(): Command {
 
   return new Command("auth")
     .description("Manage authentication and view account info")
+    // Existing commands
     .addCommand(createAuthInfoCommand())
     .addCommand(createAuthStatsCommand())
     .addCommand(createAuthStatusCommand())
-    .addCommand(createAuthTokenCommand());
+    .addCommand(createAuthTokenCommand())
+    // New credential management commands
+    .addCommand(createAuthExportCommand())
+    .addCommand(createAuthImportCommand())
+    .addCommand(createAuthDeleteCommand())
+    .addCommand(createAuthVerifyCommand());
 }

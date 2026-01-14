@@ -7,6 +7,7 @@
 
 import type { CredentialBackend } from "./backends";
 import { createCredentialBackend, type Platform } from "./backends";
+import { FileCredentialBackend } from "./backends/file";
 import { ConfigReader } from "./config-reader";
 import { StatsReader } from "./stats-reader";
 import type {
@@ -55,8 +56,13 @@ export class CredentialReader {
   private readonly statsReader: StatsReader;
 
   constructor(options?: CredentialReaderOptions) {
-    // Create backend with optional platform override
-    this.backend = createCredentialBackend(options?.platform);
+    // Create backend with optional custom configDir
+    if (options?.configDir !== undefined) {
+      const credentialsPath = `${options.configDir}/.credentials.json`;
+      this.backend = new FileCredentialBackend(credentialsPath);
+    } else {
+      this.backend = createCredentialBackend(options?.platform);
+    }
 
     // Create config reader with optional custom path
     const configPath = options?.configDir

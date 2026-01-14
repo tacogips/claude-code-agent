@@ -45,9 +45,9 @@ export function detectPlatform(): Platform {
 export function createCredentialBackend(
   platform?: Platform,
 ): CredentialBackend {
-  const p = platform ?? detectPlatform();
+  const detectedPlatform = platform ?? detectPlatform();
 
-  switch (p) {
+  switch (detectedPlatform) {
     case "macos":
       return new KeychainCredentialBackend();
     case "linux":

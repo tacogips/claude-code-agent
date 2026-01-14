@@ -8,3 +8,4 @@
 
 export * from "./queue";
 export * from "./group";
+export * from "./credentials";

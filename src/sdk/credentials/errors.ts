@@ -13,7 +13,12 @@ export type CredentialErrorCode =
   | "INVALID_FORMAT" // Corrupted credentials file
   | "KEYCHAIN_ACCESS_DENIED" // macOS keychain permission denied
   | "FILE_NOT_FOUND" // Credentials file missing
-  | "PERMISSION_DENIED"; // File permission issue
+  | "PERMISSION_DENIED" // File permission issue
+  | "WRITE_FAILED" // Failed to write credentials
+  | "DIRECTORY_CREATE_FAILED" // Failed to create directory
+  | "DELETE_FAILED" // Failed to delete credentials
+  | "INVALID_CREDENTIALS_INPUT" // Invalid credentials input
+  | "STORAGE_FULL"; // Storage is full
 
 /**
  * Error class for credential-related failures
@@ -79,5 +84,52 @@ export class CredentialError extends Error {
       `Permission denied accessing: ${path}`,
       "PERMISSION_DENIED",
     );
+  }
+
+  /**
+   * Create error for write failures
+   */
+  static writeFailed(path: string, reason: string): CredentialError {
+    return new CredentialError(
+      `Failed to write credentials to ${path}: ${reason}`,
+      "WRITE_FAILED",
+    );
+  }
+
+  /**
+   * Create error for directory creation failures
+   */
+  static directoryCreateFailed(path: string): CredentialError {
+    return new CredentialError(
+      `Failed to create directory: ${path}`,
+      "DIRECTORY_CREATE_FAILED",
+    );
+  }
+
+  /**
+   * Create error for delete failures
+   */
+  static deleteFailed(path: string, reason: string): CredentialError {
+    return new CredentialError(
+      `Failed to delete credentials at ${path}: ${reason}`,
+      "DELETE_FAILED",
+    );
+  }
+
+  /**
+   * Create error for invalid credentials input
+   */
+  static invalidCredentialsInput(details: string): CredentialError {
+    return new CredentialError(
+      `Invalid credentials input: ${details}`,
+      "INVALID_CREDENTIALS_INPUT",
+    );
+  }
+
+  /**
+   * Create error for storage full condition
+   */
+  static storageFull(): CredentialError {
+    return new CredentialError("Storage is full", "STORAGE_FULL");
   }
 }

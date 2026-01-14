@@ -1,7 +1,7 @@
 /**
  * macOS Keychain Credential Backend
  *
- * Reads Claude Code OAuth credentials from macOS Keychain using the `security` command.
+ * Reads and writes Claude Code OAuth credentials from macOS Keychain using the `security` command.
  */
 
 import { exec } from "child_process";
@@ -10,8 +10,17 @@ import { Result, ok, err } from "../../../result";
 import type { ClaudeCredentials } from "../types";
 import { CredentialError } from "../errors";
 import type { CredentialBackend } from "./file";
+import { isValidCredentials } from "./type-guards";
 
 const execAsync = promisify(exec);
+
+/**
+ * Escape shell argument for safe command execution
+ * Prevents shell injection by properly escaping single quotes
+ */
+function escapeShellArg(arg: string): string {
+  return "'" + arg.replace(/'/g, "'\\''") + "'";
+}
 
 /**
  * macOS Keychain credential backend
@@ -110,37 +119,118 @@ export class KeychainCredentialBackend implements CredentialBackend {
       );
     }
   }
-}
 
-/**
- * Type guard for ClaudeCredentials structure
- */
-function isValidCredentials(value: unknown): value is ClaudeCredentials {
-  if (typeof value !== "object" || value === null) {
-    return false;
+  async write(
+    credentials: ClaudeCredentials,
+  ): Promise<Result<void, CredentialError>> {
+    try {
+      // Convert credentials to JSON string
+      const jsonData = JSON.stringify(credentials);
+
+      // Delete existing entry first (if exists)
+      const deleteResult = await this.delete();
+      if (deleteResult.isErr()) {
+        // If delete failed for a reason other than "not found", return error
+        const deleteError = deleteResult.error;
+        if (deleteError.code !== "NOT_AUTHENTICATED") {
+          return err(deleteError);
+        }
+        // If NOT_AUTHENTICATED, it means no existing entry - proceed with write
+      }
+
+      // Add new keychain entry with escaped JSON data
+      // -U flag updates if exists (but we delete first for safety)
+      await execAsync(
+        `security add-generic-password -s "${this.service}" -a "${this.account}" -w ${escapeShellArg(jsonData)} -U`,
+      );
+
+      return ok(undefined);
+    } catch (error) {
+      // Handle exec errors
+      if (isExecError(error)) {
+        const stderr = error.stderr ?? "";
+
+        // Check for permission denied
+        if (
+          stderr.includes("User interaction is not allowed") ||
+          stderr.includes("access denied")
+        ) {
+          return err(CredentialError.keychainDenied());
+        }
+
+        // Generic write error
+        return err(
+          CredentialError.writeFailed(
+            this.getLocation(),
+            `Keychain write error: ${error.message}`,
+          ),
+        );
+      }
+
+      // Unknown error
+      return err(
+        CredentialError.writeFailed(
+          this.getLocation(),
+          `Unknown error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        ),
+      );
+    }
   }
 
-  const obj = value as Record<string, unknown>;
+  async delete(): Promise<Result<void, CredentialError>> {
+    try {
+      // Delete keychain entry
+      await execAsync(
+        `security delete-generic-password -s "${this.service}" -a "${this.account}"`,
+      );
 
-  // Check claudeAiOauth exists and is an object
-  if (
-    typeof obj["claudeAiOauth"] !== "object" ||
-    obj["claudeAiOauth"] === null
-  ) {
-    return false;
+      return ok(undefined);
+    } catch (error) {
+      // Handle exec errors
+      if (isExecError(error)) {
+        const stderr = error.stderr ?? "";
+
+        // Check for "not found" error - this is OK (idempotent)
+        if (stderr.includes("could not be found")) {
+          return ok(undefined);
+        }
+
+        // Check for permission denied
+        if (
+          stderr.includes("User interaction is not allowed") ||
+          stderr.includes("access denied")
+        ) {
+          return err(CredentialError.keychainDenied());
+        }
+
+        // Generic delete error
+        return err(
+          CredentialError.deleteFailed(
+            this.getLocation(),
+            `Keychain delete error: ${error.message}`,
+          ),
+        );
+      }
+
+      // Unknown error
+      return err(
+        CredentialError.deleteFailed(
+          this.getLocation(),
+          `Unknown error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        ),
+      );
+    }
   }
 
-  const oauth = obj["claudeAiOauth"] as Record<string, unknown>;
+  async isWritable(): Promise<boolean> {
+    // Keychain is always writable if user has access
+    // We consider it writable by default on macOS
+    return true;
+  }
 
-  // Validate required fields
-  return (
-    typeof oauth["accessToken"] === "string" &&
-    typeof oauth["refreshToken"] === "string" &&
-    typeof oauth["expiresAt"] === "number" &&
-    Array.isArray(oauth["scopes"]) &&
-    typeof oauth["subscriptionType"] === "string" &&
-    typeof oauth["rateLimitTier"] === "string"
-  );
+  getLocation(): string {
+    return `macOS Keychain (service: ${this.service}, account: ${this.account})`;
+  }
 }
 
 /**
