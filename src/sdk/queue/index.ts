@@ -49,9 +49,15 @@ export type {
 export { QueueManager } from "./manager";
 
 // Runner types and class
-export type { RunOptions, QueueResult } from "./runner";
+export type { RunOptions, QueueResult } from "./runner-types";
 
 export { QueueRunner } from "./runner";
+
+// Runner updater class
+export { QueueUpdater } from "./runner-updaters";
+
+// Session capture utility
+export { captureClaudeSessionId } from "./session-capture";
 
 // Recovery types and class
 export type { RecoveryResult } from "./recovery";

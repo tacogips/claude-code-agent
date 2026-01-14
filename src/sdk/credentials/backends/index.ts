@@ -42,7 +42,9 @@ export function detectPlatform(): Platform {
  * - Linux: FileCredentialBackend (reads from ~/.claude/.credentials.json)
  * - Windows: FileCredentialBackend (reads from ~/.claude/.credentials.json)
  */
-export function createCredentialBackend(platform?: Platform): CredentialBackend {
+export function createCredentialBackend(
+  platform?: Platform,
+): CredentialBackend {
   const p = platform ?? detectPlatform();
 
   switch (p) {

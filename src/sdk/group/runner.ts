@@ -9,7 +9,6 @@
  */
 
 import type { Container } from "../../container";
-import type { ManagedProcess } from "../../interfaces/process-manager";
 import type {
   GroupRepository,
   GroupSession,
@@ -27,51 +26,22 @@ import {
   isBudgetExceeded,
   type GroupProgress,
 } from "./progress";
+import { GroupUpdater } from "./runner-updaters";
+import {
+  startGroupSession,
+  processGroupSessionOutput,
+} from "./session-processor";
+import type {
+  RunOptions,
+  WorkerState,
+  PauseReason,
+  RunnerState,
+} from "./runner-types";
 
 const logger = createTaggedLogger("group-runner");
 
-/**
- * Options for running a session group.
- */
-export interface RunOptions {
-  /** Override max concurrent sessions (uses group config if not specified) */
-  readonly maxConcurrent?: number | undefined;
-  /** Whether to respect session dependencies (default: true) */
-  readonly respectDependencies?: boolean | undefined;
-  /** Whether to pause on session error (default: true) */
-  readonly pauseOnError?: boolean | undefined;
-  /** Number of failures before pausing group (default: 2) */
-  readonly errorThreshold?: number | undefined;
-  /** Resume from paused state (uses --resume flag for sessions) */
-  readonly resume?: boolean | undefined;
-}
-
-/**
- * State of a running worker.
- */
-interface WorkerState {
-  /** Session being executed */
-  readonly session: GroupSession;
-  /** Process handle */
-  readonly process: ManagedProcess;
-  /** Start timestamp */
-  readonly startedAt: number;
-}
-
-/**
- * Pause reasons for the group runner.
- */
-export type PauseReason = "manual" | "budget_exceeded" | "error_threshold";
-
-/**
- * Group execution state.
- */
-export type RunnerState =
-  | "idle"
-  | "running"
-  | "paused"
-  | "stopped"
-  | "completed";
+// Re-export types for backward compatibility
+export type { RunOptions, PauseReason, RunnerState } from "./runner-types";
 
 /**
  * Group Runner for executing Session Groups.
@@ -98,9 +68,9 @@ export type RunnerState =
  */
 export class GroupRunner {
   private readonly container: Container;
-  private readonly repository: GroupRepository;
   private readonly eventEmitter: EventEmitter;
   private readonly configGenerator: ConfigGenerator;
+  private readonly updater: GroupUpdater;
 
   /** Current runner state */
   private state: RunnerState = "idle";
@@ -150,9 +120,9 @@ export class GroupRunner {
     eventEmitter: EventEmitter,
   ) {
     this.container = container;
-    this.repository = repository;
     this.eventEmitter = eventEmitter;
     this.configGenerator = new ConfigGenerator(container);
+    this.updater = new GroupUpdater(container, repository, eventEmitter);
   }
 
   /**
@@ -211,9 +181,13 @@ export class GroupRunner {
     }
 
     // Update group status to running
-    await this.updateGroupStatus("running", {
-      startedAt: this.container.clock.now().toISOString(),
-    });
+    this.currentGroup = await this.updater.updateGroupStatus(
+      this.currentGroup,
+      "running",
+      {
+        startedAt: this.container.clock.now().toISOString(),
+      },
+    );
 
     // Emit group started event
     const timestamp = this.container.clock.now().toISOString();
@@ -274,13 +248,21 @@ export class GroupRunner {
 
     // Update running sessions to paused status
     for (const sessionId of workerSessionIds) {
-      await this.updateSessionStatus(sessionId, "paused");
+      this.currentGroup = await this.updater.updateSessionStatus(
+        this.currentGroup,
+        this.progressAggregator,
+        sessionId,
+        "paused",
+      );
     }
 
     this.workers.clear();
 
     // Update group status
-    await this.updateGroupStatus("paused");
+    this.currentGroup = await this.updater.updateGroupStatus(
+      this.currentGroup,
+      "paused",
+    );
 
     // Emit paused event
     const timestamp = this.container.clock.now().toISOString();
@@ -313,19 +295,25 @@ export class GroupRunner {
     this.pauseReason = null;
 
     // Update group status to running
-    await this.updateGroupStatus("running");
+    this.currentGroup = await this.updater.updateGroupStatus(
+      this.currentGroup,
+      "running",
+    );
 
     // Emit resumed event
     const timestamp = this.container.clock.now().toISOString();
     const pendingSessions = this.dependencyGraph.getRemainingCount();
-    this.eventEmitter.emit("group_resumed", {
-      type: "group_resumed",
-      timestamp,
-      groupId: this.currentGroup.id,
-      pendingSessions,
-    });
 
-    logger.info(`Resumed group ${this.currentGroup.id}`, { pendingSessions });
+    if (this.currentGroup !== null) {
+      this.eventEmitter.emit("group_resumed", {
+        type: "group_resumed",
+        timestamp,
+        groupId: this.currentGroup.id,
+        pendingSessions,
+      });
+
+      logger.info(`Resumed group ${this.currentGroup.id}`, { pendingSessions });
+    }
 
     // Continue execution
     await this.executeLoop();
@@ -366,15 +354,24 @@ export class GroupRunner {
 
     // Mark running sessions as failed
     for (const sessionId of workerSessionIds) {
-      await this.updateSessionStatus(sessionId, "failed");
+      this.currentGroup = await this.updater.updateSessionStatus(
+        this.currentGroup,
+        this.progressAggregator,
+        sessionId,
+        "failed",
+      );
     }
 
     this.workers.clear();
 
     // Update group status to failed
-    await this.updateGroupStatus("failed", {
-      completedAt: this.container.clock.now().toISOString(),
-    });
+    this.currentGroup = await this.updater.updateGroupStatus(
+      this.currentGroup,
+      "failed",
+      {
+        completedAt: this.container.clock.now().toISOString(),
+      },
+    );
 
     // Emit failed event
     const timestamp = this.container.clock.now().toISOString();
@@ -493,47 +490,22 @@ export class GroupRunner {
    * Start a session execution.
    */
   private async startSession(session: GroupSession): Promise<void> {
-    logger.info(`Starting session ${session.id}`, {
-      projectPath: session.projectPath,
-    });
-
-    // Generate session configuration
-    const configResult = await this.configGenerator.generateSessionConfig(
+    const process = await startGroupSession(
       session,
       this.currentGroup!,
+      this.container,
+      this.configGenerator,
+      this.currentOptions.resume,
     );
 
-    if (configResult.isErr()) {
-      logger.error(`Failed to generate config for session ${session.id}`, {
-        error: configResult.error,
-      });
+    // If configuration failed, handle as failure
+    if (process === null) {
       await this.handleSessionFailure(
         session.id,
         "Configuration generation failed",
       );
       return;
     }
-
-    // Build Claude Code command
-    // TODO: [Future Enhancement] Process Pool per Working Directory
-    // See src/sdk/queue/runner.ts for detailed description of the planned enhancement.
-    // Summary: Reuse long-lived processes via /clear instead of spawning new processes.
-    const args = ["-p", "--output-format", "stream-json"];
-    if (this.currentOptions.resume) {
-      args.push("--resume");
-    }
-    args.push(session.prompt);
-
-    // Set up environment with config directory
-    const env: Record<string, string> = {
-      CLAUDE_CONFIG_DIR: configResult.value.configDir,
-    };
-
-    // Spawn Claude Code process
-    const process = this.container.processManager.spawn("claude", args, {
-      cwd: session.projectPath,
-      env,
-    });
 
     // Track the worker
     const workerState: WorkerState = {
@@ -545,9 +517,15 @@ export class GroupRunner {
 
     // Update session status to active
     const timestamp = this.container.clock.now().toISOString();
-    await this.updateSessionStatus(session.id, "active", {
-      startedAt: timestamp,
-    });
+    this.currentGroup = await this.updater.updateSessionStatus(
+      this.currentGroup,
+      this.progressAggregator,
+      session.id,
+      "active",
+      {
+        startedAt: timestamp,
+      },
+    );
 
     // Emit session started event
     this.eventEmitter.emit("group_session_started", {
@@ -560,37 +538,7 @@ export class GroupRunner {
     });
 
     // Start output processing (non-blocking)
-    this.processSessionOutput(session.id, process);
-  }
-
-  /**
-   * Process session output streams.
-   */
-  private async processSessionOutput(
-    sessionId: string,
-    process: ManagedProcess,
-  ): Promise<void> {
-    // Process stdout for progress updates
-    // In a real implementation, we'd parse the JSON output
-    // to extract cost, token usage, and tool activity
-    try {
-      for await (const _line of process.stdout) {
-        // Parse JSON output for progress updates
-        // This is simplified - real implementation would parse
-        // the stream-json output format
-      }
-    } catch (error) {
-      logger.debug(`stdout closed for session ${sessionId}`);
-    }
-
-    // Process stderr for errors
-    try {
-      for await (const line of process.stderr) {
-        logger.warn(`Session ${sessionId} stderr: ${line}`);
-      }
-    } catch (error) {
-      logger.debug(`stderr closed for session ${sessionId}`);
-    }
+    void processGroupSessionOutput(session.id, process);
   }
 
   /**
@@ -658,9 +606,15 @@ export class GroupRunner {
       }
 
       // Update session status
-      await this.updateSessionStatus(sessionId, "completed", {
-        completedAt: timestamp,
-      });
+      this.currentGroup = await this.updater.updateSessionStatus(
+        this.currentGroup,
+        this.progressAggregator,
+        sessionId,
+        "completed",
+        {
+          completedAt: timestamp,
+        },
+      );
 
       // Emit completion event
       if (this.currentGroup !== null) {
@@ -677,7 +631,11 @@ export class GroupRunner {
       logger.info(`Session ${sessionId} completed`, { durationMs });
 
       // Emit dependency resolved events
-      await this.emitDependencyResolved(sessionId);
+      await this.updater.emitDependencyResolved(
+        this.currentGroup,
+        this.dependencyGraph,
+        sessionId,
+      );
     } else {
       await this.handleSessionFailure(
         sessionId,
@@ -687,7 +645,7 @@ export class GroupRunner {
     }
 
     // Update group progress event
-    this.emitGroupProgress();
+    this.updater.emitGroupProgress(this.currentGroup, this.progressAggregator);
   }
 
   /**
@@ -706,9 +664,15 @@ export class GroupRunner {
     }
 
     // Update session status
-    await this.updateSessionStatus(sessionId, "failed", {
-      completedAt: timestamp,
-    });
+    this.currentGroup = await this.updater.updateSessionStatus(
+      this.currentGroup,
+      this.progressAggregator,
+      sessionId,
+      "failed",
+      {
+        completedAt: timestamp,
+      },
+    );
 
     // Emit failure event
     if (this.currentGroup !== null) {
@@ -822,9 +786,13 @@ export class GroupRunner {
     );
 
     // Update group status
-    await this.updateGroupStatus("completed", {
-      completedAt: timestamp,
-    });
+    this.currentGroup = await this.updater.updateGroupStatus(
+      this.currentGroup,
+      "completed",
+      {
+        completedAt: timestamp,
+      },
+    );
 
     // Emit completion event
     this.eventEmitter.emit("group_completed", {
@@ -856,9 +824,13 @@ export class GroupRunner {
       0;
 
     // Update group status
-    await this.updateGroupStatus("failed", {
-      completedAt: timestamp,
-    });
+    this.currentGroup = await this.updater.updateGroupStatus(
+      this.currentGroup,
+      "failed",
+      {
+        completedAt: timestamp,
+      },
+    );
 
     // Emit failure event
     this.eventEmitter.emit("group_failed", {
@@ -870,135 +842,5 @@ export class GroupRunner {
     });
 
     logger.error(`Group ${this.currentGroup!.id} failed`, { reason });
-  }
-
-  /**
-   * Update group status in repository.
-   */
-  private async updateGroupStatus(
-    status: SessionGroup["status"],
-    updates?: Partial<SessionGroup>,
-  ): Promise<void> {
-    if (this.currentGroup === null) {
-      return;
-    }
-
-    const timestamp = this.container.clock.now().toISOString();
-    const updated: SessionGroup = {
-      ...this.currentGroup,
-      ...updates,
-      status,
-      updatedAt: timestamp,
-    };
-
-    await this.repository.save(updated);
-    this.currentGroup = updated;
-  }
-
-  /**
-   * Update session status in repository.
-   */
-  private async updateSessionStatus(
-    sessionId: string,
-    status: GroupSession["status"],
-    updates?: Partial<GroupSession>,
-  ): Promise<void> {
-    if (this.currentGroup === null) {
-      return;
-    }
-
-    await this.repository.updateSession(this.currentGroup.id, sessionId, {
-      ...updates,
-      status,
-    });
-
-    // Update local copy
-    const sessionIndex = this.currentGroup.sessions.findIndex(
-      (s) => s.id === sessionId,
-    );
-    if (sessionIndex !== -1) {
-      const sessions = [...this.currentGroup.sessions];
-      const existingSession = sessions[sessionIndex];
-      if (existingSession !== undefined) {
-        sessions[sessionIndex] = {
-          ...existingSession,
-          ...updates,
-          id: existingSession.id, // Ensure id is preserved
-          status,
-        };
-        this.currentGroup = {
-          ...this.currentGroup,
-          sessions,
-        };
-      }
-    }
-
-    // Update progress aggregator
-    if (this.progressAggregator !== null) {
-      const session = this.currentGroup.sessions.find(
-        (s) => s.id === sessionId,
-      );
-      if (session !== undefined) {
-        this.progressAggregator.updateSession(createSessionProgress(session));
-      }
-    }
-  }
-
-  /**
-   * Emit dependency resolved events for sessions unblocked by completion.
-   */
-  private async emitDependencyResolved(
-    completedSessionId: string,
-  ): Promise<void> {
-    if (this.currentGroup === null || this.dependencyGraph === null) {
-      return;
-    }
-
-    const timestamp = this.container.clock.now().toISOString();
-
-    // Find sessions that were waiting on this one
-    for (const session of this.currentGroup.sessions) {
-      if (session.dependsOn.includes(completedSessionId)) {
-        // Check if all dependencies are now resolved
-        const allResolved = session.dependsOn.every(
-          (depId) =>
-            this.dependencyGraph!.getCompleted().has(depId) ||
-            this.dependencyGraph!.getFailed().has(depId),
-        );
-
-        if (allResolved) {
-          this.eventEmitter.emit("dependency_resolved", {
-            type: "dependency_resolved",
-            timestamp,
-            groupId: this.currentGroup.id,
-            sessionId: session.id,
-            resolvedDependencies: session.dependsOn,
-          });
-        }
-      }
-    }
-  }
-
-  /**
-   * Emit group progress event.
-   */
-  private emitGroupProgress(): void {
-    if (this.currentGroup === null || this.progressAggregator === null) {
-      return;
-    }
-
-    const progress = this.progressAggregator.computeProgress(this.currentGroup);
-    const timestamp = this.container.clock.now().toISOString();
-
-    this.eventEmitter.emit("group_progress", {
-      type: "group_progress",
-      timestamp,
-      groupId: this.currentGroup.id,
-      completed: progress.completed,
-      running: progress.running,
-      pending: progress.pending,
-      failed: progress.failed,
-      totalCostUsd: progress.totalCost,
-    });
   }
 }

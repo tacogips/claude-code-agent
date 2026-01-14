@@ -78,5 +78,11 @@ export type { BlockedSession } from "./dependency-graph";
 export { DependencyGraph } from "./dependency-graph";
 
 // Re-export runner
-export type { RunOptions, PauseReason, RunnerState } from "./runner";
+export type { RunOptions, PauseReason, RunnerState, WorkerState } from "./runner-types";
 export { GroupRunner } from "./runner";
+
+// Re-export runner updater
+export { GroupUpdater } from "./runner-updaters";
+
+// Re-export session processor
+export { startGroupSession, processGroupSessionOutput } from "./session-processor";
