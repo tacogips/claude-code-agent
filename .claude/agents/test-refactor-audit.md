@@ -1,7 +1,7 @@
 ---
 name: test-refactor-audit
-description: Audits test files for refactoring opportunities including duplicate tests, repeated fixtures, common assertion patterns, and structural issues. Returns structured findings for refactoring execution.
-tools: Read, Glob, Grep
+description: Audits test files for refactoring opportunities including duplicate tests, repeated fixtures, common assertion patterns, structural issues, and oversized files. Returns structured findings for refactoring execution.
+tools: Read, Glob, Grep, Bash
 model: sonnet
 skills: test-refactor, ts-coding-standards
 ---
@@ -16,6 +16,7 @@ This subagent audits test files to identify refactoring opportunities:
 - Common assertion sequences that could be extracted
 - Structural and naming issues
 - Dead or skipped tests
+- Oversized test files that should be split (default > 800 lines)
 
 Returns structured findings that can be used for refactoring execution.
 
@@ -40,12 +41,16 @@ The Task prompt may include:
 
 2. **Categories** (optional): Specific categories to focus on
    - Example: `duplicates, fixtures`
-   - Options: `duplicates`, `fixtures`, `assertions`, `structure`, `naming`
+   - Options: `duplicates`, `fixtures`, `assertions`, `structure`, `naming`, `split`
    - Default: all categories
 
 3. **Threshold** (optional): Minimum occurrences to report
    - Example: `3` (report patterns found 3+ times)
    - Default: `2`
+
+4. **Max Lines** (optional): Line threshold for file split recommendation
+   - Example: `500`
+   - Default: `800`
 
 ---
 
@@ -159,6 +164,42 @@ Check:
 - Test case naming patterns
 - Fixture/mock naming consistency
 
+#### Category F: File Split Analysis
+
+Check for oversized test files:
+
+```bash
+# Find test files and count lines
+find src -name "*.test.ts" -exec wc -l {} \; | sort -rn
+
+# Files exceeding threshold (default 800 lines)
+wc -l src/**/*.test.ts | awk '$1 > 800 {print}'
+```
+
+Analysis approach:
+1. Identify test files exceeding the max lines threshold
+2. Analyze file structure for logical split points:
+   - Separate describe blocks for different features
+   - Different test types (unit vs integration)
+   - Different scenarios (success vs error cases)
+3. Recommend split strategy based on test organization
+4. List dependencies and imports that need updating
+
+**File Split Criteria**:
+| Lines | Priority | Action |
+|-------|----------|--------|
+| > 1200 | High | Must split, file is too large |
+| 800-1200 | Medium | Should split for maintainability |
+| < 800 | N/A | No split needed |
+
+**Recommended Split Strategies**:
+| Strategy | When to Use |
+|----------|-------------|
+| By Feature | Tests cover multiple distinct features |
+| By Test Type | Mix of unit/integration/e2e tests |
+| By Module Method | Tests for many methods of same module |
+| By Scenario | Separate success/error/edge cases |
+
 ### Step 4: Prioritize Findings
 
 #### Priority Levels
@@ -208,6 +249,7 @@ Mark findings as parallelizable if:
 | Assertions | X | Y | Yes/No |
 | Structure | X | Y | Yes/No |
 | Naming | X | Y | Yes/No |
+| File Split | X | Y | Yes/No |
 
 ### Findings
 
@@ -358,6 +400,48 @@ For each skipped test, either:
 
 ---
 
+#### FINDING-005: Oversized Test File
+
+**Category**: File Split
+**Priority**: High
+**Difficulty**: Medium
+**Parallelizable**: Yes
+
+**File**: src/services/api-service.test.ts
+**Lines**: 1247 (exceeds 800 limit)
+
+**File Structure Analysis**:
+```
+Lines 1-50:     Imports and setup
+Lines 51-300:   describe('UserAPI') - 250 lines
+Lines 301-600:  describe('ProductAPI') - 300 lines
+Lines 601-900:  describe('OrderAPI') - 300 lines
+Lines 901-1247: describe('PaymentAPI') - 347 lines
+```
+
+**Recommended Split**:
+```
+BEFORE:
+src/services/api-service.test.ts (1247 lines)
+
+AFTER:
+src/services/api-service-user.test.ts (~280 lines)
+src/services/api-service-product.test.ts (~330 lines)
+src/services/api-service-order.test.ts (~330 lines)
+src/services/api-service-payment.test.ts (~380 lines)
+```
+
+**Split Strategy**: By Feature (each API endpoint group)
+
+**Shared Setup to Extract**:
+- Mock server setup (lines 10-30)
+- Test fixtures (lines 35-50)
+- Extract to: `src/services/__tests__/api-service.setup.ts`
+
+**Dependencies to Update**: None (test file only)
+
+---
+
 ### Dependency Groups
 
 **Group A (Independent - Parallelizable)**:
@@ -368,12 +452,16 @@ For each skipped test, either:
 **Group B (Sequential - Same File)**:
 - FINDING-003: Parameterize Parser Tests
 
+**Group C (File Split - Sequential)**:
+- FINDING-005: Split api-service.test.ts
+
 ### Recommended Execution Order
 
 1. **Phase 1** (Parallel): FINDING-001, FINDING-002 - Create shared helpers first
 2. **Phase 2** (Parallel): Update imports in affected files
 3. **Phase 3** (Sequential): FINDING-003 - Parameterize tests
 4. **Phase 4** (Parallel): FINDING-004 - Clean up skipped tests
+5. **Phase 5** (Sequential): FINDING-005 - Split oversized test files
 
 ### Estimated Impact
 
@@ -383,6 +471,8 @@ For each skipped test, either:
 | Duplicate patterns | 25 | 0 | -100% |
 | Shared fixtures | 3 | 12 | +300% |
 | Test clarity | Fair | Good | Improved |
+| Oversized files | 1 | 0 | -100% |
+| Avg file size | 450 lines | 280 lines | -38% |
 
 ### New Files to Create
 
@@ -397,6 +487,15 @@ src/test/
 │   └── assertions.ts      # Assertion helpers (FINDING-002)
 └── mocks/
     └── index.ts           # Re-exports existing mocks
+
+# From file split (FINDING-005)
+src/services/
+├── api-service-user.test.ts     # Split from api-service.test.ts
+├── api-service-product.test.ts  # Split from api-service.test.ts
+├── api-service-order.test.ts    # Split from api-service.test.ts
+├── api-service-payment.test.ts  # Split from api-service.test.ts
+└── __tests__/
+    └── api-service.setup.ts     # Shared test setup
 ```
 
 ### Risk Assessment
@@ -407,6 +506,7 @@ src/test/
 | FINDING-002 | Low | Wrapper around existing expects |
 | FINDING-003 | Medium | Verify all test cases covered |
 | FINDING-004 | Low | Review each before action |
+| FINDING-005 | Medium | Extract shared setup, update imports, verify coverage |
 ```
 
 ---

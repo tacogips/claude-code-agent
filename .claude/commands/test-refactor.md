@@ -1,11 +1,20 @@
 ---
-description: Audit and refactor tests for better maintainability (duplicates, DRY fixtures, assertions)
-argument-hint: "[scope] [--category=<cat>] [--threshold=<n>]"
+description: Audit and refactor tests for better maintainability (duplicates, DRY fixtures, assertions, file splitting)
+argument-hint: "[scope] [--category=<cat>] [--threshold=<n>] [--max-lines=<n>]"
 ---
 
 ## Test Refactoring Command
 
 This command audits test files for refactoring opportunities and optionally executes the refactoring.
+
+### Refactoring Categories
+
+- **Duplicates**: Duplicate test code across files
+- **Fixtures**: Repeated test fixtures that can be shared
+- **Assertions**: Common assertion patterns to extract
+- **Structure**: Test organization improvements
+- **Naming**: Test naming consistency
+- **File Split**: Test files exceeding line limit (default 800 lines)
 
 ### Current Context
 
@@ -31,14 +40,18 @@ Parse `$ARGUMENTS` to extract:
    - Default: `src/**/*.test.ts`
 
 2. **Category** (optional): `--category=<cat>` or `-c <cat>`
-   - Options: `duplicates`, `fixtures`, `assertions`, `structure`, `naming`, `all`
+   - Options: `duplicates`, `fixtures`, `assertions`, `structure`, `naming`, `split`, `all`
    - Default: `all`
 
 3. **Threshold** (optional): `--threshold=<n>` or `-t <n>`
    - Minimum occurrences to report
    - Default: `2`
 
-4. **Execute** (optional): `--execute` or `-e`
+4. **Max Lines** (optional): `--max-lines=<n>` or `-m <n>`
+   - Line threshold for file split recommendation
+   - Default: `800`
+
+5. **Execute** (optional): `--execute` or `-e`
    - If present, execute refactoring after audit
    - Default: audit only
 
@@ -55,8 +68,10 @@ Task tool parameters:
     Scope: <parsed-scope>
     Categories: <parsed-categories>
     Threshold: <parsed-threshold>
+    Max Lines: <parsed-max-lines or 800>
 
     Please analyze test files and report findings in structured format.
+    Include file split recommendations for files exceeding the max lines limit.
 ```
 
 ### Step 3: Present Findings
@@ -98,6 +113,13 @@ If `--execute` flag is present:
 ```
 /test-refactor --category=fixtures
 /test-refactor -c duplicates
+/test-refactor --category=split
+```
+
+**File split with custom line limit**:
+```
+/test-refactor --category=split --max-lines=500
+/test-refactor -c split -m 600
 ```
 
 **With threshold**:
@@ -147,6 +169,13 @@ If `--execute` flag is present:
 - Files: 4
 - Action: Extract to src/test/helpers/assertions.ts
 
+#### FINDING-003: Oversized Test File (1247 lines)
+- Category: File Split
+- Difficulty: Medium
+- File: src/services/api-service.test.ts
+- Lines: 1247 (exceeds 800 limit)
+- Action: Split into focused test files by feature
+
 [... more findings ...]
 
 ### Recommended Next Steps
@@ -175,9 +204,18 @@ If `--execute` flag is present:
 - [x] Converted 7 tests to parameterized in parser.test.ts
 - Tests passing: Yes
 
+### Phase 4: File Splitting
+- [x] Split api-service.test.ts (1247 lines) into:
+  - api-service-user.test.ts (280 lines)
+  - api-service-product.test.ts (350 lines)
+  - api-service-order.test.ts (320 lines)
+  - api-service-payment.test.ts (297 lines)
+- Tests passing: Yes
+
 ### Final Summary
-- Findings addressed: 12/12
+- Findings addressed: 13/13
 - Lines reduced: ~300
+- Files split: 1 -> 4
 - All tests passing: Yes
 - Coverage unchanged: Yes
 ```

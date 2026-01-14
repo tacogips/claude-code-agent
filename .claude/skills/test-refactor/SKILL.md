@@ -1,7 +1,7 @@
 ---
 name: test-refactor
-description: Use when refactoring tests for better maintainability. Provides guidelines for removing duplicates, DRYing fixtures/assertions, restructuring test organization, and renaming.
-allowed-tools: Read, Glob, Grep
+description: Use when refactoring tests for better maintainability. Provides guidelines for removing duplicates, DRYing fixtures/assertions, restructuring test organization, renaming, and splitting oversized files.
+allowed-tools: Read, Glob, Grep, Bash
 ---
 
 # Test Refactoring Skill
@@ -16,6 +16,7 @@ Apply this skill when:
 - Assertion patterns are inconsistent or verbose
 - Test file organization needs improvement
 - Test naming is inconsistent
+- Test files exceed 800 lines and need splitting
 
 ## Core Principles
 
@@ -205,6 +206,78 @@ it('should call the function', () => { });
 it('test 1', () => { });
 ```
 
+### Category 6: File Split
+
+#### When to Split Test Files
+
+| Lines | Priority | Action |
+|-------|----------|--------|
+| > 1200 | High | Must split immediately |
+| 800-1200 | Medium | Should split for maintainability |
+| 500-800 | Low | Consider splitting if logically separable |
+| < 500 | N/A | No split needed |
+
+#### Split Strategies
+
+| Strategy | When to Use | Example |
+|----------|-------------|---------|
+| **By Feature** | Tests cover multiple distinct features | `user-api.test.ts` -> `user-api-auth.test.ts`, `user-api-profile.test.ts` |
+| **By Test Type** | Mix of unit/integration/e2e | `service.test.ts` -> `service.unit.test.ts`, `service.integration.test.ts` |
+| **By Module Method** | Many methods tested in one file | `parser.test.ts` -> `parser-tokenize.test.ts`, `parser-parse.test.ts` |
+| **By Scenario** | Large success/error case groups | `api.test.ts` -> `api-success.test.ts`, `api-errors.test.ts` |
+
+#### File Split Workflow
+
+1. **Analyze structure**: Identify logical groupings in describe blocks
+2. **Extract shared setup**: Move common beforeEach/fixtures to shared file
+3. **Create new files**: Split tests by chosen strategy
+4. **Update imports**: Ensure all imports point to correct shared setup
+5. **Verify coverage**: Run tests to ensure no coverage loss
+
+#### Shared Setup Pattern
+
+```typescript
+// src/services/__tests__/api-service.setup.ts
+import { vi } from 'vitest';
+
+export function setupApiServiceTests() {
+  const mockServer = vi.fn();
+  const mockDatabase = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  return { mockServer, mockDatabase };
+}
+
+export const testFixtures = {
+  validUser: { id: '1', name: 'Test User' },
+  invalidUser: { id: '', name: '' },
+};
+```
+
+```typescript
+// src/services/api-service-user.test.ts
+import { setupApiServiceTests, testFixtures } from './__tests__/api-service.setup';
+
+describe('UserAPI', () => {
+  const { mockServer, mockDatabase } = setupApiServiceTests();
+
+  it('should create user', () => {
+    // test using shared mocks and fixtures
+  });
+});
+```
+
+#### Split Naming Convention
+
+| Original File | Split Files |
+|--------------|-------------|
+| `service.test.ts` | `service-feature1.test.ts`, `service-feature2.test.ts` |
+| `api.test.ts` | `api-user.test.ts`, `api-product.test.ts`, `api-order.test.ts` |
+| `parser.test.ts` | `parser.unit.test.ts`, `parser.integration.test.ts` |
+
 ## Refactoring Workflow
 
 ### Step 1: Audit Phase
@@ -246,6 +319,8 @@ Before completing refactoring:
 - [ ] Coverage has not decreased
 - [ ] Test execution time has not significantly increased
 - [ ] Imports are clean (no unused imports)
+- [ ] No test file exceeds 800 lines
+- [ ] Split files have proper shared setup extracted
 
 ## Anti-Patterns to Avoid
 
@@ -261,9 +336,9 @@ Before completing refactoring:
 
 ### Priority Order for Refactoring
 
-1. **High Priority**: Fixtures used in 10+ tests
-2. **Medium Priority**: Assertion patterns in 5+ tests
-3. **Low Priority**: Structure/naming inconsistencies
+1. **High Priority**: Files exceeding 1200 lines, Fixtures used in 10+ tests
+2. **Medium Priority**: Files 800-1200 lines, Assertion patterns in 5+ tests
+3. **Low Priority**: Structure/naming inconsistencies, Files 500-800 lines
 
 ### Common Extractions
 
