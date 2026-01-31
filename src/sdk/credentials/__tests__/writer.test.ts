@@ -421,11 +421,13 @@ describe("CredentialWriter", () => {
   describe("different subscription types", () => {
     const subscriptionTypes = ["max", "pro", "free", "enterprise"] as const;
 
-    test.each(subscriptionTypes.map(t => [t]))(
+    test.each(subscriptionTypes.map((t) => [t]))(
       "writes credentials with '%s' subscription",
       async (subType) => {
         const writer = new CredentialWriter({ configDir, platform: "linux" });
-        const credentials = createTestCredentials({ subscriptionType: subType });
+        const credentials = createTestCredentials({
+          subscriptionType: subType,
+        });
 
         const result = await writer.writeCredentials(credentials);
         expect(result.isOk()).toBe(true);
@@ -435,21 +437,34 @@ describe("CredentialWriter", () => {
 
   describe("token format variations", () => {
     const tokenFormats = [
-      { field: "accessToken", value: "sk-ant-lenient-token-format", desc: "lenient accessToken prefix (sk-ant-)" },
-      { field: "refreshToken", value: "sk-ant-lenient-refresh-token", desc: "lenient refreshToken prefix (sk-ant-)" },
-      { field: "accessToken", value: "sk-ant-oat01-standard-format-token", desc: "standard accessToken prefix (sk-ant-oat01-)" },
-      { field: "refreshToken", value: "sk-ant-ort01-standard-format-token", desc: "standard refreshToken prefix (sk-ant-ort01-)" },
+      {
+        field: "accessToken",
+        value: "sk-ant-lenient-token-format",
+        desc: "lenient accessToken prefix (sk-ant-)",
+      },
+      {
+        field: "refreshToken",
+        value: "sk-ant-lenient-refresh-token",
+        desc: "lenient refreshToken prefix (sk-ant-)",
+      },
+      {
+        field: "accessToken",
+        value: "sk-ant-oat01-standard-format-token",
+        desc: "standard accessToken prefix (sk-ant-oat01-)",
+      },
+      {
+        field: "refreshToken",
+        value: "sk-ant-ort01-standard-format-token",
+        desc: "standard refreshToken prefix (sk-ant-ort01-)",
+      },
     ] as const;
 
-    test.each([...tokenFormats])(
-      "accepts $desc",
-      async ({ field, value }) => {
-        const writer = new CredentialWriter({ configDir, platform: "linux" });
-        const credentials = createTestCredentials({ [field]: value });
+    test.each([...tokenFormats])("accepts $desc", async ({ field, value }) => {
+      const writer = new CredentialWriter({ configDir, platform: "linux" });
+      const credentials = createTestCredentials({ [field]: value });
 
-        const result = await writer.writeCredentials(credentials);
-        expect(result.isOk()).toBe(true);
-      },
-    );
+      const result = await writer.writeCredentials(credentials);
+      expect(result.isOk()).toBe(true);
+    });
   });
 });

@@ -230,6 +230,24 @@ export type {
 
 export { BookmarkManager } from "./bookmarks";
 
+// Activity Tracking
+export type {
+  ActivityStatus,
+  ActivityEntry,
+  ActivityStore,
+} from "../types/activity";
+
+export type {
+  ActivityManagerOptions,
+  HookInput,
+  UserPromptSubmitInput,
+  PermissionRequestInput,
+  StopInput,
+  HookInputBase,
+} from "./activity";
+
+export { ActivityManager } from "./activity/manager";
+
 // Queue Manager and Runner (re-export from queue module)
 export { QueueManager, QueueRunner } from "./queue";
 

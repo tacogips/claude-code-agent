@@ -7,16 +7,20 @@
 import {
   readFile,
   mkdir,
-  writeFile,
   unlink,
   access,
   constants,
+  chmod,
 } from "fs/promises";
 import { dirname } from "path";
 import { Result, ok, err } from "../../../result";
 import type { ClaudeCredentials } from "../types";
 import { CredentialError } from "../errors";
 import { isValidCredentials, isNodeError } from "./type-guards";
+import { FileLockServiceImpl } from "../../../services/file-lock";
+import { AtomicWriter } from "../../../services/atomic-writer";
+import { BunFileSystem } from "../../../interfaces/bun-filesystem";
+import { SystemClock } from "../../../interfaces/system-clock";
 
 /**
  * Generic credential backend interface
@@ -33,7 +37,15 @@ export interface CredentialBackend {
  * File-based credential backend for Linux systems
  */
 export class FileCredentialBackend implements CredentialBackend {
-  constructor(private readonly path: string) {}
+  private readonly lockService: FileLockServiceImpl;
+  private readonly atomicWriter: AtomicWriter;
+
+  constructor(private readonly path: string) {
+    const fs = new BunFileSystem();
+    const clock = new SystemClock();
+    this.lockService = new FileLockServiceImpl(fs, clock);
+    this.atomicWriter = new AtomicWriter(fs);
+  }
 
   async read(): Promise<Result<ClaudeCredentials, CredentialError>> {
     try {
@@ -91,13 +103,17 @@ export class FileCredentialBackend implements CredentialBackend {
     credentials: ClaudeCredentials,
   ): Promise<Result<void, CredentialError>> {
     try {
-      // Ensure directory exists with restrictive permissions (owner only)
-      const dir = dirname(this.path);
-      await mkdir(dir, { recursive: true, mode: 0o700 });
+      await this.lockService.withLock(this.path, async () => {
+        // Ensure directory exists with restrictive permissions (owner only)
+        const dir = dirname(this.path);
+        await mkdir(dir, { recursive: true, mode: 0o700 });
 
-      // Write credentials file with restrictive permissions (owner read/write only)
-      const content = JSON.stringify(credentials, null, 2);
-      await writeFile(this.path, content, { mode: 0o600 });
+        // Use atomic writer to write credentials
+        await this.atomicWriter.writeJson(this.path, credentials);
+
+        // Set restrictive permissions (owner read/write only) after atomic write
+        await chmod(this.path, 0o600);
+      });
 
       return ok(undefined);
     } catch (error) {
@@ -124,7 +140,9 @@ export class FileCredentialBackend implements CredentialBackend {
 
   async delete(): Promise<Result<void, CredentialError>> {
     try {
-      await unlink(this.path);
+      await this.lockService.withLock(this.path, async () => {
+        await unlink(this.path);
+      });
       return ok(undefined);
     } catch (error) {
       // Handle file system errors

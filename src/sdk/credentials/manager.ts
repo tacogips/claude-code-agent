@@ -215,7 +215,9 @@ export class CredentialManager {
    * }
    * ```
    */
-  async exportCredentials(): Promise<Result<CredentialsExport, CredentialError>> {
+  async exportCredentials(): Promise<
+    Result<CredentialsExport, CredentialError>
+  > {
     const credentials = await this.getCredentials();
 
     if (credentials === null) {

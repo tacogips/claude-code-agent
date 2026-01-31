@@ -69,16 +69,18 @@ import { createAuthVerifyCommand } from "./verify";
 export function createAuthCommand(): Command {
   const { Command } = require("commander");
 
-  return new Command("auth")
-    .description("Manage authentication and view account info")
-    // Existing commands
-    .addCommand(createAuthInfoCommand())
-    .addCommand(createAuthStatsCommand())
-    .addCommand(createAuthStatusCommand())
-    .addCommand(createAuthTokenCommand())
-    // New credential management commands
-    .addCommand(createAuthExportCommand())
-    .addCommand(createAuthImportCommand())
-    .addCommand(createAuthDeleteCommand())
-    .addCommand(createAuthVerifyCommand());
+  return (
+    new Command("auth")
+      .description("Manage authentication and view account info")
+      // Existing commands
+      .addCommand(createAuthInfoCommand())
+      .addCommand(createAuthStatsCommand())
+      .addCommand(createAuthStatusCommand())
+      .addCommand(createAuthTokenCommand())
+      // New credential management commands
+      .addCommand(createAuthExportCommand())
+      .addCommand(createAuthImportCommand())
+      .addCommand(createAuthDeleteCommand())
+      .addCommand(createAuthVerifyCommand())
+  );
 }

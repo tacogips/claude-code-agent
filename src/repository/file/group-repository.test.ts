@@ -7,18 +7,21 @@
 import { describe, test, expect, beforeEach } from "vitest";
 import { FileGroupRepository } from "./group-repository";
 import { MockFileSystem } from "../../test/mocks/filesystem";
+import { MockClock } from "../../test/mocks/clock";
 import type { SessionGroup, GroupSession } from "../group-repository";
 import * as path from "node:path";
 import * as os from "node:os";
 
 describe("FileGroupRepository", () => {
   let fs: MockFileSystem;
+  let clock: MockClock;
   let repo: FileGroupRepository;
   let baseDir: string;
 
   beforeEach(() => {
     fs = new MockFileSystem();
-    repo = new FileGroupRepository(fs);
+    clock = new MockClock();
+    repo = new FileGroupRepository(fs, clock);
     baseDir = path.join(
       os.homedir(),
       ".local",
@@ -191,7 +194,8 @@ describe("FileGroupRepository", () => {
 
     test("returns empty array when base directory doesn't exist", async () => {
       const emptyFs = new MockFileSystem();
-      const emptyRepo = new FileGroupRepository(emptyFs);
+      const emptyClock = new MockClock();
+      const emptyRepo = new FileGroupRepository(emptyFs, emptyClock);
 
       const groups = await emptyRepo.list();
       expect(groups).toEqual([]);
@@ -332,7 +336,7 @@ describe("FileGroupRepository", () => {
       await repo.updateSession("group-1", "s1", { status: "completed" });
 
       // Create new repo instance to verify persistence
-      const newRepo = new FileGroupRepository(fs);
+      const newRepo = new FileGroupRepository(fs, clock);
       const found = await newRepo.findById("group-1");
       const session = found?.sessions.find((s) => s.id === "s1");
       expect(session?.status).toBe("completed");

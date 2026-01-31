@@ -63,6 +63,13 @@ describe("createCli", () => {
     expect(commands).toContain("token");
   });
 
+  test("registers activity subcommand", () => {
+    const program = createCli();
+    const commands = program.commands.map((cmd) => cmd.name());
+
+    expect(commands).toContain("activity");
+  });
+
   test("session command has run, add, show, watch subcommands", () => {
     const program = createCli();
     const sessionCmd = program.commands.find((cmd) => cmd.name() === "session");
@@ -122,5 +129,22 @@ describe("createCli", () => {
     expect(subcommands).toContain("list");
     expect(subcommands).toContain("revoke");
     expect(subcommands).toContain("rotate");
+  });
+
+  test("activity command has update, status, list, cleanup, setup subcommands", () => {
+    const program = createCli();
+    const activityCmd = program.commands.find(
+      (cmd) => cmd.name() === "activity",
+    );
+
+    expect(activityCmd).toBeDefined();
+    if (activityCmd === undefined) return;
+
+    const subcommands = activityCmd.commands.map((cmd) => cmd.name());
+    expect(subcommands).toContain("update");
+    expect(subcommands).toContain("status");
+    expect(subcommands).toContain("list");
+    expect(subcommands).toContain("cleanup");
+    expect(subcommands).toContain("setup");
   });
 });

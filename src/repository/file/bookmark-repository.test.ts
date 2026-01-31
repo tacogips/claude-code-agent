@@ -8,15 +8,18 @@ import { describe, test, expect, beforeEach } from "vitest";
 import * as os from "node:os";
 import { FileBookmarkRepository } from "./bookmark-repository";
 import { MockFileSystem } from "../../test/mocks/filesystem";
+import { MockClock } from "../../test/mocks/clock";
 import type { Bookmark } from "../bookmark-repository";
 
 describe("FileBookmarkRepository", () => {
   let fs: MockFileSystem;
+  let clock: MockClock;
   let repo: FileBookmarkRepository;
 
   beforeEach(() => {
     fs = new MockFileSystem();
-    repo = new FileBookmarkRepository(fs);
+    clock = new MockClock();
+    repo = new FileBookmarkRepository(fs, clock);
   });
 
   describe("save and findById", () => {

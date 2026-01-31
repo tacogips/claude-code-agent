@@ -7,7 +7,10 @@
  * @module test/fixtures/credentials
  */
 
-import type { OAuthTokensInput, OAuthCredentialsResult } from "../../sdk/credentials";
+import type {
+  OAuthTokensInput,
+  OAuthCredentialsResult,
+} from "../../sdk/credentials";
 
 /**
  * Create test OAuth tokens input for credential writing.

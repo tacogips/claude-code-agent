@@ -10,7 +10,11 @@
 
 import type { Command } from "commander";
 import { CredentialReader } from "../../../sdk/credentials";
-import type { UsageStats, ModelUsage, DailyActivity } from "../../../sdk/credentials";
+import type {
+  UsageStats,
+  ModelUsage,
+  DailyActivity,
+} from "../../../sdk/credentials";
 import { formatTable, formatJson, printError } from "../../output";
 
 /**
@@ -103,7 +107,9 @@ export function createAuthStatsCommand(): Command {
         // Parse period as integer
         const periodDays = parseInt(options.period, 10);
         if (isNaN(periodDays) || periodDays <= 0) {
-          printError(`Invalid period: ${options.period}. Must be a positive number.`);
+          printError(
+            `Invalid period: ${options.period}. Must be a positive number.`,
+          );
           process.exit(1);
         }
 

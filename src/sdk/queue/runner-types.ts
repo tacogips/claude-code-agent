@@ -4,7 +4,10 @@
  * @module sdk/queue/runner-types
  */
 
-import type { QueueCommand, QueueStatus } from "../../repository/queue-repository";
+import type {
+  QueueCommand,
+  QueueStatus,
+} from "../../repository/queue-repository";
 
 /**
  * Options for running a queue.

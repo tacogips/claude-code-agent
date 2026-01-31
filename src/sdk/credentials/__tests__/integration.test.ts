@@ -428,11 +428,13 @@ describe("Credential Manager Integration Tests", () => {
   describe("Multiple Subscription Types", () => {
     const subscriptionTypes = ["max", "pro", "free", "enterprise"] as const;
 
-    test.each(subscriptionTypes.map(t => [t]))(
+    test.each(subscriptionTypes.map((t) => [t]))(
       "handles %s subscription type",
       async (subType) => {
         const manager = new CredentialManager({ configDir, platform: "linux" });
-        const credentials = createTestCredentials({ subscriptionType: subType });
+        const credentials = createTestCredentials({
+          subscriptionType: subType,
+        });
 
         await manager.writeCredentials(credentials);
         const read = await manager.getCredentials();

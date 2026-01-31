@@ -53,7 +53,9 @@ export function createAuthVerifyCommand(): Command {
 
       console.log("");
       console.log("CREDENTIAL VERIFICATION");
-      console.log("-----------------------------------------------------------");
+      console.log(
+        "-----------------------------------------------------------",
+      );
 
       if (credentials === null) {
         console.log("Status:           NOT_FOUND");
@@ -81,6 +83,8 @@ export function createAuthVerifyCommand(): Command {
         process.exit(1);
       }
 
-      console.log("Credentials are valid and can be used for Claude Code execution.");
+      console.log(
+        "Credentials are valid and can be used for Claude Code execution.",
+      );
     });
 }

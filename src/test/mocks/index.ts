@@ -15,3 +15,4 @@ export {
   type SpawnRecord,
 } from "./process-manager";
 export { MockClock } from "./clock";
+export { MockFileLockService } from "./lock";

@@ -30,3 +30,7 @@ export type {
   ViewerConfig,
 } from "./config";
 export { getDefaultConfig, mergeConfig } from "./config";
+
+// Activity types
+export type { ActivityStatus, ActivityEntry, ActivityStore } from "./activity";
+export { isActiveStatus, isWaitingStatus } from "./activity";

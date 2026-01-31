@@ -15,10 +15,7 @@ import type {
 import type { EventEmitter } from "../events/emitter";
 import type { SessionGroup } from "./types";
 import { DependencyGraph } from "./dependency-graph";
-import {
-  ProgressAggregator,
-  createSessionProgress,
-} from "./progress";
+import { ProgressAggregator, createSessionProgress } from "./progress";
 
 /**
  * Group and Session Updater for managing repository updates and events.

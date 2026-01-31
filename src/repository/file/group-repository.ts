@@ -10,6 +10,7 @@
 import * as path from "node:path";
 import * as os from "node:os";
 import type { FileSystem } from "../../interfaces/filesystem";
+import type { Clock } from "../../interfaces/clock";
 import type {
   GroupFilter,
   GroupRepository,
@@ -17,6 +18,8 @@ import type {
   GroupSort,
   SessionGroup,
 } from "../group-repository";
+import { FileLockServiceImpl } from "../../services/file-lock";
+import { AtomicWriter } from "../../services/atomic-writer";
 
 /**
  * File-based implementation of GroupRepository.
@@ -30,14 +33,19 @@ import type {
  */
 export class FileGroupRepository implements GroupRepository {
   private readonly baseDir: string;
+  private readonly lockService: FileLockServiceImpl;
+  private readonly atomicWriter: AtomicWriter;
 
-  constructor(private readonly fs: FileSystem) {
-    this.baseDir = path.join(
-      os.homedir(),
-      ".local",
-      "claude-code-agent",
-      "session-groups",
-    );
+  constructor(
+    private readonly fs: FileSystem,
+    clock: Clock,
+    baseDir?: string,
+  ) {
+    this.baseDir =
+      baseDir ??
+      path.join(os.homedir(), ".local", "claude-code-agent", "session-groups");
+    this.lockService = new FileLockServiceImpl(fs, clock);
+    this.atomicWriter = new AtomicWriter(fs);
   }
 
   /**
@@ -135,15 +143,12 @@ export class FileGroupRepository implements GroupRepository {
    * @param group - Group to save
    */
   async save(group: SessionGroup): Promise<void> {
-    const groupDir = this.getGroupDir(group.id);
     const metaPath = this.getMetaPath(group.id);
-
-    // Ensure group directory exists
-    await this.fs.mkdir(groupDir, { recursive: true });
-
-    // Write meta.json
-    const content = JSON.stringify(group, null, 2);
-    await this.fs.writeFile(metaPath, content);
+    await this.lockService.withLock(metaPath, async () => {
+      const groupDir = this.getGroupDir(group.id);
+      await this.fs.mkdir(groupDir, { recursive: true });
+      await this.atomicWriter.writeJson(metaPath, group);
+    });
   }
 
   /**
@@ -154,18 +159,21 @@ export class FileGroupRepository implements GroupRepository {
    */
   async delete(id: string): Promise<boolean> {
     const groupDir = this.getGroupDir(id);
-
-    try {
-      const exists = await this.fs.exists(groupDir);
-      if (!exists) {
-        return false;
-      }
-
-      await this.fs.rm(groupDir, { recursive: true });
-      return true;
-    } catch {
+    const exists = await this.fs.exists(groupDir);
+    if (!exists) {
       return false;
     }
+
+    const metaPath = this.getMetaPath(id);
+    return this.lockService.withLock(metaPath, async () => {
+      // Double-check existence within lock to prevent TOCTOU
+      const stillExists = await this.fs.exists(groupDir);
+      if (!stillExists) {
+        return false;
+      }
+      await this.fs.rm(groupDir, { recursive: true });
+      return true;
+    });
   }
 
   /**
@@ -181,40 +189,43 @@ export class FileGroupRepository implements GroupRepository {
     sessionId: string,
     updates: Partial<Omit<GroupSession, "id">>,
   ): Promise<boolean> {
-    const group = await this.findById(groupId);
-    if (!group) {
-      return false;
-    }
+    const metaPath = this.getMetaPath(groupId);
+    return this.lockService.withLock(metaPath, async () => {
+      const group = await this.findById(groupId);
+      if (!group) {
+        return false;
+      }
 
-    const sessionIndex = group.sessions.findIndex((s) => s.id === sessionId);
-    if (sessionIndex === -1) {
-      return false;
-    }
+      const sessionIndex = group.sessions.findIndex((s) => s.id === sessionId);
+      if (sessionIndex === -1) {
+        return false;
+      }
 
-    // Create updated session
-    const currentSession = group.sessions[sessionIndex];
-    if (!currentSession) {
-      return false;
-    }
+      // Create updated session
+      const currentSession = group.sessions[sessionIndex];
+      if (!currentSession) {
+        return false;
+      }
 
-    const updatedSession: GroupSession = {
-      ...currentSession,
-      ...updates,
-    };
+      const updatedSession: GroupSession = {
+        ...currentSession,
+        ...updates,
+      };
 
-    // Create updated sessions array
-    const updatedSessions = [...group.sessions];
-    updatedSessions[sessionIndex] = updatedSession;
+      // Create updated sessions array
+      const updatedSessions = [...group.sessions];
+      updatedSessions[sessionIndex] = updatedSession;
 
-    // Update group
-    const updatedGroup: SessionGroup = {
-      ...group,
-      sessions: updatedSessions,
-      updatedAt: new Date().toISOString(),
-    };
+      // Update group
+      const updatedGroup: SessionGroup = {
+        ...group,
+        sessions: updatedSessions,
+        updatedAt: new Date().toISOString(),
+      };
 
-    await this.save(updatedGroup);
-    return true;
+      await this.atomicWriter.writeJson(metaPath, updatedGroup);
+      return true;
+    });
   }
 
   /**

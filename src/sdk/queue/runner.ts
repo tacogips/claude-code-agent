@@ -589,7 +589,11 @@ export class QueueRunner {
       }
 
       // Update command's session ID
-      await this.updater.updateCommandSessionId(queueId, commandIndex, sessionId);
+      await this.updater.updateCommandSessionId(
+        queueId,
+        commandIndex,
+        sessionId,
+      );
 
       // Wait for process to complete
       const exitCode = await process.exitCode;
@@ -601,7 +605,11 @@ export class QueueRunner {
 
       if (exitCode === 0) {
         // Command succeeded
-        await this.updater.updateCommandStatus(queueId, commandIndex, "completed");
+        await this.updater.updateCommandStatus(
+          queueId,
+          commandIndex,
+          "completed",
+        );
         await this.updater.updateCommandCompletedAt(queueId, commandIndex);
 
         // TODO: Extract cost from Claude Code output
@@ -627,7 +635,11 @@ export class QueueRunner {
         // Command failed
         const errorMessage = `Claude Code exited with code ${exitCode ?? "unknown"}`;
         await this.updater.updateCommandStatus(queueId, commandIndex, "failed");
-        await this.updater.updateCommandError(queueId, commandIndex, errorMessage);
+        await this.updater.updateCommandError(
+          queueId,
+          commandIndex,
+          errorMessage,
+        );
 
         this.eventEmitter.emit("command_failed", {
           type: "command_failed",
@@ -651,7 +663,11 @@ export class QueueRunner {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       await this.updater.updateCommandStatus(queueId, commandIndex, "failed");
-      await this.updater.updateCommandError(queueId, commandIndex, errorMessage);
+      await this.updater.updateCommandError(
+        queueId,
+        commandIndex,
+        errorMessage,
+      );
 
       const commandEndTime = this.container.clock.now().getTime();
       const durationMs = commandEndTime - commandStartTime;

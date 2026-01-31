@@ -54,7 +54,10 @@ export type {
 
 // Input/Export types for writing
 export type { OAuthTokensInput, CredentialsExport } from "./validation";
-export { validateCredentialsInput, validateCredentialsExport } from "./validation";
+export {
+  validateCredentialsInput,
+  validateCredentialsExport,
+} from "./validation";
 
 // Stats types
 export type {
