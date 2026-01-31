@@ -4,14 +4,7 @@
  * Reads Claude Code OAuth credentials from ~/.claude/.credentials.json
  */
 
-import {
-  readFile,
-  mkdir,
-  unlink,
-  access,
-  constants,
-  chmod,
-} from "fs/promises";
+import { readFile, mkdir, unlink, access, constants, chmod } from "fs/promises";
 import { dirname } from "path";
 import { Result, ok, err } from "../../../result";
 import type { ClaudeCredentials } from "../types";
