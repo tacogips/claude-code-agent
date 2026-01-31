@@ -167,7 +167,7 @@ describe("GroupMonitor", () => {
       expect(events.every((e) => e.type === "message")).toBe(true);
     });
 
-    it.skip("should merge events from all sessions in real-time", async () => {
+    it("should merge events from all sessions in real-time", async () => {
       const claudeSession1 = "claude-session-multi-001";
       const claudeSession2 = "claude-session-multi-002";
 
@@ -297,7 +297,7 @@ describe("GroupMonitor", () => {
       expect(states.size).toBe(0);
     });
 
-    it.skip("should return states for all monitored sessions", async () => {
+    it("should return states for all monitored sessions", async () => {
       const claudeSession1 = "claude-states-001";
       const claudeSession2 = "claude-states-002";
 

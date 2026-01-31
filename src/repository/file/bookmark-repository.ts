@@ -10,6 +10,9 @@
 import * as path from "node:path";
 import * as os from "node:os";
 import type { FileSystem } from "../../interfaces/filesystem";
+import type { Clock } from "../../interfaces/clock";
+import { FileLockServiceImpl } from "../../services/file-lock";
+import { AtomicWriter } from "../../services/atomic-writer";
 import type {
   Bookmark,
   BookmarkFilter,
@@ -28,15 +31,25 @@ import type {
  */
 export class FileBookmarkRepository implements BookmarkRepository {
   private readonly baseDir: string;
+  private readonly lockService: FileLockServiceImpl;
+  private readonly atomicWriter: AtomicWriter;
 
-  constructor(private readonly fs: FileSystem) {
-    this.baseDir = path.join(
-      os.homedir(),
-      ".local",
-      "claude-code-agent",
-      "metadata",
-      "bookmarks",
-    );
+  constructor(
+    private readonly fs: FileSystem,
+    clock: Clock,
+    baseDir?: string,
+  ) {
+    this.baseDir =
+      baseDir ??
+      path.join(
+        os.homedir(),
+        ".local",
+        "claude-code-agent",
+        "metadata",
+        "bookmarks",
+      );
+    this.lockService = new FileLockServiceImpl(fs, clock);
+    this.atomicWriter = new AtomicWriter(fs);
   }
 
   /**
@@ -156,60 +169,67 @@ export class FileBookmarkRepository implements BookmarkRepository {
    * Save a bookmark.
    *
    * Creates a new bookmark or updates an existing one.
+   * Uses locking to prevent concurrent write conflicts.
    *
    * @param bookmark - Bookmark to save
    */
   async save(bookmark: Bookmark): Promise<void> {
-    // Ensure bookmarks directory exists
-    await this.ensureDirectory();
-
     const filePath = this.getBookmarkPath(bookmark.id);
-    const content = JSON.stringify(bookmark, null, 2);
-    await this.fs.writeFile(filePath, content);
+    await this.lockService.withLock(filePath, async () => {
+      await this.fs.mkdir(path.dirname(filePath), { recursive: true });
+      await this.atomicWriter.writeJson(filePath, bookmark);
+    });
   }
 
   /**
    * Update a bookmark by ID.
    *
+   * Uses locking to prevent read-modify-write race conditions.
+   *
    * @param id - Bookmark ID to update
    * @param updates - Partial bookmark updates (id cannot be changed)
    */
-  async update(id: string, updates: Partial<Omit<Bookmark, "id">>): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      throw new Error(`Bookmark not found: ${id}`);
-    }
+  async update(
+    id: string,
+    updates: Partial<Omit<Bookmark, "id">>,
+  ): Promise<void> {
+    const filePath = this.getBookmarkPath(id);
+    await this.lockService.withLock(filePath, async () => {
+      const existing = await this.findById(id);
+      if (!existing) {
+        throw new Error(`Bookmark not found: ${id}`);
+      }
 
-    const updated: Bookmark = {
-      ...existing,
-      ...updates,
-      id: existing.id, // Ensure ID cannot be changed
-      updatedAt: new Date().toISOString(),
-    };
+      const updated: Bookmark = {
+        ...existing,
+        ...updates,
+        id: existing.id, // Ensure ID cannot be changed
+        updatedAt: new Date().toISOString(),
+      };
 
-    await this.save(updated);
+      await this.fs.mkdir(path.dirname(filePath), { recursive: true });
+      await this.atomicWriter.writeJson(filePath, updated);
+    });
   }
 
   /**
    * Delete a bookmark by ID.
+   *
+   * Uses locking to prevent deletion races.
    *
    * @param id - Bookmark ID to delete
    * @returns True if bookmark was deleted, false if not found
    */
   async delete(id: string): Promise<boolean> {
     const filePath = this.getBookmarkPath(id);
-
-    try {
+    return this.lockService.withLock(filePath, async () => {
       const exists = await this.fs.exists(filePath);
       if (!exists) {
         return false;
       }
-
       await this.fs.rm(filePath);
       return true;
-    } catch {
-      return false;
-    }
+    });
   }
 
   /**
@@ -246,16 +266,6 @@ export class FileBookmarkRepository implements BookmarkRepository {
    */
   private getBookmarkPath(id: string): string {
     return path.join(this.baseDir, `${id}.json`);
-  }
-
-  /**
-   * Ensure the bookmarks directory exists.
-   */
-  private async ensureDirectory(): Promise<void> {
-    const exists = await this.fs.exists(this.baseDir);
-    if (!exists) {
-      await this.fs.mkdir(this.baseDir, { recursive: true });
-    }
   }
 
   /**
@@ -320,7 +330,9 @@ export class FileBookmarkRepository implements BookmarkRepository {
 
     if (filter.nameContains !== undefined) {
       const searchTerm = filter.nameContains.toLowerCase();
-      results = results.filter((b) => b.name.toLowerCase().includes(searchTerm));
+      results = results.filter((b) =>
+        b.name.toLowerCase().includes(searchTerm),
+      );
     }
 
     if (filter.since !== undefined) {

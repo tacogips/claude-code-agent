@@ -51,6 +51,14 @@ export type SessionMode = "continue" | "new";
 
 /**
  * Configuration options for queue execution behavior.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "stopOnError": true,
+ *   "model": "sonnet"
+ * }
+ * ```
  */
 export interface QueueConfig {
   /**
@@ -68,6 +76,21 @@ export interface QueueConfig {
 
 /**
  * Statistics tracking queue execution metrics.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "totalCommands": 5,
+ *   "completedCommands": 3,
+ *   "failedCommands": 0,
+ *   "totalCost": 0.2450,
+ *   "totalTokens": {
+ *     "input": 8500,
+ *     "output": 24000
+ *   },
+ *   "totalDuration": 325000
+ * }
+ * ```
  */
 export interface QueueStats {
   /** Total number of commands in queue */
@@ -94,6 +117,68 @@ export interface QueueStats {
 
 /**
  * A single command within a queue.
+ *
+ * @example Pending command
+ * ```json
+ * {
+ *   "id": "cmd-001",
+ *   "index": 0,
+ *   "prompt": "Fix the authentication bug in src/auth.ts",
+ *   "sessionMode": "continue",
+ *   "status": "pending",
+ *   "addedAt": "2026-01-10T10:00:00.000Z"
+ * }
+ * ```
+ *
+ * @example Running command
+ * ```json
+ * {
+ *   "id": "cmd-002",
+ *   "index": 1,
+ *   "prompt": "Add unit tests for the auth module",
+ *   "sessionMode": "continue",
+ *   "status": "running",
+ *   "claudeSessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "addedAt": "2026-01-10T10:00:00.000Z",
+ *   "startedAt": "2026-01-10T10:05:30.000Z"
+ * }
+ * ```
+ *
+ * @example Completed command
+ * ```json
+ * {
+ *   "id": "cmd-001",
+ *   "index": 0,
+ *   "prompt": "Fix the authentication bug in src/auth.ts",
+ *   "sessionMode": "continue",
+ *   "status": "completed",
+ *   "claudeSessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "addedAt": "2026-01-10T10:00:00.000Z",
+ *   "startedAt": "2026-01-10T10:00:30.000Z",
+ *   "completedAt": "2026-01-10T10:05:15.000Z",
+ *   "cost": 0.0456,
+ *   "tokens": {
+ *     "input": 1200,
+ *     "output": 3500
+ *   }
+ * }
+ * ```
+ *
+ * @example Failed command
+ * ```json
+ * {
+ *   "id": "cmd-003",
+ *   "index": 2,
+ *   "prompt": "Deploy to production",
+ *   "sessionMode": "new",
+ *   "status": "failed",
+ *   "claudeSessionId": "new-session-id-xyz",
+ *   "addedAt": "2026-01-10T10:00:00.000Z",
+ *   "startedAt": "2026-01-10T10:15:00.000Z",
+ *   "completedAt": "2026-01-10T10:15:45.000Z",
+ *   "error": "Permission denied: cannot access production environment"
+ * }
+ * ```
  */
 export interface QueueCommand {
   /** Unique identifier for this command */
@@ -153,6 +238,66 @@ export interface QueueCommand {
  * - Flexible session modes (continue or new session)
  * - Pause/resume/stop controls
  * - Cost and token tracking
+ *
+ * @example Complete CommandQueue
+ * ```json
+ * {
+ *   "id": "20260110-100000-auth-fixes",
+ *   "name": "Authentication Bug Fixes",
+ *   "description": "Fix auth bugs and add tests",
+ *   "projectPath": "/home/user/projects/my-app",
+ *   "status": "running",
+ *   "claudeSessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "currentCommandIndex": 1,
+ *   "commands": [
+ *     {
+ *       "id": "cmd-001",
+ *       "index": 0,
+ *       "prompt": "Fix the authentication bug in src/auth.ts",
+ *       "sessionMode": "continue",
+ *       "status": "completed",
+ *       "claudeSessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *       "addedAt": "2026-01-10T10:00:00.000Z",
+ *       "startedAt": "2026-01-10T10:00:30.000Z",
+ *       "completedAt": "2026-01-10T10:05:15.000Z",
+ *       "cost": 0.0456,
+ *       "tokens": { "input": 1200, "output": 3500 }
+ *     },
+ *     {
+ *       "id": "cmd-002",
+ *       "index": 1,
+ *       "prompt": "Add unit tests for the auth module",
+ *       "sessionMode": "continue",
+ *       "status": "running",
+ *       "claudeSessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *       "addedAt": "2026-01-10T10:00:00.000Z",
+ *       "startedAt": "2026-01-10T10:05:30.000Z"
+ *     },
+ *     {
+ *       "id": "cmd-003",
+ *       "index": 2,
+ *       "prompt": "Update documentation",
+ *       "sessionMode": "continue",
+ *       "status": "pending",
+ *       "addedAt": "2026-01-10T10:00:00.000Z"
+ *     }
+ *   ],
+ *   "config": {
+ *     "stopOnError": true,
+ *     "model": "sonnet"
+ *   },
+ *   "stats": {
+ *     "totalCommands": 3,
+ *     "completedCommands": 1,
+ *     "failedCommands": 0,
+ *     "totalCost": 0.0456,
+ *     "totalTokens": { "input": 1200, "output": 3500 },
+ *     "totalDuration": 285000
+ *   },
+ *   "createdAt": "2026-01-10T10:00:00.000Z",
+ *   "updatedAt": "2026-01-10T10:05:30.000Z"
+ * }
+ * ```
  */
 export interface CommandQueue {
   /**

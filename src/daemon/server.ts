@@ -24,6 +24,7 @@ import {
   groupRoutes,
   queueRoutes,
   bookmarkRoutes,
+  activityRoutes,
 } from "./routes";
 
 /**
@@ -199,6 +200,9 @@ export class DaemonServer {
 
     // Bookmark routes
     bookmarkRoutes(authenticatedApp, this.sdk, this.tokenManager);
+
+    // Activity routes
+    activityRoutes(authenticatedApp, this.sdk.activity, this.tokenManager);
   }
 
   /**

@@ -8,7 +8,7 @@
  * @page
  -->
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { untrack } from "svelte";
   import { page } from "$app/stores";
   import MessageTimeline from "$lib/components/MessageTimeline.svelte";
   import CostDisplay from "$lib/components/CostDisplay.svelte";
@@ -169,32 +169,41 @@
    */
   let cleanupWebSocket: (() => void) | null = null;
 
-  onMount(() => {
-    void fetchSession();
+  // Initialize on mount using $effect
+  $effect(() => {
+    // Capture current sessionId for cleanup
+    const currentSessionId = sessionId;
+
+    // Run initialization (untrack to avoid re-running on state changes)
+    untrack(() => {
+      void fetchSession();
+    });
 
     // Setup WebSocket message handler
     cleanupWebSocket = ws.onMessage((message) => {
       if (
-        sessionId !== undefined &&
+        currentSessionId !== undefined &&
         (message.type === "session_update" || message.type === "new_message") &&
-        message.sessionId === sessionId
+        message.sessionId === currentSessionId
       ) {
         // Reload session data on updates
         void fetchSession();
       }
     });
-  });
 
-  onDestroy(() => {
-    // Unsubscribe from WebSocket
-    if (sessionId !== undefined) {
-      ws.unsubscribe(sessionId);
-    }
+    // Cleanup on destroy
+    return () => {
+      // Unsubscribe from WebSocket
+      if (currentSessionId !== undefined) {
+        ws.unsubscribe(currentSessionId);
+      }
 
-    // Cleanup message handler
-    if (cleanupWebSocket !== null) {
-      cleanupWebSocket();
-    }
+      // Cleanup message handler
+      if (cleanupWebSocket !== null) {
+        cleanupWebSocket();
+        cleanupWebSocket = null;
+      }
+    };
   });
 </script>
 

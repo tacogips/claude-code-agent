@@ -7,15 +7,9 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { BookmarkManager } from "./manager";
 import type { Container } from "../../container";
+import { createTestContainer } from "../../container";
 import type { Bookmark, CreateBookmarkOptions } from "./types";
 import { InMemoryBookmarkRepository } from "../../repository/in-memory/bookmark-repository";
-import { MockFileSystem } from "../../test/mocks/filesystem";
-import { MockProcessManager } from "../../test/mocks/process-manager";
-import { MockClock } from "../../test/mocks/clock";
-import {
-  InMemoryGroupRepository,
-  InMemoryQueueRepository,
-} from "../../repository/in-memory";
 
 describe("BookmarkManager", () => {
   let manager: BookmarkManager;
@@ -24,14 +18,9 @@ describe("BookmarkManager", () => {
 
   beforeEach(() => {
     repository = new InMemoryBookmarkRepository();
-    container = {
-      fileSystem: new MockFileSystem(),
-      processManager: new MockProcessManager(),
-      clock: new MockClock(),
-      groupRepository: new InMemoryGroupRepository(),
-      queueRepository: new InMemoryQueueRepository(),
+    container = createTestContainer({
       bookmarkRepository: repository,
-    };
+    });
     manager = new BookmarkManager(container, repository);
   });
 

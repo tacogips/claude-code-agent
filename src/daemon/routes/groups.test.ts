@@ -225,7 +225,8 @@ describe("Group Routes - SSE Stream", () => {
       // Try to read - should timeout because event was filtered out
       const readPromise = reader.read();
       const timeoutPromise = new Promise<{ value: undefined; done: true }>(
-        (resolve) => setTimeout(() => resolve({ value: undefined, done: true }), 100),
+        (resolve) =>
+          setTimeout(() => resolve({ value: undefined, done: true }), 100),
       );
 
       const result = await Promise.race([readPromise, timeoutPromise]);

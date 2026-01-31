@@ -18,6 +18,14 @@ export type BookmarkType = "session" | "message" | "range";
 
 /**
  * Message range for range-type bookmarks.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "fromMessageId": "msg-001-start",
+ *   "toMessageId": "msg-015-end"
+ * }
+ * ```
  */
 export interface MessageRange {
   /** ID of the first message in the range */
@@ -31,6 +39,52 @@ export interface MessageRange {
  *
  * Bookmarks are immutable after creation except for name, description, and tags
  * which can be updated via the BookmarkManager.
+ *
+ * @example Session bookmark
+ * ```json
+ * {
+ *   "id": "bm-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+ *   "type": "session",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "name": "Authentication Refactor Discussion",
+ *   "description": "Important decisions about the new auth architecture",
+ *   "tags": ["architecture", "auth", "important"],
+ *   "createdAt": "2026-01-10T10:30:00.000Z",
+ *   "updatedAt": "2026-01-10T10:30:00.000Z"
+ * }
+ * ```
+ *
+ * @example Message bookmark
+ * ```json
+ * {
+ *   "id": "bm-b2c3d4e5-f6a7-8901-bcde-f23456789012",
+ *   "type": "message",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "messageId": "msg-specific-insight",
+ *   "name": "Key Insight on Token Validation",
+ *   "tags": ["security", "tokens"],
+ *   "createdAt": "2026-01-10T11:00:00.000Z",
+ *   "updatedAt": "2026-01-10T11:00:00.000Z"
+ * }
+ * ```
+ *
+ * @example Range bookmark
+ * ```json
+ * {
+ *   "id": "bm-c3d4e5f6-a7b8-9012-cdef-345678901234",
+ *   "type": "range",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "messageRange": {
+ *     "fromMessageId": "msg-debug-start",
+ *     "toMessageId": "msg-debug-end"
+ *   },
+ *   "name": "Debugging Session for Memory Leak",
+ *   "description": "Step-by-step debugging that found the root cause",
+ *   "tags": ["debugging", "memory", "solved"],
+ *   "createdAt": "2026-01-10T14:00:00.000Z",
+ *   "updatedAt": "2026-01-10T15:30:00.000Z"
+ * }
+ * ```
  */
 export interface Bookmark {
   /** Unique identifier for the bookmark */
@@ -154,6 +208,42 @@ export type MatchType = "metadata" | "content";
  *
  * Used by BookmarkManager.search() to return ranked results
  * with context about where the match occurred.
+ *
+ * @example Metadata match result
+ * ```json
+ * {
+ *   "bookmark": {
+ *     "id": "bm-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+ *     "type": "session",
+ *     "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *     "name": "Authentication Architecture Review",
+ *     "tags": ["architecture", "auth"],
+ *     "createdAt": "2026-01-10T10:30:00.000Z",
+ *     "updatedAt": "2026-01-10T10:30:00.000Z"
+ *   },
+ *   "matchType": "metadata",
+ *   "relevanceScore": 0.92
+ * }
+ * ```
+ *
+ * @example Content match result
+ * ```json
+ * {
+ *   "bookmark": {
+ *     "id": "bm-b2c3d4e5-f6a7-8901-bcde-f23456789012",
+ *     "type": "message",
+ *     "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *     "messageId": "msg-123",
+ *     "name": "Token Implementation",
+ *     "tags": ["tokens"],
+ *     "createdAt": "2026-01-10T11:00:00.000Z",
+ *     "updatedAt": "2026-01-10T11:00:00.000Z"
+ *   },
+ *   "matchType": "content",
+ *   "matchContext": "...implement JWT token validation using the jsonwebtoken library...",
+ *   "relevanceScore": 0.78
+ * }
+ * ```
  */
 export interface BookmarkSearchResult {
   /** The matching bookmark */

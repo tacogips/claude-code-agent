@@ -4,6 +4,8 @@
  * Stores command queues as JSON files in ~/.local/claude-code-agent/metadata/queues/
  * Each queue is stored in a separate file named {queue-id}.json
  *
+ * Uses file locking to prevent race conditions in concurrent access scenarios.
+ *
  * @module repository/file/queue-repository
  */
 
@@ -19,16 +21,21 @@ import type {
   QueueStatus,
   UpdateCommandOptions,
 } from "../queue-repository";
+import { FileLockServiceImpl } from "../../services/file-lock";
+import { AtomicWriter } from "../../services/atomic-writer";
 
 /**
  * File-based implementation of QueueRepository.
  *
  * Stores each queue as a JSON file in the metadata directory.
  * Provides persistent storage for command queues across process restarts.
+ * Uses file locking to ensure safe concurrent access.
  */
 export class FileQueueRepository implements QueueRepository {
   private readonly container: Container;
   private readonly baseDir: string;
+  private readonly lockService: FileLockServiceImpl;
+  private readonly atomicWriter: AtomicWriter;
 
   /**
    * Create a new FileQueueRepository.
@@ -44,6 +51,11 @@ export class FileQueueRepository implements QueueRepository {
       ? path.join(xdgDataHome, "claude-code-agent")
       : path.join(home, ".local", "claude-code-agent");
     this.baseDir = path.join(dataDir ?? defaultDataDir, "metadata", "queues");
+    this.lockService = new FileLockServiceImpl(
+      container.fileSystem,
+      container.clock,
+    );
+    this.atomicWriter = new AtomicWriter(container.fileSystem);
   }
 
   /**
@@ -85,18 +97,6 @@ export class FileQueueRepository implements QueueRepository {
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Write a queue to its JSON file.
-   *
-   * @param queue - Queue to write
-   */
-  private async writeQueue(queue: CommandQueue): Promise<void> {
-    await this.ensureDirectory();
-    const queuePath = this.getQueuePath(queue.id);
-    const content = JSON.stringify(queue, null, 2);
-    await this.container.fileSystem.writeFile(queuePath, content);
   }
 
   /**
@@ -197,32 +197,43 @@ export class FileQueueRepository implements QueueRepository {
    * Save a queue.
    *
    * Creates a new queue or updates an existing one.
+   * Uses exclusive lock to prevent concurrent modifications.
    *
    * @param queue - Queue to save
    */
   async save(queue: CommandQueue): Promise<void> {
-    await this.writeQueue(queue);
+    const queuePath = this.getQueuePath(queue.id);
+    await this.lockService.withLock(queuePath, async () => {
+      await this.ensureDirectory();
+      await this.atomicWriter.writeJson(queuePath, queue);
+    });
   }
 
   /**
    * Delete a queue by ID.
+   *
+   * Uses exclusive lock to prevent concurrent access during deletion.
    *
    * @param id - Queue ID to delete
    * @returns True if queue was deleted, false if not found
    */
   async delete(id: string): Promise<boolean> {
     const queuePath = this.getQueuePath(id);
-    const exists = await this.container.fileSystem.exists(queuePath);
-    if (!exists) {
-      return false;
-    }
+    return this.lockService.withLock(queuePath, async () => {
+      const exists = await this.container.fileSystem.exists(queuePath);
+      if (!exists) {
+        return false;
+      }
 
-    await this.container.fileSystem.rm(queuePath);
-    return true;
+      await this.container.fileSystem.rm(queuePath);
+      return true;
+    });
   }
 
   /**
    * Add a command to a queue.
+   *
+   * Uses exclusive lock to prevent race conditions in read-modify-write.
    *
    * @param queueId - Queue ID
    * @param command - Command to add (without id and status)
@@ -234,36 +245,41 @@ export class FileQueueRepository implements QueueRepository {
     command: Omit<QueueCommand, "id" | "status">,
     position?: number,
   ): Promise<boolean> {
-    const queue = await this.readQueue(queueId);
-    if (queue === null) {
-      return false;
-    }
+    const queuePath = this.getQueuePath(queueId);
+    return this.lockService.withLock(queuePath, async () => {
+      const queue = await this.readQueue(queueId);
+      if (queue === null) {
+        return false;
+      }
 
-    // Generate command ID
-    const commandId = `cmd-${nanoid(12)}`;
+      // Generate command ID
+      const commandId = `cmd-${nanoid(12)}`;
 
-    const newCommand: QueueCommand = {
-      id: commandId,
-      status: "pending",
-      ...command,
-    };
+      const newCommand: QueueCommand = {
+        id: commandId,
+        status: "pending",
+        ...command,
+      };
 
-    const commands = [...queue.commands];
-    const insertPos = position ?? commands.length;
-    commands.splice(insertPos, 0, newCommand);
+      const commands = [...queue.commands];
+      const insertPos = position ?? commands.length;
+      commands.splice(insertPos, 0, newCommand);
 
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
+      const updatedQueue: CommandQueue = {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
 
-    await this.writeQueue(updatedQueue);
-    return true;
+      await this.atomicWriter.writeJson(queuePath, updatedQueue);
+      return true;
+    });
   }
 
   /**
    * Update a command in a queue.
+   *
+   * Uses exclusive lock to prevent race conditions in read-modify-write.
    *
    * @param queueId - Queue ID
    * @param commandIndex - Index of command to update
@@ -275,73 +291,83 @@ export class FileQueueRepository implements QueueRepository {
     commandIndex: number,
     updates: UpdateCommandOptions,
   ): Promise<boolean> {
-    const queue = await this.readQueue(queueId);
-    if (queue === null) {
-      return false;
-    }
+    const queuePath = this.getQueuePath(queueId);
+    return this.lockService.withLock(queuePath, async () => {
+      const queue = await this.readQueue(queueId);
+      if (queue === null) {
+        return false;
+      }
 
-    if (commandIndex < 0 || commandIndex >= queue.commands.length) {
-      return false;
-    }
+      if (commandIndex < 0 || commandIndex >= queue.commands.length) {
+        return false;
+      }
 
-    const currentCommand = queue.commands[commandIndex];
-    if (currentCommand === undefined) {
-      return false;
-    }
+      const currentCommand = queue.commands[commandIndex];
+      if (currentCommand === undefined) {
+        return false;
+      }
 
-    const updatedCommand: QueueCommand = {
-      ...currentCommand,
-      ...(updates.prompt !== undefined && { prompt: updates.prompt }),
-      ...(updates.sessionMode !== undefined && {
-        sessionMode: updates.sessionMode,
-      }),
-    };
+      const updatedCommand: QueueCommand = {
+        ...currentCommand,
+        ...(updates.prompt !== undefined && { prompt: updates.prompt }),
+        ...(updates.sessionMode !== undefined && {
+          sessionMode: updates.sessionMode,
+        }),
+      };
 
-    const commands = [...queue.commands];
-    commands[commandIndex] = updatedCommand;
+      const commands = [...queue.commands];
+      commands[commandIndex] = updatedCommand;
 
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
+      const updatedQueue: CommandQueue = {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
 
-    await this.writeQueue(updatedQueue);
-    return true;
+      await this.atomicWriter.writeJson(queuePath, updatedQueue);
+      return true;
+    });
   }
 
   /**
    * Remove a command from a queue.
+   *
+   * Uses exclusive lock to prevent race conditions in read-modify-write.
    *
    * @param queueId - Queue ID
    * @param commandIndex - Index of command to remove
    * @returns True if command was removed, false if not found
    */
   async removeCommand(queueId: string, commandIndex: number): Promise<boolean> {
-    const queue = await this.readQueue(queueId);
-    if (queue === null) {
-      return false;
-    }
+    const queuePath = this.getQueuePath(queueId);
+    return this.lockService.withLock(queuePath, async () => {
+      const queue = await this.readQueue(queueId);
+      if (queue === null) {
+        return false;
+      }
 
-    if (commandIndex < 0 || commandIndex >= queue.commands.length) {
-      return false;
-    }
+      if (commandIndex < 0 || commandIndex >= queue.commands.length) {
+        return false;
+      }
 
-    const commands = [...queue.commands];
-    commands.splice(commandIndex, 1);
+      const commands = [...queue.commands];
+      commands.splice(commandIndex, 1);
 
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
+      const updatedQueue: CommandQueue = {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
 
-    await this.writeQueue(updatedQueue);
-    return true;
+      await this.atomicWriter.writeJson(queuePath, updatedQueue);
+      return true;
+    });
   }
 
   /**
    * Reorder a command in a queue.
+   *
+   * Uses exclusive lock to prevent race conditions in read-modify-write.
    *
    * @param queueId - Queue ID
    * @param fromIndex - Current index of command
@@ -353,35 +379,38 @@ export class FileQueueRepository implements QueueRepository {
     fromIndex: number,
     toIndex: number,
   ): Promise<boolean> {
-    const queue = await this.readQueue(queueId);
-    if (queue === null) {
-      return false;
-    }
+    const queuePath = this.getQueuePath(queueId);
+    return this.lockService.withLock(queuePath, async () => {
+      const queue = await this.readQueue(queueId);
+      if (queue === null) {
+        return false;
+      }
 
-    if (
-      fromIndex < 0 ||
-      fromIndex >= queue.commands.length ||
-      toIndex < 0 ||
-      toIndex >= queue.commands.length
-    ) {
-      return false;
-    }
+      if (
+        fromIndex < 0 ||
+        fromIndex >= queue.commands.length ||
+        toIndex < 0 ||
+        toIndex >= queue.commands.length
+      ) {
+        return false;
+      }
 
-    const commands = [...queue.commands];
-    const [movedCommand] = commands.splice(fromIndex, 1);
-    if (movedCommand === undefined) {
-      return false;
-    }
-    commands.splice(toIndex, 0, movedCommand);
+      const commands = [...queue.commands];
+      const [movedCommand] = commands.splice(fromIndex, 1);
+      if (movedCommand === undefined) {
+        return false;
+      }
+      commands.splice(toIndex, 0, movedCommand);
 
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
+      const updatedQueue: CommandQueue = {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
 
-    await this.writeQueue(updatedQueue);
-    return true;
+      await this.atomicWriter.writeJson(queuePath, updatedQueue);
+      return true;
+    });
   }
 
   /**

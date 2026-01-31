@@ -6,7 +6,10 @@
 
 import { describe, expect, test, beforeEach } from "bun:test";
 import { EventEmitter } from "../sdk/events/emitter";
-import type { SessionStartedEvent, SessionEndedEvent } from "../sdk/events/types";
+import type {
+  SessionStartedEvent,
+  SessionEndedEvent,
+} from "../sdk/events/types";
 import { SSEConnection, createSSEStream } from "./sse";
 import type { EventFilter } from "./sse-types";
 
@@ -196,9 +199,7 @@ describe("SSEConnection", () => {
 
       const formatted = (connection as any).formatSSE(event);
 
-      expect(formatted).toBe(
-        `data: ${JSON.stringify(event)}\n\n`,
-      );
+      expect(formatted).toBe(`data: ${JSON.stringify(event)}\n\n`);
     });
 
     test("formats complex event with nested objects", () => {
@@ -218,9 +219,7 @@ describe("SSEConnection", () => {
 
       const formatted = (connection as any).formatSSE(event);
 
-      expect(formatted).toBe(
-        `data: ${JSON.stringify(event)}\n\n`,
-      );
+      expect(formatted).toBe(`data: ${JSON.stringify(event)}\n\n`);
     });
   });
 

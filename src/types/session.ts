@@ -23,6 +23,16 @@ export type SessionStatus =
 
 /**
  * Token usage tracking for a session.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "input": 1250,
+ *   "output": 3420,
+ *   "cacheRead": 45000,
+ *   "cacheWrite": 12000
+ * }
+ * ```
  */
 export interface TokenUsage {
   /** Number of input tokens consumed */
@@ -40,6 +50,52 @@ export interface TokenUsage {
  *
  * This is the complete session object including all messages
  * and tasks. For storage and listing, use SessionMetadata.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "id": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "projectPath": "/home/user/projects/my-app",
+ *   "status": "active",
+ *   "createdAt": "2026-01-07T04:49:16.208Z",
+ *   "updatedAt": "2026-01-07T05:02:16.550Z",
+ *   "messages": [
+ *     {
+ *       "id": "msg-001",
+ *       "role": "user",
+ *       "content": "Help me fix the authentication bug",
+ *       "timestamp": "2026-01-07T04:49:16.208Z"
+ *     },
+ *     {
+ *       "id": "msg-002",
+ *       "role": "assistant",
+ *       "content": "I'll help you fix the authentication bug. Let me search for the relevant code.",
+ *       "timestamp": "2026-01-07T04:49:22.686Z",
+ *       "toolCalls": [
+ *         {
+ *           "id": "toolu_01X722Re5SMKwP5AnPgc382p",
+ *           "name": "Grep",
+ *           "input": { "pattern": "authenticate", "output_mode": "content" }
+ *         }
+ *       ]
+ *     }
+ *   ],
+ *   "tasks": [
+ *     {
+ *       "id": "task-001",
+ *       "content": "Fix authentication bug",
+ *       "status": "completed"
+ *     }
+ *   ],
+ *   "tokenUsage": {
+ *     "input": 1250,
+ *     "output": 3420,
+ *     "cacheRead": 45000,
+ *     "cacheWrite": 12000
+ *   },
+ *   "costUsd": 0.0542
+ * }
+ * ```
  */
 export interface Session {
   /** Unique session identifier */
@@ -68,6 +124,25 @@ export interface Session {
  * This is a lightweight version of Session without
  * the full message and task arrays, suitable for
  * indexes and list views.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "id": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "projectPath": "/home/user/projects/my-app",
+ *   "status": "active",
+ *   "createdAt": "2026-01-07T04:49:16.208Z",
+ *   "updatedAt": "2026-01-07T05:02:16.550Z",
+ *   "messageCount": 118,
+ *   "tokenUsage": {
+ *     "input": 532,
+ *     "output": 5256,
+ *     "cacheRead": 2940147,
+ *     "cacheWrite": 398213
+ *   },
+ *   "costUsd": 0.1234
+ * }
+ * ```
  */
 export interface SessionMetadata {
   /** Unique session identifier */

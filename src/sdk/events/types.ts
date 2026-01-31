@@ -21,6 +21,16 @@ export interface BaseEvent {
 
 /**
  * Emitted when a session starts.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "type": "session_started",
+ *   "timestamp": "2026-01-10T10:00:00.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "projectPath": "/home/user/projects/my-app"
+ * }
+ * ```
  */
 export interface SessionStartedEvent extends BaseEvent {
   readonly type: "session_started";
@@ -30,6 +40,27 @@ export interface SessionStartedEvent extends BaseEvent {
 
 /**
  * Emitted when a session ends.
+ *
+ * @example Completed session
+ * ```json
+ * {
+ *   "type": "session_ended",
+ *   "timestamp": "2026-01-10T11:30:00.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "status": "completed",
+ *   "costUsd": 0.1234
+ * }
+ * ```
+ *
+ * @example Failed session
+ * ```json
+ * {
+ *   "type": "session_ended",
+ *   "timestamp": "2026-01-10T10:45:00.000Z",
+ *   "sessionId": "abc12345-def6-7890-ghij-klmnopqrstuv",
+ *   "status": "failed"
+ * }
+ * ```
  */
 export interface SessionEndedEvent extends BaseEvent {
   readonly type: "session_ended";
@@ -40,6 +71,28 @@ export interface SessionEndedEvent extends BaseEvent {
 
 /**
  * Emitted when a message is received in a session.
+ *
+ * @example User message
+ * ```json
+ * {
+ *   "type": "message_received",
+ *   "timestamp": "2026-01-10T10:05:00.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "messageId": "msg-user-001",
+ *   "role": "user"
+ * }
+ * ```
+ *
+ * @example Assistant message
+ * ```json
+ * {
+ *   "type": "message_received",
+ *   "timestamp": "2026-01-10T10:05:30.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "messageId": "msg-asst-001",
+ *   "role": "assistant"
+ * }
+ * ```
  */
 export interface MessageReceivedEvent extends BaseEvent {
   readonly type: "message_received";
@@ -50,6 +103,17 @@ export interface MessageReceivedEvent extends BaseEvent {
 
 /**
  * Emitted when a tool is invoked.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "type": "tool_started",
+ *   "timestamp": "2026-01-10T10:10:00.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "toolName": "Read",
+ *   "toolCallId": "toolu_01ABC123DEF456"
+ * }
+ * ```
  */
 export interface ToolStartedEvent extends BaseEvent {
   readonly type: "tool_started";
@@ -60,6 +124,32 @@ export interface ToolStartedEvent extends BaseEvent {
 
 /**
  * Emitted when a tool completes.
+ *
+ * @example Successful tool completion
+ * ```json
+ * {
+ *   "type": "tool_completed",
+ *   "timestamp": "2026-01-10T10:10:05.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "toolName": "Read",
+ *   "toolCallId": "toolu_01ABC123DEF456",
+ *   "isError": false,
+ *   "durationMs": 5000
+ * }
+ * ```
+ *
+ * @example Failed tool completion
+ * ```json
+ * {
+ *   "type": "tool_completed",
+ *   "timestamp": "2026-01-10T10:12:00.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "toolName": "Bash",
+ *   "toolCallId": "toolu_01XYZ789ABC123",
+ *   "isError": true,
+ *   "durationMs": 30000
+ * }
+ * ```
  */
 export interface ToolCompletedEvent extends BaseEvent {
   readonly type: "tool_completed";
@@ -72,6 +162,17 @@ export interface ToolCompletedEvent extends BaseEvent {
 
 /**
  * Emitted when tasks are updated via TodoWrite.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "type": "tasks_updated",
+ *   "timestamp": "2026-01-10T10:15:00.000Z",
+ *   "sessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "totalTasks": 5,
+ *   "completedTasks": 2
+ * }
+ * ```
  */
 export interface TasksUpdatedEvent extends BaseEvent {
   readonly type: "tasks_updated";

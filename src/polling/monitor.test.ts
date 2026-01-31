@@ -33,11 +33,24 @@ describe("SessionMonitor", () => {
       );
 
       // Setup mock transcript content
-      const transcriptContent = [
-        JSON.stringify({ type: "user", content: "Hello", timestamp: "2026-01-06T10:00:00Z" }),
-        JSON.stringify({ type: "assistant", content: "Hi there", timestamp: "2026-01-06T10:00:01Z" }),
-        JSON.stringify({ type: "tool_use", content: { name: "Read" }, timestamp: "2026-01-06T10:00:02Z" }),
-      ].join("\n") + "\n";
+      const transcriptContent =
+        [
+          JSON.stringify({
+            type: "user",
+            content: "Hello",
+            timestamp: "2026-01-06T10:00:00Z",
+          }),
+          JSON.stringify({
+            type: "assistant",
+            content: "Hi there",
+            timestamp: "2026-01-06T10:00:01Z",
+          }),
+          JSON.stringify({
+            type: "tool_use",
+            content: { name: "Read" },
+            timestamp: "2026-01-06T10:00:02Z",
+          }),
+        ].join("\n") + "\n";
 
       // Create the file
       mockFs.writeFileSync(transcriptPath, transcriptContent);
@@ -81,10 +94,19 @@ describe("SessionMonitor", () => {
       );
 
       // Setup mock transcript with tool events
-      const transcriptContent = [
-        JSON.stringify({ type: "tool_use", content: { name: "Task" }, timestamp: "2026-01-06T10:00:00Z" }),
-        JSON.stringify({ type: "user", content: "Test", timestamp: "2026-01-06T10:00:01Z" }),
-      ].join("\n") + "\n";
+      const transcriptContent =
+        [
+          JSON.stringify({
+            type: "tool_use",
+            content: { name: "Task" },
+            timestamp: "2026-01-06T10:00:00Z",
+          }),
+          JSON.stringify({
+            type: "user",
+            content: "Test",
+            timestamp: "2026-01-06T10:00:01Z",
+          }),
+        ].join("\n") + "\n";
 
       mockFs.writeFileSync(transcriptPath, transcriptContent);
 
@@ -144,14 +166,22 @@ describe("SessionMonitor", () => {
       setTimeout(() => {
         mockFs.appendFileSync(
           transcriptPath,
-          JSON.stringify({ type: "user", content: "First", timestamp: "2026-01-06T10:00:00Z" }) + "\n",
+          JSON.stringify({
+            type: "user",
+            content: "First",
+            timestamp: "2026-01-06T10:00:00Z",
+          }) + "\n",
         );
       }, 10);
 
       setTimeout(() => {
         mockFs.appendFileSync(
           transcriptPath,
-          JSON.stringify({ type: "assistant", content: "Second", timestamp: "2026-01-06T10:00:01Z" }) + "\n",
+          JSON.stringify({
+            type: "assistant",
+            content: "Second",
+            timestamp: "2026-01-06T10:00:01Z",
+          }) + "\n",
         );
       }, 20);
 
@@ -180,11 +210,12 @@ describe("SessionMonitor", () => {
         "transcript.jsonl",
       );
 
-      const transcriptContent = JSON.stringify({
-        type: "user",
-        content: "Test message",
-        timestamp: "2026-01-06T10:00:00Z",
-      }) + "\n";
+      const transcriptContent =
+        JSON.stringify({
+          type: "user",
+          content: "Test message",
+          timestamp: "2026-01-06T10:00:00Z",
+        }) + "\n";
 
       mockFs.writeFileSync(transcriptPath, transcriptContent);
 
@@ -266,11 +297,14 @@ describe("SessionMonitor", () => {
       );
 
       // Create file at expected path
-      mockFs.writeFileSync(expectedPath, JSON.stringify({
-        type: "user",
-        content: "Test",
-        timestamp: "2026-01-06T10:00:00Z",
-      }) + "\n");
+      mockFs.writeFileSync(
+        expectedPath,
+        JSON.stringify({
+          type: "user",
+          content: "Test",
+          timestamp: "2026-01-06T10:00:00Z",
+        }) + "\n",
+      );
 
       const monitor = new SessionMonitor(container, emitter);
       const events: Array<{ type: string }> = [];
@@ -302,33 +336,46 @@ describe("SessionMonitor", () => {
       );
 
       // Complex transcript with various event types
-      const transcriptContent = [
-        // Tool start
-        JSON.stringify({ type: "tool_use", content: { name: "Read" }, timestamp: "2026-01-06T10:00:00Z" }),
-        // User message
-        JSON.stringify({ type: "user", content: "Read the file", timestamp: "2026-01-06T10:00:01Z" }),
-        // Tool end
-        JSON.stringify({ type: "tool_result", content: { name: "Read" }, timestamp: "2026-01-06T10:00:02Z" }),
-        // Subagent start
-        JSON.stringify({
-          type: "task",
-          content: {
-            subagent_type: "ts-coding",
-            task_id: "task-123",
-            prompt: "Write code",
-          },
-          timestamp: "2026-01-06T10:00:03Z",
-        }),
-        // Subagent end
-        JSON.stringify({
-          type: "task",
-          content: {
-            task_id: "task-123",
-            status: "completed",
-          },
-          timestamp: "2026-01-06T10:00:04Z",
-        }),
-      ].join("\n") + "\n";
+      const transcriptContent =
+        [
+          // Tool start
+          JSON.stringify({
+            type: "tool_use",
+            content: { name: "Read" },
+            timestamp: "2026-01-06T10:00:00Z",
+          }),
+          // User message
+          JSON.stringify({
+            type: "user",
+            content: "Read the file",
+            timestamp: "2026-01-06T10:00:01Z",
+          }),
+          // Tool end
+          JSON.stringify({
+            type: "tool_result",
+            content: { name: "Read" },
+            timestamp: "2026-01-06T10:00:02Z",
+          }),
+          // Subagent start
+          JSON.stringify({
+            type: "task",
+            content: {
+              subagent_type: "ts-coding",
+              task_id: "task-123",
+              prompt: "Write code",
+            },
+            timestamp: "2026-01-06T10:00:03Z",
+          }),
+          // Subagent end
+          JSON.stringify({
+            type: "task",
+            content: {
+              task_id: "task-123",
+              status: "completed",
+            },
+            timestamp: "2026-01-06T10:00:04Z",
+          }),
+        ].join("\n") + "\n";
 
       mockFs.writeFileSync(transcriptPath, transcriptContent);
 

@@ -10,15 +10,19 @@
 import type { FileSystem } from "./interfaces/filesystem";
 import type { ProcessManager } from "./interfaces/process-manager";
 import type { Clock } from "./interfaces/clock";
+import type { FileLockService } from "./interfaces/lock";
 import type { GroupRepository } from "./repository/group-repository";
 import type { QueueRepository } from "./repository/queue-repository";
 import type { BookmarkRepository } from "./repository/bookmark-repository";
 import { BunFileSystem } from "./interfaces/bun-filesystem";
 import { BunProcessManager } from "./interfaces/bun-process-manager";
 import { SystemClock } from "./interfaces/system-clock";
+import { FileLockServiceImpl } from "./services/file-lock";
+import { AtomicWriter } from "./services/atomic-writer";
 import { MockFileSystem } from "./test/mocks/filesystem";
 import { MockProcessManager } from "./test/mocks/process-manager";
 import { MockClock } from "./test/mocks/clock";
+import { MockFileLockService } from "./test/mocks/lock";
 import { InMemoryGroupRepository } from "./repository/in-memory";
 import { InMemoryQueueRepository } from "./repository/in-memory";
 import { InMemoryBookmarkRepository } from "./repository/in-memory";
@@ -37,6 +41,10 @@ export interface Container {
   readonly processManager: ProcessManager;
   /** Time operations */
   readonly clock: Clock;
+  /** File locking service */
+  readonly fileLockService: FileLockService;
+  /** Atomic file writer */
+  readonly atomicWriter: AtomicWriter;
   /** Group repository */
   readonly groupRepository: GroupRepository;
   /** Queue repository */
@@ -54,10 +62,15 @@ export interface Container {
  * @returns Container with production implementations
  */
 export function createProductionContainer(): Container {
+  const fs = new BunFileSystem();
+  const clock = new SystemClock();
+
   return {
-    fileSystem: new BunFileSystem(),
+    fileSystem: fs,
     processManager: new BunProcessManager(),
-    clock: new SystemClock(),
+    clock,
+    fileLockService: new FileLockServiceImpl(fs, clock),
+    atomicWriter: new AtomicWriter(fs),
     groupRepository: new InMemoryGroupRepository(),
     queueRepository: new InMemoryQueueRepository(),
     bookmarkRepository: new InMemoryBookmarkRepository(),
@@ -75,10 +88,15 @@ export function createProductionContainer(): Container {
  * @returns Container with mock implementations
  */
 export function createTestContainer(overrides?: Partial<Container>): Container {
+  const fs = new MockFileSystem();
+  const clock = new MockClock();
+
   const defaults: Container = {
-    fileSystem: new MockFileSystem(),
+    fileSystem: fs,
     processManager: new MockProcessManager(),
-    clock: new MockClock(),
+    clock,
+    fileLockService: new MockFileLockService(),
+    atomicWriter: new AtomicWriter(fs),
     groupRepository: new InMemoryGroupRepository(),
     queueRepository: new InMemoryQueueRepository(),
     bookmarkRepository: new InMemoryBookmarkRepository(),

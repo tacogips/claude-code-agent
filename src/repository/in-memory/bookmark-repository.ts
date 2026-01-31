@@ -97,7 +97,9 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
         // Filter by name (partial match)
         if (
           filter.nameContains !== undefined &&
-          !bookmark.name.toLowerCase().includes(filter.nameContains.toLowerCase())
+          !bookmark.name
+            .toLowerCase()
+            .includes(filter.nameContains.toLowerCase())
         ) {
           return false;
         }
@@ -152,9 +154,7 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
    * Searches in name, description, and tags fields.
    * Returns results sorted by relevance (exact matches first).
    */
-  async search(
-    options: BookmarkSearchOptions,
-  ): Promise<readonly Bookmark[]> {
+  async search(options: BookmarkSearchOptions): Promise<readonly Bookmark[]> {
     const query = options.query.toLowerCase();
     const results: Bookmark[] = [];
     const bookmarks = Array.from(this.bookmarks.values());

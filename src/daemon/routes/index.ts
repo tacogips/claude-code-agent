@@ -10,3 +10,4 @@ export { sessionRoutes } from "./sessions";
 export { groupRoutes } from "./groups";
 export { queueRoutes } from "./queues";
 export { bookmarkRoutes } from "./bookmarks";
+export { activityRoutes } from "./activity";

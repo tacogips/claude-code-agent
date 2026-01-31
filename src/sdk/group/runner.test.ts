@@ -7,7 +7,10 @@
 import { describe, test, expect, beforeEach } from "vitest";
 import { GroupRunner, type RunOptions } from "./runner";
 import { createTestContainer, type Container } from "../../container";
-import type { GroupRepository, GroupSession } from "../../repository/group-repository";
+import type {
+  GroupRepository,
+  GroupSession,
+} from "../../repository/group-repository";
 import { EventEmitter } from "../events/emitter";
 import type { SessionGroup, GroupConfig } from "./types";
 import { DEFAULT_GROUP_CONFIG } from "./types";

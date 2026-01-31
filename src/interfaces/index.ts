@@ -27,6 +27,14 @@ export type {
 // Clock interface
 export type { Clock } from "./clock";
 
+// Lock interface and types
+export type {
+  LockOptions,
+  LockHandle,
+  LockResult,
+  FileLockService,
+} from "./lock";
+
 // Production implementations
 export { BunFileSystem } from "./bun-filesystem";
 export { BunProcessManager } from "./bun-process-manager";

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { untrack } from "svelte";
   import { page } from "$app/stores";
   import QueueDetail from "$lib/components/QueueDetail.svelte";
   import {
@@ -13,18 +13,25 @@
 
   let queueId = $derived($page.params.id);
 
-  onMount(() => {
-    // Setup WebSocket updates
-    setupQueueUpdates();
+  // Initialize on mount using $effect
+  $effect(() => {
+    // Capture current queueId for the effect
+    const currentQueueId = queueId;
 
-    // Load queue data
-    if (queueId !== undefined) {
-      void loadQueue(queueId);
-    }
-  });
+    untrack(() => {
+      // Setup WebSocket updates
+      setupQueueUpdates();
 
-  onDestroy(() => {
-    unloadQueue();
+      // Load queue data
+      if (currentQueueId !== undefined) {
+        void loadQueue(currentQueueId);
+      }
+    });
+
+    // Cleanup on destroy
+    return () => {
+      unloadQueue();
+    };
   });
 
   /**

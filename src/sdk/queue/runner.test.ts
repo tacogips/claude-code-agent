@@ -300,9 +300,9 @@ describe("QueueRunner", () => {
       });
 
       let pauseCalled = false;
-      let resolveStdout: (() => void) | undefined;
-      const stdoutPromise = new Promise<void>((resolve) => {
-        resolveStdout = resolve;
+      let resolveExitCode: ((code: number) => void) | undefined;
+      const exitCodePromise = new Promise<number>((resolve) => {
+        resolveExitCode = resolve;
       });
 
       container.processManager.spawn = (_command, _args, _options) => {
@@ -310,18 +310,16 @@ describe("QueueRunner", () => {
           pid: 1,
           stdout: (async function* () {
             yield JSON.stringify({ sessionId: "session-1" });
-            // Wait for test to call pause before continuing
-            await stdoutPromise;
           })(),
           stderr: (async function* () {
             // Empty stderr
           })(),
-          exitCode: Promise.resolve(0),
+          exitCode: exitCodePromise,
           kill: (signal) => {
             if (signal === "SIGTERM") {
               pauseCalled = true;
-              // Resolve stdout to allow command to complete
-              resolveStdout?.();
+              // Resolve exit code to allow command to complete
+              resolveExitCode?.(0);
             }
           },
         };
@@ -331,8 +329,11 @@ describe("QueueRunner", () => {
       // Start running in background
       const runPromise = runner.run(queue.id);
 
-      // Wait for queue to start
-      await eventEmitter.waitFor("queue_started");
+      // Wait for command to start (process is spawned after this event)
+      await eventEmitter.waitFor("command_started");
+
+      // Small delay to ensure process is registered in runningProcesses
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Pause the queue
       await runner.pause(queue.id);
@@ -430,9 +431,9 @@ describe("QueueRunner", () => {
       });
 
       let stopCalled = false;
-      let resolveStdout: (() => void) | undefined;
-      const stdoutPromise = new Promise<void>((resolve) => {
-        resolveStdout = resolve;
+      let resolveExitCode: ((code: number) => void) | undefined;
+      const exitCodePromise = new Promise<number>((resolve) => {
+        resolveExitCode = resolve;
       });
 
       container.processManager.spawn = (_command, _args, _options) => {
@@ -440,18 +441,16 @@ describe("QueueRunner", () => {
           pid: 1,
           stdout: (async function* () {
             yield JSON.stringify({ sessionId: "session-1" });
-            // Wait for test to call stop before continuing
-            await stdoutPromise;
           })(),
           stderr: (async function* () {
             // Empty stderr
           })(),
-          exitCode: Promise.resolve(0),
+          exitCode: exitCodePromise,
           kill: (signal) => {
             if (signal === "SIGTERM") {
               stopCalled = true;
-              // Resolve stdout to allow command to complete
-              resolveStdout?.();
+              // Resolve exit code to allow command to complete
+              resolveExitCode?.(0);
             }
           },
         };
@@ -461,8 +460,11 @@ describe("QueueRunner", () => {
       // Start running in background
       const runPromise = runner.run(queue.id);
 
-      // Wait for queue to start
-      await eventEmitter.waitFor("queue_started");
+      // Wait for command to start (process is spawned after this event)
+      await eventEmitter.waitFor("command_started");
+
+      // Small delay to ensure process is registered in runningProcesses
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Stop the queue
       await runner.stop(queue.id);

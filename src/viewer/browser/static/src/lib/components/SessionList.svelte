@@ -20,6 +20,7 @@
    * Get unique projects from sessions
    */
   let projects = $derived.by(() => {
+    if (!sessions || !Array.isArray(sessions)) return [];
     const projectSet = new Set(sessions.map((s) => s.projectPath));
     return Array.from(projectSet).sort();
   });
@@ -28,6 +29,7 @@
    * Filter sessions by search query and project
    */
   let filteredSessions = $derived.by(() => {
+    if (!sessions || !Array.isArray(sessions)) return [];
     return sessions.filter((session) => {
       // Project filter
       if (

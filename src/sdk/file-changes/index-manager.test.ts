@@ -129,8 +129,7 @@ describe("FileChangeIndex", () => {
       await index.buildIndex();
 
       // Verify index file was written
-      const indexPath =
-        "/.local/claude-code-agent/index/file-changes.json";
+      const indexPath = "/.local/claude-code-agent/index/file-changes.json";
       const indexContent = fileSystem.getFile(indexPath);
 
       expect(indexContent).not.toBeUndefined();
@@ -269,9 +268,7 @@ describe("FileChangeIndex", () => {
 
     it("should normalize file paths", async () => {
       // Lookup with different path representation
-      const entries = await index.lookup(
-        "/home/user/project/src/./target.ts",
-      );
+      const entries = await index.lookup("/home/user/project/src/./target.ts");
 
       expect(entries).toHaveLength(1);
     });
@@ -353,18 +350,14 @@ describe("FileChangeIndex", () => {
     });
 
     it("should match files by glob pattern", async () => {
-      const results = await index.lookupPattern(
-        "/home/user/project/src/*.ts",
-      );
+      const results = await index.lookupPattern("/home/user/project/src/*.ts");
 
       expect(results.size).toBe(1);
       expect(results.has("/home/user/project/src/a.ts")).toBe(true);
     });
 
     it("should match files with double-star pattern", async () => {
-      const results = await index.lookupPattern(
-        "/home/user/project/**/*.ts*",
-      );
+      const results = await index.lookupPattern("/home/user/project/**/*.ts*");
 
       expect(results.size).toBe(2); // a.ts and b.tsx
       expect(results.has("/home/user/project/src/a.ts")).toBe(true);
@@ -378,9 +371,7 @@ describe("FileChangeIndex", () => {
     });
 
     it("should match markdown files", async () => {
-      const results = await index.lookupPattern(
-        "/home/user/project/*.md",
-      );
+      const results = await index.lookupPattern("/home/user/project/*.md");
 
       expect(results.size).toBe(1);
       expect(results.has("/home/user/project/README.md")).toBe(true);

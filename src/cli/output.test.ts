@@ -105,6 +105,117 @@ describe("formatTable", () => {
     expect(separator).toBeDefined();
     expect(separator).toMatch(/^-+$/);
   });
+
+  it("formats array values using custom formatter (tags)", () => {
+    const data = [
+      { id: "1", name: "Item 1", tags: ["tag1", "tag2", "tag3"] },
+      { id: "2", name: "Item 2", tags: [] },
+      { id: "3", name: "Item 3", tags: ["single"] },
+    ];
+
+    const result = formatTable(data, [
+      { key: "id", header: "ID" },
+      { key: "name", header: "Name" },
+      {
+        key: "tags",
+        header: "Tags",
+        format: (value) => {
+          if (Array.isArray(value)) {
+            return value.join(", ");
+          }
+          return "";
+        },
+      },
+    ]);
+
+    expect(result).toContain("tag1, tag2, tag3");
+    expect(result).toContain("single");
+    // Empty array should be formatted as empty string
+    const lines = result.split("\n");
+    const item2Line = lines.find((line) => line.includes("Item 2"));
+    expect(item2Line).toBeDefined();
+  });
+
+  it("truncates long values with ellipsis when formatter applied", () => {
+    const longText =
+      "This is a very long text that should be truncated to fit within the column width constraint";
+    const data = [
+      { id: "1", prompt: longText },
+      { id: "2", prompt: "Short text" },
+    ];
+
+    const result = formatTable(data, [
+      { key: "id", header: "ID" },
+      {
+        key: "prompt",
+        header: "Prompt",
+        width: 50,
+        format: (val) => {
+          const str = String(val);
+          return str.length > 47 ? str.slice(0, 44) + "..." : str;
+        },
+      },
+    ]);
+
+    expect(result).toContain("...");
+    expect(result).toContain("Short text");
+    // Verify the long text is truncated
+    const lines = result.split("\n");
+    const longTextLine = lines.find((line) => line.includes("..."));
+    expect(longTextLine).toBeDefined();
+    if (longTextLine !== undefined) {
+      // Should not contain the full original text
+      expect(longTextLine).not.toContain(
+        "truncated to fit within the column width constraint",
+      );
+    }
+  });
+
+  it("handles numeric values with right alignment", () => {
+    const data = [
+      { id: "1", count: 1000, price: 99.99 },
+      { id: "2", count: 5, price: 1.5 },
+      { id: "3", count: 42, price: 150.0 },
+    ];
+
+    const result = formatTable(data, [
+      { key: "id", header: "ID", align: "left" },
+      { key: "count", header: "Count", align: "right" },
+      {
+        key: "price",
+        header: "Price",
+        align: "right",
+        format: (val) => `$${(val as number).toFixed(2)}`,
+      },
+    ]);
+
+    expect(result).toContain("1000");
+    expect(result).toContain("$99.99");
+    expect(result).toContain("$1.50");
+    expect(result).toContain("$150.00");
+
+    // Verify structure
+    const lines = result.split("\n");
+    expect(lines.length).toBeGreaterThan(3); // header + separator + data rows
+  });
+
+  it("handles center alignment", () => {
+    const data = [{ status: "OK" }];
+
+    const result = formatTable(data, [
+      { key: "status", header: "Status", width: 10, align: "center" },
+    ]);
+
+    const lines = result.split("\n");
+    expect(lines.length).toBe(3); // header + separator + 1 data row
+
+    // Verify the header is centered
+    const headerLine = lines[0];
+    expect(headerLine).toBeDefined();
+    if (headerLine !== undefined) {
+      expect(headerLine.trim()).toContain("Status");
+    }
+  });
 });
 
 describe("formatJson", () => {

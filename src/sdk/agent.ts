@@ -13,6 +13,7 @@ import { SessionReader } from "./session-reader";
 import { GroupManager, GroupRunner } from "./group";
 import { QueueManager, QueueRunner } from "./queue";
 import { BookmarkManager } from "./bookmarks";
+import { ActivityManager } from "./activity/manager";
 import { parseMarkdown } from "./markdown-parser";
 
 /**
@@ -82,6 +83,11 @@ export class ClaudeCodeAgent {
   public readonly bookmarks: BookmarkManager;
 
   /**
+   * Activity manager for session activity tracking
+   */
+  public readonly activity: ActivityManager;
+
+  /**
    * Private constructor - use ClaudeCodeAgent.create() instead.
    *
    * @param container - Dependency injection container
@@ -118,6 +124,7 @@ export class ClaudeCodeAgent {
       container,
       container.bookmarkRepository,
     );
+    this.activity = new ActivityManager(container.fileSystem, container.clock);
   }
 
   /**
