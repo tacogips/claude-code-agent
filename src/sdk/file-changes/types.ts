@@ -59,6 +59,9 @@ export interface FileChange {
   /** Unique identifier for this change */
   readonly changeId: string;
 
+  /** File path (absolute or relative) */
+  readonly filePath: string;
+
   /** Tool that made this change */
   readonly tool: ModifyingTool;
 

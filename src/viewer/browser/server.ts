@@ -111,10 +111,12 @@ export class ViewerServer {
     this.app = new Elysia();
 
     // Setup middleware and routes
+    // Note: API routes must be set up before static routes
+    // because static routes include a catch-all fallback for SPA
     this.setupMiddleware();
-    this.setupStaticRoutes();
     this.setupApiRoutes();
     this.setupWebSocket();
+    this.setupStaticRoutes();
   }
 
   /**

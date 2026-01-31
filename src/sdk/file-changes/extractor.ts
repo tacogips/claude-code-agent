@@ -410,6 +410,7 @@ export class FileChangeExtractor {
 
     const change: FileChange = {
       changeId: `${toolUseId}-${filePath}`,
+      filePath,
       tool,
       timestamp,
       oldContent,
@@ -435,17 +436,12 @@ export class FileChangeExtractor {
     change: FileChange,
     projectPath: string,
   ): void {
-    // Extract file path from changeId
-    // changeId format: "toolUseId-filePath" but toolUseId may contain dashes (e.g., "tool-001")
-    // File paths always start with "/" for absolute paths
-    // Find the index of the first "/" in the changeId
-    const slashIndex = change.changeId.indexOf("/");
-    if (slashIndex === -1) {
+    // Use filePath directly from the change object
+    const filePath = change.filePath;
+    if (filePath === "") {
       return;
     }
 
-    // Everything from the first "/" is the file path
-    const filePath = change.changeId.slice(slashIndex);
     const normalizedPath = this.normalizePath(filePath, projectPath);
     const existing = fileMap.get(normalizedPath);
 

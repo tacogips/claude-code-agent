@@ -5,6 +5,7 @@
  */
 
 import { describe, test, expect, beforeEach } from "vitest";
+import * as os from "node:os";
 import { FileBookmarkRepository } from "./bookmark-repository";
 import { MockFileSystem } from "../../test/mocks/filesystem";
 import type { Bookmark } from "../bookmark-repository";
@@ -82,7 +83,7 @@ describe("FileBookmarkRepository", () => {
 
       // Directory should exist
       const exists = await fs.exists(
-        `${process.env["HOME"]}/.local/claude-code-agent/metadata/bookmarks`,
+        `${os.homedir()}/.local/claude-code-agent/metadata/bookmarks`,
       );
       expect(exists).toBe(true);
     });
