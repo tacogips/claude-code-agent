@@ -14,6 +14,12 @@ You (the LLM model) must NOT use emojis in any output, as they may be garbled or
 
 You (the LLM model) must include a paraphrase or summary of the user's instruction/request in your first response of a session, to confirm understanding of what was asked (e.g., "I understand you are asking me to...").
 
+## Plan Mode Policy
+
+You (the LLM model) must NOT use the EnterPlanMode tool without explicit user request. When asked to create design documents or implementation plans, directly create the files in `design-docs/` and `impl-plans/` directories instead of entering plan mode.
+
+Plan mode should only be used when the user explicitly requests it (e.g., "enter plan mode", "use plan mode", "let's plan this").
+
 ## Role and Responsibility
 
 You are a professional system architect. You will continuously perform system design, implementation, and test execution according to user instructions. However, you must always consider the possibility that user instructions may contain unclear parts, incorrect parts, or that the user may be giving instructions based on a misunderstanding of the system. You have an obligation to prioritize questioning the validity of execution and asking necessary questions over executing tasks when appropriate, rather than simply following user instructions as given.
@@ -243,15 +249,15 @@ For detailed design specifications, see `design-docs/`:
 Design Document --> Implementation Plan --> Implementation --> Completion
      |                    |                      |               |
 design-docs/         impl-plans/            ts-coding        Progress
-specs/*.md          active/*.md              agent            Update
+specs/*.md            *.md                   agent            Update
 ```
 
 ### Creating Implementation Plans
 
-Use the `/gen-impl-plan` command or `plan-from-design` agent to create implementation plans:
+Use the `/impl-plan` command or `impl-plan` agent to create implementation plans:
 
 ```bash
-/gen-impl-plan design-docs/spec-session-groups.md
+/impl-plan design-docs/spec-session-groups.md
 ```
 
 **Skill Reference**: Refer to `.claude/skills/impl-plan/SKILL.md` for implementation plan guidelines.
@@ -296,28 +302,41 @@ TASK-001 and TASK-003 can be implemented in parallel via separate subtasks.
 
 ### Executing Implementation
 
-Use the `/do-impl` command or `do-impl` agent to execute implementation plans:
+Two commands are available for executing implementation plans:
+
+#### Auto Mode (Recommended)
+
+Use `/impl-exec-auto` to automatically select and execute all parallelizable tasks:
 
 ```bash
-# Execute all available tasks from a plan
-/do-impl foundation-and-core
+# Automatically select and execute all available tasks
+/impl-exec-auto foundation-and-core
 
-# Execute specific tasks
-/do-impl foundation-and-core TASK-001 TASK-002
-
-# Execute with full path
-/do-impl impl-plans/active/session-groups.md
+# With full path
+/impl-exec-auto impl-plans/session-groups.md
 ```
 
-**Skill Reference**: Refer to `.claude/skills/do-impl/SKILL.md` for implementation execution guidelines.
+This command:
+1. Reads PROGRESS.json to identify executable tasks
+2. Builds a dependency graph from task definitions
+3. Selects ALL tasks that can run in parallel (dependencies satisfied, status "Not Started")
+4. Spawns `ts-coding` agents **concurrently** for all selected tasks
+5. Updates the plan's progress log and completion criteria
+6. Reports newly unblocked tasks for the next run
 
-The `/do-impl` command:
+#### Specific Mode
 
-1. Reads the implementation plan from `impl-plans/active/`
-2. Analyzes task dependencies and parallelization opportunities
-3. Spawns `ts-coding` agents for executable tasks (concurrently when possible)
-4. Updates the plan's progress log and completion criteria
-5. When all tasks complete, moves plan to `impl-plans/completed/`
+Use `/impl-exec-specific` to execute specific tasks by ID:
+
+```bash
+# Execute specific tasks
+/impl-exec-specific foundation-and-core TASK-001 TASK-002
+
+# Execute single task
+/impl-exec-specific foundation-and-core TASK-005
+```
+
+**Skill Reference**: Refer to `.claude/skills/exec-impl-plan-ref/SKILL.md` for implementation execution guidelines.
 
 **Concurrent Execution**: Tasks marked as "Parallelizable: Yes" with no mutual dependencies are executed concurrently using Claude subtasks for efficiency.
 
@@ -338,13 +357,14 @@ Implementation progress is tracked within implementation plans in `impl-plans/`:
 ```
 impl-plans/
 ├── README.md                    # Index of all implementation plans
-├── active/                      # Currently active implementation plans
-│   └── <feature>.md             # One file per feature being implemented
-├── completed/                   # Completed implementation plans (archive)
-│   └── <feature>.md             # Completed plans for reference
+├── PROGRESS.json                # Task status index (single source of truth)
+├── <feature>.md                 # Implementation plan files
+├── <feature>-types.md           # Split plans use consistent naming
 └── templates/                   # Plan templates
     └── plan-template.md         # Standard plan template
 ```
+
+**Note**: Plan status is tracked in PROGRESS.json, not by file location. All plans remain in `impl-plans/` regardless of completion status.
 
 ### Progress Tracking in Plans
 
