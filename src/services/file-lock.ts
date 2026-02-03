@@ -231,9 +231,39 @@ export class FileLockServiceImpl implements FileLockService {
 
       return true;
     } catch (error) {
-      // Error during lock file creation
+      // Re-throw permission and path errors - these should fail fast
+      if (this.isNonRetryableError(error)) {
+        throw error;
+      }
+      // Other errors (race conditions, etc.) - return false to allow retry
       return false;
     }
+  }
+
+  /**
+   * Check if an error is non-retryable (should fail fast).
+   *
+   * Permission errors, missing parent directories, and read-only filesystems
+   * should fail immediately without retry.
+   *
+   * @param error - The error to check
+   * @returns true if error should not be retried
+   */
+  private isNonRetryableError(error: unknown): boolean {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof (error as { code: unknown }).code === "string"
+    ) {
+      const code = (error as { code: string }).code;
+      // EACCES: Permission denied
+      // ENOENT: Parent directory doesn't exist
+      // EROFS: Read-only file system
+      // EPERM: Operation not permitted
+      return ["EACCES", "ENOENT", "EROFS", "EPERM"].includes(code);
+    }
+    return false;
   }
 
   /**

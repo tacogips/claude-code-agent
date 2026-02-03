@@ -100,6 +100,8 @@ export class FileCredentialBackend implements CredentialBackend {
         // Ensure directory exists with restrictive permissions (owner only)
         const dir = dirname(this.path);
         await mkdir(dir, { recursive: true, mode: 0o700 });
+        // Explicitly set permissions as mkdir mode is affected by umask
+        await chmod(dir, 0o700);
 
         // Use atomic writer to write credentials
         await this.atomicWriter.writeJson(this.path, credentials);
@@ -133,6 +135,20 @@ export class FileCredentialBackend implements CredentialBackend {
 
   async delete(): Promise<Result<void, CredentialError>> {
     try {
+      // Check if file exists before acquiring lock (idempotent operation)
+      // This avoids lock acquisition failures when directory doesn't exist
+      try {
+        await access(this.path, constants.F_OK);
+      } catch (accessError) {
+        // Only treat ENOENT (file not found) as success
+        // Permission errors should propagate as failures
+        if (isNodeError(accessError) && accessError.code === "ENOENT") {
+          return ok(undefined);
+        }
+        // Re-throw other errors (EACCES, etc.) to be handled below
+        throw accessError;
+      }
+
       await this.lockService.withLock(this.path, async () => {
         await unlink(this.path);
       });
