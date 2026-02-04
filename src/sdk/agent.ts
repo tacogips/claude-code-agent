@@ -9,12 +9,22 @@
 
 import type { Container } from "../container";
 import { EventEmitter } from "./events";
+import { EventEmitter as NodeEventEmitter } from "events";
 import { SessionReader } from "./session-reader";
 import { GroupManager, GroupRunner } from "./group";
 import { QueueManager, QueueRunner } from "./queue";
 import { BookmarkManager } from "./bookmarks";
 import { ActivityManager } from "./activity/manager";
 import { parseMarkdown } from "./markdown-parser";
+import type { Transport } from "./transport/transport";
+import { SubprocessTransport } from "./transport/subprocess";
+import type { TransportOptions } from "./transport/subprocess";
+import { ControlProtocolHandler } from "./control-protocol";
+import { SessionStateManager } from "./session-state";
+import { ToolRegistry } from "./tool-registry";
+import type { McpServerConfig } from "./types/mcp";
+import { isSdkServer } from "./types/mcp";
+import type { SessionStateInfo, SessionState } from "./types/state";
 
 /**
  * Main SDK agent providing unified access to all claude-code-agent functionality.
@@ -152,5 +162,422 @@ export class ClaudeCodeAgent {
    */
   parseMarkdown(content: string) {
     return parseMarkdown(content);
+  }
+}
+
+/**
+ * Permission mode for tool execution.
+ */
+export type PermissionMode =
+  | "default"
+  | "acceptEdits"
+  | "plan"
+  | "bypassPermissions";
+
+/**
+ * Options for creating a ClaudeCodeToolAgent.
+ */
+export interface ToolAgentOptions {
+  /** Working directory for Claude Code */
+  cwd?: string;
+  /** MCP servers (SDK and external) */
+  mcpServers?: Record<string, McpServerConfig>;
+  /** Tools to allow (pre-approved) */
+  allowedTools?: string[];
+  /** Tools to disallow */
+  disallowedTools?: string[];
+  /** System prompt customization */
+  systemPrompt?: string | { preset: "claude_code"; append?: string };
+  /** Permission mode */
+  permissionMode?: PermissionMode;
+  /** Model selection */
+  model?: string;
+  /** Budget limit */
+  maxBudgetUsd?: number;
+  /** Maximum turns */
+  maxTurns?: number;
+  /** Environment variables for Claude Code subprocess */
+  env?: Record<string, string>;
+  /** Custom CLI path (default: bundled or system claude) */
+  cliPath?: string;
+  /** Default timeout for operations in ms */
+  defaultTimeout?: number;
+}
+
+/**
+ * Configuration for starting a session.
+ */
+export interface SessionConfig {
+  /** Initial prompt */
+  prompt: string;
+  /** Project path (defaults to cwd) */
+  projectPath?: string;
+}
+
+/**
+ * Result of a completed session.
+ */
+export interface SessionResult {
+  /** Whether session completed successfully */
+  success: boolean;
+  /** Error if session failed */
+  error?: Error;
+  /** Session statistics */
+  stats: {
+    startedAt: string;
+    completedAt: string;
+    toolCallCount: number;
+    messageCount: number;
+  };
+}
+
+/**
+ * Running session instance.
+ * Provides methods to interact with and control the session.
+ */
+export class ToolAgentSession extends NodeEventEmitter {
+  readonly sessionId: string;
+  private readonly stateManager: SessionStateManager;
+  private readonly protocol: ControlProtocolHandler;
+  private readonly transport: Transport;
+
+  constructor(
+    sessionId: string,
+    _agent: ClaudeCodeToolAgent,
+    transport: Transport,
+    protocol: ControlProtocolHandler,
+    stateManager: SessionStateManager,
+  ) {
+    super();
+    this.sessionId = sessionId;
+    this.transport = transport;
+    this.protocol = protocol;
+    this.stateManager = stateManager;
+
+    // Forward protocol events to session
+    this.protocol.on("message", (msg: unknown) => this.emit("message", msg));
+    this.protocol.on("toolCall", (call: unknown) =>
+      this.emit("toolCall", call),
+    );
+    this.protocol.on("toolResult", (result: unknown) =>
+      this.emit("toolResult", result),
+    );
+    this.protocol.on("error", (err: unknown) => this.emit("error", err));
+
+    // Forward state manager events
+    this.stateManager.on("stateChange", (change: unknown) =>
+      this.emit("stateChange", change),
+    );
+  }
+
+  /**
+   * Async iterator that yields messages from the session.
+   */
+  async *messages(): AsyncIterable<object> {
+    for await (const msg of this.transport.readMessages()) {
+      await this.protocol.handleIncomingMessage(msg);
+      yield msg;
+
+      // If session reached terminal state, stop iteration
+      if (this.stateManager.isTerminal()) {
+        break;
+      }
+    }
+  }
+
+  /**
+   * Pause the session.
+   */
+  async pause(): Promise<void> {
+    this.stateManager.transition("paused");
+  }
+
+  /**
+   * Resume a paused session.
+   */
+  async resume(): Promise<void> {
+    this.stateManager.transition("running");
+  }
+
+  /**
+   * Cancel the session.
+   */
+  async cancel(): Promise<void> {
+    await this.protocol.sendRequest({ subtype: "interrupt" });
+    this.stateManager.transition("cancelled");
+    await this.transport.close();
+  }
+
+  /**
+   * Send interrupt signal to the session.
+   */
+  async interrupt(): Promise<void> {
+    await this.protocol.sendRequest({ subtype: "interrupt" });
+  }
+
+  /**
+   * Get current session state.
+   */
+  getState(): SessionStateInfo {
+    return this.stateManager.getState();
+  }
+
+  /**
+   * Wait for session to complete.
+   */
+  async waitForCompletion(): Promise<SessionResult> {
+    const terminalStates: SessionState[] = ["completed", "failed", "cancelled"];
+    const finalState = await this.stateManager.waitForState(terminalStates);
+
+    const success = finalState.state === "completed";
+    const stats = {
+      startedAt: finalState.stats.startedAt ?? new Date().toISOString(),
+      completedAt: finalState.stats.completedAt ?? new Date().toISOString(),
+      toolCallCount: finalState.stats.toolCallCount,
+      messageCount: finalState.stats.messageCount,
+    };
+
+    this.emit("complete", { success, stats });
+
+    return { success, stats };
+  }
+}
+
+/**
+ * High-level API for running Claude sessions with SDK tools.
+ *
+ * This agent spawns Claude Code CLI as a subprocess and communicates
+ * via control protocol to handle SDK-registered tool calls.
+ *
+ * @example
+ * ```typescript
+ * import { ClaudeCodeToolAgent, tool, createSdkMcpServer } from 'claude-code-agent/sdk';
+ *
+ * // Define a tool
+ * const addTool = tool({
+ *   name: 'add',
+ *   description: 'Add two numbers',
+ *   inputSchema: { a: 'number', b: 'number' },
+ *   handler: async (args) => ({
+ *     content: [{ type: 'text', text: `Result: ${args.a + args.b}` }]
+ *   })
+ * });
+ *
+ * // Create MCP server
+ * const calculator = createSdkMcpServer({
+ *   name: 'calculator',
+ *   tools: [addTool]
+ * });
+ *
+ * // Create agent with SDK tools
+ * const agent = new ClaudeCodeToolAgent({
+ *   mcpServers: { calc: calculator },
+ *   allowedTools: ['mcp__calc__add']
+ * });
+ *
+ * // Run session
+ * const session = await agent.startSession({
+ *   prompt: 'Calculate 15 + 27 using the calculator'
+ * });
+ *
+ * for await (const message of session.messages()) {
+ *   console.log(message);
+ * }
+ * ```
+ */
+export class ClaudeCodeToolAgent {
+  private readonly options: ToolAgentOptions;
+  private readonly toolRegistries: Map<string, ToolRegistry> = new Map();
+  private activeSessions: Map<string, ToolAgentSession> = new Map();
+  private sessionIdCounter: number = 0;
+
+  constructor(options?: ToolAgentOptions) {
+    this.options = options ?? {};
+    this.createToolRegistries();
+  }
+
+  /**
+   * Start a new session.
+   *
+   * Spawns Claude Code CLI, initializes control protocol,
+   * and returns a session instance for interaction.
+   */
+  async startSession(config: SessionConfig): Promise<ToolAgentSession> {
+    const sessionId = this.generateSessionId();
+
+    // Create transport
+    const transportOptions = this.buildTransportOptions();
+    const transport = new SubprocessTransport(transportOptions);
+    await transport.connect();
+
+    // Create protocol handler with proper optional handling
+    const protocolOptions =
+      this.options.defaultTimeout !== undefined
+        ? { defaultTimeout: this.options.defaultTimeout }
+        : undefined;
+    const protocol = new ControlProtocolHandler(transport, protocolOptions);
+
+    // Register tool registries with protocol
+    for (const [serverName, registry] of this.toolRegistries.entries()) {
+      protocol.registerToolRegistry(serverName, registry);
+    }
+
+    // Initialize control protocol
+    await protocol.initialize();
+
+    // Create state manager
+    const stateManager = new SessionStateManager(sessionId);
+
+    // Create session instance
+    const session = new ToolAgentSession(
+      sessionId,
+      this,
+      transport,
+      protocol,
+      stateManager,
+    );
+
+    // Track active session
+    this.activeSessions.set(sessionId, session);
+
+    // Clean up on session complete
+    session.on("complete", () => {
+      this.activeSessions.delete(sessionId);
+      protocol.cleanup();
+      void transport.close();
+    });
+
+    // Mark session as started
+    stateManager.transition("starting");
+    stateManager.markStarted();
+
+    // Start message processing in background
+    void protocol.processMessages();
+
+    // Send initial prompt
+    const userMessage = {
+      type: "user",
+      content: config.prompt,
+    };
+    await transport.write(JSON.stringify(userMessage));
+    stateManager.incrementMessageCount();
+
+    return session;
+  }
+
+  /**
+   * Close all sessions and clean up.
+   */
+  async close(): Promise<void> {
+    // Close all active sessions
+    const closeTasks = Array.from(this.activeSessions.values()).map(
+      async (session) => {
+        await session.cancel();
+      },
+    );
+    await Promise.all(closeTasks);
+
+    this.activeSessions.clear();
+  }
+
+  /**
+   * Get a list of active sessions.
+   */
+  getActiveSessions(): ToolAgentSession[] {
+    return Array.from(this.activeSessions.values());
+  }
+
+  // Private methods
+
+  /**
+   * Create tool registries from mcpServers configuration.
+   */
+  private createToolRegistries(): void {
+    if (this.options.mcpServers === undefined) {
+      return;
+    }
+
+    for (const [serverName, config] of Object.entries(
+      this.options.mcpServers,
+    )) {
+      if (isSdkServer(config)) {
+        const registry = new ToolRegistry(serverName);
+        for (const tool of config.tools) {
+          registry.register(tool);
+        }
+        this.toolRegistries.set(serverName, registry);
+      }
+    }
+  }
+
+  /**
+   * Build MCP configuration for CLI.
+   */
+  private buildMcpConfig(): object {
+    if (this.options.mcpServers === undefined) {
+      return {};
+    }
+
+    const mcpServers: Record<string, object> = {};
+
+    for (const [name, config] of Object.entries(this.options.mcpServers)) {
+      if (isSdkServer(config)) {
+        // SDK servers are marked with type: 'sdk'
+        // The instance is NOT passed to CLI (can't serialize)
+        mcpServers[name] = {
+          type: "sdk",
+          name: config.name,
+        };
+      } else {
+        // External servers passed as-is
+        mcpServers[name] = config;
+      }
+    }
+
+    return { mcpServers };
+  }
+
+  /**
+   * Build transport options from agent options.
+   * Only include defined properties to satisfy exactOptionalPropertyTypes.
+   */
+  private buildTransportOptions(): TransportOptions {
+    const systemPrompt =
+      typeof this.options.systemPrompt === "string"
+        ? this.options.systemPrompt
+        : this.options.systemPrompt?.preset === "claude_code"
+          ? this.options.systemPrompt.append
+          : undefined;
+
+    const options: TransportOptions = {
+      mcpConfig: this.buildMcpConfig(),
+    };
+
+    if (this.options.cliPath !== undefined)
+      options.cliPath = this.options.cliPath;
+    if (this.options.cwd !== undefined) options.cwd = this.options.cwd;
+    if (this.options.env !== undefined) options.env = this.options.env;
+    if (this.options.permissionMode !== undefined)
+      options.permissionMode = this.options.permissionMode;
+    if (this.options.model !== undefined) options.model = this.options.model;
+    if (this.options.maxBudgetUsd !== undefined)
+      options.maxBudgetUsd = this.options.maxBudgetUsd;
+    if (this.options.maxTurns !== undefined)
+      options.maxTurns = this.options.maxTurns;
+    if (systemPrompt !== undefined) options.systemPrompt = systemPrompt;
+    if (this.options.allowedTools !== undefined)
+      options.allowedTools = this.options.allowedTools;
+    if (this.options.disallowedTools !== undefined)
+      options.disallowedTools = this.options.disallowedTools;
+
+    return options;
+  }
+
+  /**
+   * Generate unique session ID.
+   */
+  private generateSessionId(): string {
+    this.sessionIdCounter += 1;
+    return `sdk-session-${this.sessionIdCounter}`;
   }
 }

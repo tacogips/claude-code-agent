@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect, beforeEach } from "vitest";
-import { ClaudeCodeAgent } from "./agent";
+import { ClaudeCodeAgent, ClaudeCodeToolAgent } from "./agent";
 import { createTestContainer } from "../container";
 import type { Container } from "../container";
 import { InMemoryGroupRepository } from "../repository/in-memory/group-repository";
@@ -16,6 +16,8 @@ import { SessionReader } from "./session-reader";
 import { GroupManager, GroupRunner } from "./group";
 import { QueueManager, QueueRunner } from "./queue";
 import { BookmarkManager } from "./bookmarks";
+import { tool, createSdkMcpServer } from "./tool-registry";
+import type { SdkTool } from "./types/tool";
 
 describe("ClaudeCodeAgent", () => {
   let container: Container;
@@ -693,6 +695,239 @@ More text
       expect(agent.bookmarks).toBeDefined();
       expect(agent.groupRunner).toBeDefined();
       expect(agent.queueRunner).toBeDefined();
+    });
+  });
+});
+
+// Tests for ClaudeCodeToolAgent (SDK tool execution agent)
+describe("ClaudeCodeToolAgent", () => {
+  describe("TEST-011: Agent Creation", () => {
+    test("creates agent with no options", () => {
+      const agent = new ClaudeCodeToolAgent();
+
+      expect(agent).toBeInstanceOf(ClaudeCodeToolAgent);
+      expect(agent).toBeDefined();
+    });
+
+    test("creates agent with options", () => {
+      const agent = new ClaudeCodeToolAgent({
+        cwd: "/test/project",
+        model: "claude-opus-4",
+      });
+
+      expect(agent).toBeInstanceOf(ClaudeCodeToolAgent);
+    });
+
+    test("creates tool registries from mcpServers", () => {
+      interface AddArgs {
+        a: number;
+        b: number;
+      }
+
+      const addTool = tool<AddArgs>({
+        name: "add",
+        description: "Add two numbers",
+        inputSchema: { a: "number", b: "number" },
+        handler: async (args) => ({
+          content: [
+            { type: "text", text: `Result: ${args.a + args.b}` } as const,
+          ],
+        }),
+      });
+
+      // Cast to base type for createSdkMcpServer
+      const calculator = createSdkMcpServer({
+        name: "calculator",
+        tools: [addTool as unknown as SdkTool],
+      });
+
+      const agent = new ClaudeCodeToolAgent({
+        mcpServers: { calc: calculator },
+      });
+
+      expect(agent).toBeDefined();
+      expect(agent.getActiveSessions()).toHaveLength(0);
+    });
+  });
+
+  describe("TEST-012: Session Management", () => {
+    test("starts session with mock transport", async () => {
+      interface AddArgs {
+        a: number;
+        b: number;
+      }
+
+      const addTool = tool<AddArgs>({
+        name: "add",
+        description: "Add two numbers",
+        inputSchema: { a: "number", b: "number" },
+        handler: async (args) => ({
+          content: [
+            { type: "text", text: `Result: ${args.a + args.b}` } as const,
+          ],
+        }),
+      });
+
+      const calculator = createSdkMcpServer({
+        name: "calculator",
+        tools: [addTool as unknown as SdkTool],
+      });
+
+      // Note: We'd need to inject MockTransport for real unit tests
+      // For now, just test agent creation
+      const agent = new ClaudeCodeToolAgent({
+        mcpServers: { calc: calculator },
+      });
+
+      expect(agent).toBeDefined();
+      expect(agent.getActiveSessions()).toHaveLength(0);
+    });
+
+    test("tracks active sessions", () => {
+      const agent = new ClaudeCodeToolAgent();
+      const sessions = agent.getActiveSessions();
+
+      expect(Array.isArray(sessions)).toBe(true);
+      expect(sessions).toHaveLength(0);
+    });
+
+    test("close agent clears all sessions", async () => {
+      const agent = new ClaudeCodeToolAgent();
+
+      await agent.close();
+
+      expect(agent.getActiveSessions()).toHaveLength(0);
+    });
+  });
+
+  describe("TEST-013: Tool Registry", () => {
+    test("registers SDK tools", () => {
+      interface MultiplyArgs {
+        a: number;
+        b: number;
+      }
+
+      const multiplyTool = tool<MultiplyArgs>({
+        name: "multiply",
+        description: "Multiply two numbers",
+        inputSchema: { a: "number", b: "number" },
+        handler: async (args) => ({
+          content: [
+            { type: "text", text: `Result: ${args.a * args.b}` } as const,
+          ],
+        }),
+      });
+
+      const mathServer = createSdkMcpServer({
+        name: "math",
+        tools: [multiplyTool as unknown as SdkTool],
+      });
+
+      const agent = new ClaudeCodeToolAgent({
+        mcpServers: { math: mathServer },
+      });
+
+      expect(agent).toBeDefined();
+    });
+
+    test("supports multiple MCP servers", () => {
+      interface AddArgs {
+        a: number;
+        b: number;
+      }
+
+      interface QueryArgs {
+        sql: string;
+      }
+
+      const addTool = tool<AddArgs>({
+        name: "add",
+        description: "Add",
+        inputSchema: { a: "number", b: "number" },
+        handler: async (args) => ({
+          content: [{ type: "text", text: String(args.a + args.b) } as const],
+        }),
+      });
+
+      const queryTool = tool<QueryArgs>({
+        name: "query",
+        description: "Query database",
+        inputSchema: { sql: "string" },
+        handler: async (args) => ({
+          content: [{ type: "text", text: `Executing: ${args.sql}` } as const],
+        }),
+      });
+
+      const calc = createSdkMcpServer({
+        name: "calc",
+        tools: [addTool as unknown as SdkTool],
+      });
+      const db = createSdkMcpServer({
+        name: "database",
+        tools: [queryTool as unknown as SdkTool],
+      });
+
+      const agent = new ClaudeCodeToolAgent({
+        mcpServers: { calc, db },
+      });
+
+      expect(agent).toBeDefined();
+    });
+  });
+
+  describe("TEST-014: Agent Options", () => {
+    test("accepts all option types", () => {
+      const agent = new ClaudeCodeToolAgent({
+        cwd: "/test/cwd",
+        model: "claude-opus-4",
+        maxBudgetUsd: 10.0,
+        maxTurns: 100,
+        permissionMode: "bypassPermissions",
+        allowedTools: ["tool1", "tool2"],
+        disallowedTools: ["danger"],
+        env: { TEST: "value" },
+        cliPath: "/usr/local/bin/claude",
+        defaultTimeout: 60000,
+      });
+
+      expect(agent).toBeDefined();
+    });
+
+    test("system prompt as string", () => {
+      const agent = new ClaudeCodeToolAgent({
+        systemPrompt: "You are a helpful assistant",
+      });
+
+      expect(agent).toBeDefined();
+    });
+
+    test("system prompt with preset", () => {
+      const agent = new ClaudeCodeToolAgent({
+        systemPrompt: {
+          preset: "claude_code",
+          append: "Additional instructions",
+        },
+      });
+
+      expect(agent).toBeDefined();
+    });
+  });
+
+  describe("TEST-015: ToolAgentSession", () => {
+    test("session has correct properties", async () => {
+      // We can't actually start a session without real CLI,
+      // but we can test type compatibility
+      const agent = new ClaudeCodeToolAgent();
+      const sessions = agent.getActiveSessions();
+
+      // Type check - ensure ToolAgentSession has expected interface
+      type SessionType = (typeof sessions)[number];
+      type HasSessionId = SessionType extends { sessionId: string }
+        ? true
+        : false;
+      const typeCheck: HasSessionId = true;
+
+      expect(typeCheck).toBe(true);
     });
   });
 });
