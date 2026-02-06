@@ -21,9 +21,26 @@ Reference documents should be organized by topic:
 references/
 ├── README.md              # This index file
 ├── claude-code/           # Claude Code related references
+├── claude-mem/            # Claude-mem persistent memory system
 ├── typescript/            # TypeScript patterns and practices
 └── <topic>/               # Other topic-specific references
 ```
+
+### Claude-mem Persistent Memory System
+
+| Document | Description |
+|----------|-------------|
+| [claude-mem/README.md](claude-mem/README.md) | Comprehensive analysis of claude-mem's memory specification, architecture, and implementation patterns for session persistence |
+
+**Key Topics Covered**:
+- Lifecycle hooks system (SessionStart, UserPromptSubmit, PostToolUse, Stop, SessionEnd)
+- Worker service architecture (HTTP API on port 37777)
+- Database schema (SQLite with FTS5 full-text search)
+- Session ID architecture (dual ID pattern: contentSessionId vs memorySessionId)
+- Observation taxonomy (6 types, 7 concepts)
+- Context generation and progressive disclosure
+- Search system (3-layer workflow pattern)
+- Privacy controls and tag stripping
 
 ## Adding References
 

@@ -1,12 +1,13 @@
 {
-  "lastUpdated": "2026-01-31T12:00:00Z",
+  "lastUpdated": "2026-02-04T12:00:00Z",
   "phases": {
     "1": { "status": "COMPLETED" },
     "2": { "status": "COMPLETED" },
     "3": { "status": "COMPLETED" },
     "4": { "status": "COMPLETED" },
     "5": { "status": "COMPLETED" },
-    "6": { "status": "COMPLETED", "description": "Infrastructure - Exclusive Control & Activity Status" }
+    "6": { "status": "COMPLETED", "description": "Infrastructure - Exclusive Control & Activity Status" },
+    "7": { "status": "COMPLETED", "description": "SDK - Programmatic Tool Registration" }
   },
   "plans": {
     "session-reader-fix": {
@@ -299,6 +300,27 @@
         "TASK-012": { "status": "Completed", "parallelizable": false, "deps": ["TASK-005"], "description": "REST API endpoints" },
         "TASK-013": { "status": "Completed", "parallelizable": false, "deps": ["TASK-005"], "description": "Unit tests" },
         "TASK-014": { "status": "Completed", "parallelizable": false, "deps": ["TASK-011", "TASK-012", "TASK-013"], "description": "Integration tests" }
+      }
+    },
+    "sdk-tools": {
+      "phase": 7,
+      "status": "Completed",
+      "tasks": {
+        "TASK-001": { "status": "Completed", "parallelizable": true, "deps": [], "description": "SDK Tool Types (src/sdk/types/tool.ts)" },
+        "TASK-002": { "status": "Completed", "parallelizable": true, "deps": [], "description": "MCP Config Types (src/sdk/types/mcp.ts)" },
+        "TASK-003": { "status": "Completed", "parallelizable": true, "deps": [], "description": "Session State Types (src/sdk/types/state.ts)" },
+        "TASK-004": { "status": "Completed", "parallelizable": true, "deps": [], "description": "Control Protocol Types (src/sdk/types/protocol.ts)" },
+        "TASK-005": { "status": "Completed", "parallelizable": true, "deps": [], "description": "Mock Transport Fixture" },
+        "TASK-006": { "status": "Completed", "parallelizable": true, "deps": [], "description": "Mock Session Fixture with scenarios" },
+        "TASK-007": { "status": "Completed", "parallelizable": false, "deps": ["TASK-001", "TASK-002"], "description": "Tool Registry (tool(), createSdkMcpServer())" },
+        "TASK-008": { "status": "Completed", "parallelizable": false, "deps": ["TASK-004"], "description": "Subprocess Transport" },
+        "TASK-009": { "status": "Completed", "parallelizable": false, "deps": ["TASK-004", "TASK-007", "TASK-008"], "description": "Control Protocol Handler" },
+        "TASK-010": { "status": "Completed", "parallelizable": false, "deps": ["TASK-003"], "description": "Session State Manager" },
+        "TASK-011": { "status": "Completed", "parallelizable": false, "deps": ["TASK-007", "TASK-008", "TASK-009", "TASK-010"], "description": "ClaudeCodeAgent class" },
+        "TASK-012": { "status": "Completed", "parallelizable": false, "deps": ["TASK-011"], "description": "ClaudeCodeClient class" },
+        "TASK-013": { "status": "Completed", "parallelizable": false, "deps": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-007", "TASK-011", "TASK-012"], "description": "SDK Index and Exports" },
+        "TASK-014": { "status": "Completed", "parallelizable": false, "deps": ["TASK-006", "TASK-011", "TASK-012", "TASK-013"], "description": "Tool Call Integration Tests" },
+        "TASK-015": { "status": "Completed", "parallelizable": true, "deps": [], "description": "Error Types (ClaudeCodeAgentError)" }
       }
     }
   }

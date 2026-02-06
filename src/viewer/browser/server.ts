@@ -11,6 +11,7 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { staticPlugin } from "@elysiajs/static";
 import { resolve, dirname } from "path";
+import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import type { ClaudeCodeAgent } from "../../sdk";
 import { createTaggedLogger } from "../../logger";
@@ -172,18 +173,30 @@ export class ViewerServer {
    * @private
    */
   private setupStaticRoutes(): void {
-    // Serve static files from the build directory
-    this.app.use(
-      staticPlugin({
-        assets: BUILD_DIR,
-        prefix: "/",
-        alwaysStatic: true,
-      }),
-    );
+    const indexPath = resolve(BUILD_DIR, "index.html");
+    const buildExists = existsSync(indexPath);
+
+    // Serve static files from the build directory (only if it exists)
+    if (buildExists) {
+      this.app.use(
+        staticPlugin({
+          assets: BUILD_DIR,
+          prefix: "/",
+          alwaysStatic: true,
+        }),
+      );
+    }
 
     // SPA fallback: serve index.html for any unmatched routes (client-side routing)
     this.app.get("/*", () => {
-      return Bun.file(resolve(BUILD_DIR, "index.html"));
+      if (buildExists) {
+        return Bun.file(indexPath);
+      }
+      // When no frontend build exists, return a placeholder HTML page
+      return new Response(
+        "<html><body><h1>Viewer</h1><p>Frontend not built. Run the build in src/viewer/browser/static/ first.</p></body></html>",
+        { headers: { "content-type": "text/html" } },
+      );
     });
   }
 

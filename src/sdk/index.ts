@@ -252,4 +252,76 @@ export { ActivityManager } from "./activity/manager";
 export { QueueManager, QueueRunner } from "./queue";
 
 // Main SDK Agent
-export { ClaudeCodeAgent } from "./agent";
+export {
+  ClaudeCodeAgent,
+  ClaudeCodeToolAgent,
+  ToolAgentSession,
+  type ToolAgentOptions,
+  type SessionConfig as AgentSessionConfig,
+  type SessionResult,
+  type PermissionMode,
+} from "./agent";
+
+// SDK Client
+export { ClaudeCodeClient, type ClientOptions, type Message } from "./client";
+
+// Tool Registry
+export {
+  tool,
+  createSdkMcpServer,
+  toJsonSchema,
+  ToolRegistry,
+  type ToolConfig,
+  type SdkMcpServerOptions,
+} from "./tool-registry";
+
+// SDK Types
+export type {
+  SdkTool,
+  ToolInputSchema,
+  ToolContext,
+  ToolResult,
+  ToolResultContent,
+  JsonSchema,
+  SimpleInputSchema,
+  McpServerConfig,
+  McpStdioServerConfig,
+  McpHttpServerConfig,
+  McpSdkServerConfig,
+  SessionState,
+  SessionStateInfo,
+  PendingToolCall,
+  PendingPermission,
+  SessionStats,
+} from "./types";
+
+export {
+  isJsonSchema,
+  isSimpleSchema,
+  isToolResultContent,
+  isToolResult,
+  isSdkServer,
+  isStdioServer,
+  isHttpServer,
+  isValidMcpServerConfig,
+  isTerminalState,
+  isValidSessionState,
+} from "./types";
+
+// SDK Errors
+export {
+  ClaudeCodeAgentError,
+  CLINotFoundError,
+  CLIConnectionError,
+  ToolExecutionError,
+  ControlProtocolError,
+  TimeoutError,
+  InvalidStateError,
+  isClaudeCodeAgentError,
+  isCLINotFoundError,
+  isCLIConnectionError,
+  isToolExecutionError,
+  isControlProtocolError,
+  isTimeoutError,
+  isInvalidStateError,
+} from "./errors";
