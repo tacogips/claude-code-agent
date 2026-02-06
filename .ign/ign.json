@@ -4,9 +4,9 @@
     "path": "bun-ts-v1",
     "ref": "main"
   },
-  "hash": "412e42de21c1d95f865180eb85e594bb4fbe800844a52078ad68971b9d92b822",
+  "hash": "1bd124908d6e7541eeed809d9b5a40a28a3290e0d73808697318137cb02bcf2f",
   "metadata": {
-    "generated_at": "2026-01-04T00:08:34.715221788+09:00",
+    "generated_at": "2026-02-07T08:39:06.500046571+09:00",
     "generated_by": "ign update",
     "template_name": "bun-ts-v1",
     "template_version": "1.0.0",
