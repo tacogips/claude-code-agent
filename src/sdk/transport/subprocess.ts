@@ -77,6 +77,16 @@ export interface TransportOptions {
    * These tools cannot be executed.
    */
   disallowedTools?: string[];
+
+  /**
+   * Session ID to resume. When set, CLI is invoked with --resume flag.
+   */
+  resumeSessionId?: string;
+
+  /**
+   * Initial prompt to send. When set with resumeSessionId, used as --prompt.
+   */
+  prompt?: string;
 }
 
 /**
@@ -439,6 +449,14 @@ export class SubprocessTransport implements Transport {
       this.options.disallowedTools.length > 0
     ) {
       args.push("--disallowed-tools", this.options.disallowedTools.join(","));
+    }
+
+    if (this.options.resumeSessionId !== undefined) {
+      args.push("--resume", this.options.resumeSessionId);
+    }
+
+    if (this.options.prompt !== undefined) {
+      args.push("--prompt", this.options.prompt);
     }
 
     return args;

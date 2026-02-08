@@ -16,6 +16,7 @@ import { FileNotFoundError, type AgentError } from "../errors";
 import { parseJsonl } from "./jsonl-parser";
 import { toSessionMetadata } from "../types/session";
 import { getDefaultConfig } from "../types/config";
+import { JsonlStreamParser, type TranscriptEvent } from "../polling/parser";
 
 /**
  * Pattern for UUID-named session files.
@@ -638,6 +639,81 @@ export class SessionReader {
   async getMessages(sessionId: string): Promise<readonly Message[]> {
     const session = await this.getSession(sessionId);
     return session?.messages ?? [];
+  }
+
+  /**
+   * Read raw transcript events from a session's JSONL file.
+   *
+   * Returns parsed TranscriptEvent objects with pagination support.
+   * Uses JsonlStreamParser for consistent parsing with the polling system.
+   *
+   * @param sessionId - Unique session identifier
+   * @param options - Pagination options (offset and limit)
+   * @returns Result containing events array and total count, or an error
+   */
+  async readTranscript(
+    sessionId: string,
+    options?: { offset?: number; limit?: number },
+  ): Promise<
+    Result<{ events: readonly TranscriptEvent[]; total: number }, AgentError>
+  > {
+    // Find session file path
+    const filePath = await this.findSessionFilePath(sessionId);
+    if (filePath === null) {
+      return err(new FileNotFoundError(`Session not found: ${sessionId}`));
+    }
+
+    // Read file content
+    let content: string;
+    try {
+      content = await this.fileSystem.readFile(filePath);
+    } catch (error) {
+      if (error instanceof FileNotFoundError) {
+        return err(error);
+      }
+      return err(new FileNotFoundError(filePath));
+    }
+
+    // Parse all events using JsonlStreamParser
+    const parser = new JsonlStreamParser();
+    const allEvents = parser.feed(content);
+    const flushed = parser.flush();
+    const events = [...allEvents, ...flushed];
+
+    const total = events.length;
+
+    // Apply pagination
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit ?? total;
+    const paginatedEvents = events.slice(offset, offset + limit);
+
+    return ok({ events: paginatedEvents, total });
+  }
+
+  /**
+   * Find the file path for a session by its ID.
+   *
+   * Searches all session files in the Claude projects directory and
+   * returns the path of the file matching the given session ID.
+   * The session ID is derived from the filename (UUID.jsonl -> UUID).
+   *
+   * @param sessionId - Unique session identifier
+   * @returns File path if found, null otherwise
+   * @private
+   */
+  private async findSessionFilePath(sessionId: string): Promise<string | null> {
+    const claudeDir = this.getDefaultClaudeProjectsDir();
+    const sessionFiles = await this.findSessionFiles(claudeDir);
+
+    // The session ID is derived from filename: uuid.jsonl -> uuid
+    for (const filePath of sessionFiles) {
+      const derivedId = this.deriveSessionIdFromPath(filePath);
+      if (derivedId === sessionId) {
+        return filePath;
+      }
+    }
+
+    return null;
   }
 
   /**

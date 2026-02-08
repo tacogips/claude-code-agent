@@ -212,6 +212,8 @@ export interface SessionConfig {
   prompt: string;
   /** Project path (defaults to cwd) */
   projectPath?: string;
+  /** Session ID to resume (if resuming an existing session) */
+  resumeSessionId?: string;
 }
 
 /**
@@ -405,8 +407,17 @@ export class ClaudeCodeToolAgent {
   async startSession(config: SessionConfig): Promise<ToolAgentSession> {
     const sessionId = this.generateSessionId();
 
-    // Create transport
+    // Create transport options
     const transportOptions = this.buildTransportOptions();
+
+    // Add resume and prompt support
+    if (config.resumeSessionId !== undefined) {
+      transportOptions.resumeSessionId = config.resumeSessionId;
+      if (config.prompt !== "") {
+        transportOptions.prompt = config.prompt;
+      }
+    }
+
     const transport = new SubprocessTransport(transportOptions);
     await transport.connect();
 
@@ -454,15 +465,37 @@ export class ClaudeCodeToolAgent {
     // Start message processing in background
     void protocol.processMessages();
 
-    // Send initial prompt
-    const userMessage = {
-      type: "user",
-      content: config.prompt,
-    };
-    await transport.write(JSON.stringify(userMessage));
-    stateManager.incrementMessageCount();
+    // Send initial prompt (only for new sessions, not resumed ones)
+    if (config.resumeSessionId === undefined) {
+      const userMessage = {
+        type: "user",
+        content: config.prompt,
+      };
+      await transport.write(JSON.stringify(userMessage));
+      stateManager.incrementMessageCount();
+    }
 
     return session;
+  }
+
+  /**
+   * Resume an existing session.
+   *
+   * Spawns Claude Code CLI with --resume flag to continue
+   * a previously completed or paused session.
+   *
+   * @param sessionId - ID of the session to resume
+   * @param prompt - Optional additional prompt for the resumed session
+   * @returns Running session instance
+   */
+  async resumeSession(
+    sessionId: string,
+    prompt?: string,
+  ): Promise<ToolAgentSession> {
+    return this.startSession({
+      prompt: prompt ?? "",
+      resumeSessionId: sessionId,
+    });
   }
 
   /**
