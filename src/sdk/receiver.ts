@@ -43,6 +43,19 @@ export interface ReceiverOptions {
 }
 
 /**
+ * Interface for session update receivers.
+ *
+ * Both the real SessionUpdateReceiver and MockSessionUpdateReceiver
+ * implement this interface, enabling test substitution.
+ */
+export interface ISessionUpdateReceiver {
+  readonly sessionId: string;
+  readonly isClosed: boolean;
+  receive(): Promise<SessionUpdate | null>;
+  close(): void;
+}
+
+/**
  * SessionUpdateReceiver provides a polling-based API for receiving session updates.
  *
  * This class polls the Claude Code session transcript file at a configurable
@@ -83,7 +96,7 @@ interface ResolvedReceiverOptions {
   readonly transcriptPath: string;
 }
 
-export class SessionUpdateReceiver {
+export class SessionUpdateReceiver implements ISessionUpdateReceiver {
   private readonly _sessionId: string;
   private readonly options: ResolvedReceiverOptions;
   private readonly transcriptPath: string;

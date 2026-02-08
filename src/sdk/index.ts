@@ -164,9 +164,16 @@ export { SessionReader } from "./session-reader";
 export {
   SessionUpdateReceiver,
   createSessionReceiver,
+  type ISessionUpdateReceiver,
   type SessionUpdate,
   type ReceiverOptions,
 } from "./receiver";
+
+// Mock Session Update Receiver (for testing)
+export {
+  MockSessionUpdateReceiver,
+  createMockSessionReceiver,
+} from "./__fixtures__/mock-receiver";
 
 // Re-export TranscriptEvent from polling/parser for SDK consumers
 export { type TranscriptEvent } from "../polling/parser";

@@ -92,6 +92,119 @@ await group.detachSession(session.id);
 
 ---
 
+## 2.5 Session Update Receiver
+
+Polling-based API for receiving real-time updates from session transcript files.
+Alternative to AsyncIterable patterns, offering a simpler pull-based interface.
+
+### 2.5.1 Interface
+
+```typescript
+interface ISessionUpdateReceiver {
+  readonly sessionId: string;
+  readonly isClosed: boolean;
+  receive(): Promise<SessionUpdate | null>;
+  close(): void;
+}
+
+interface SessionUpdate {
+  readonly sessionId: string;
+  readonly newContent: string;                // Raw new JSONL content since last poll
+  readonly events: readonly TranscriptEvent[];  // Parsed transcript events
+  readonly timestamp: string;                 // ISO timestamp
+}
+
+interface ReceiverOptions {
+  readonly pollingIntervalMs?: number;   // default: 300
+  readonly includeExisting?: boolean;    // default: true
+  readonly transcriptPath?: string;      // override auto-resolved path
+}
+```
+
+### 2.5.2 Usage
+
+```typescript
+import { createSessionReceiver } from 'claude-code-agent/sdk';
+
+const receiver = createSessionReceiver('session-uuid', {
+  pollingIntervalMs: 300,
+  includeExisting: true,
+});
+
+while (true) {
+  const update = await receiver.receive();
+  if (update === null) break; // receiver closed
+
+  for (const event of update.events) {
+    console.log(`${event.type}: ${JSON.stringify(event.content)}`);
+  }
+}
+
+receiver.close();
+```
+
+Key behaviors:
+- Lazy initialization: polling starts on first `receive()` call
+- File offset tracking: only reads new content incrementally
+- Handles missing files: waits for file to appear
+- Handles file truncation: resets offset when detected
+- Queue-based: multiple `receive()` calls are queued
+
+### 2.5.3 Mock Receiver (for testing)
+
+`MockSessionUpdateReceiver` provides the same `ISessionUpdateReceiver` interface
+without filesystem dependency. Updates are injected programmatically.
+
+```typescript
+import {
+  MockSessionUpdateReceiver,
+  createMockSessionReceiver,
+  type ISessionUpdateReceiver,
+  type TranscriptEvent,
+} from 'claude-code-agent/sdk';
+
+// Create mock
+const mock = createMockSessionReceiver('test-session');
+
+// Push events programmatically
+mock.pushEvents([
+  { type: 'user', raw: { type: 'user', content: 'Hello' } } as TranscriptEvent,
+]);
+
+// Or push a full SessionUpdate
+mock.pushUpdate({
+  sessionId: 'test-session',
+  newContent: '{"type":"user","content":"Hello"}\n',
+  events: [{ type: 'user', raw: { type: 'user', content: 'Hello' } }],
+  timestamp: new Date().toISOString(),
+});
+
+// Consume like the real receiver
+const update = await mock.receive();
+
+// Inspect mock state
+mock.hasPendingReceive;  // true if receive() is waiting
+mock.queueSize;          // number of queued updates
+
+mock.close();
+```
+
+Both `SessionUpdateReceiver` and `MockSessionUpdateReceiver` implement
+`ISessionUpdateReceiver`, enabling type-safe substitution in application code:
+
+```typescript
+function processUpdates(receiver: ISessionUpdateReceiver): Promise<void> {
+  // Works with both real and mock receiver
+  while (true) {
+    const update = await receiver.receive();
+    if (update === null) break;
+    // process events
+  }
+}
+```
+
+---
+
 ## 3. Event System
 
 ### 3.1 Event Types
