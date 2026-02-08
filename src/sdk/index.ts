@@ -160,6 +160,17 @@ export { EventEmitter, createEventEmitter } from "./events";
 // Session Reader
 export { SessionReader } from "./session-reader";
 
+// Session Update Receiver
+export {
+  SessionUpdateReceiver,
+  createSessionReceiver,
+  type SessionUpdate,
+  type ReceiverOptions,
+} from "./receiver";
+
+// Re-export TranscriptEvent from polling/parser for SDK consumers
+export { type TranscriptEvent } from "../polling/parser";
+
 // JSONL Parser
 export {
   parseJsonl,
