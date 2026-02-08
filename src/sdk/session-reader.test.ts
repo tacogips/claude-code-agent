@@ -2078,4 +2078,469 @@ describe("SessionReader", () => {
       }
     });
   });
+
+  describe("listSessionsByWorkingDirectory", () => {
+    beforeEach(() => {
+      process.env["HOME"] = "/home/testuser";
+    });
+
+    it("should return sessions from sessions-index.json", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const indexPath = `/home/testuser/.claude/projects/${encodedPath}/sessions-index.json`;
+
+      const index = {
+        originalPath: workingDirectory,
+        entries: [
+          {
+            sessionId: "session-1",
+            fullPath: `/home/testuser/.claude/projects/${encodedPath}/session-1.jsonl`,
+            firstPrompt: "First prompt",
+            summary: "Session summary",
+            modified: "2026-01-02T00:00:00Z",
+            created: "2026-01-01T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-2",
+            fullPath: `/home/testuser/.claude/projects/${encodedPath}/session-2.jsonl`,
+            firstPrompt: "Second prompt",
+            summary: "Another summary",
+            modified: "2026-01-03T00:00:00Z",
+            created: "2026-01-02T00:00:00Z",
+            gitBranch: "feature",
+            projectPath: workingDirectory,
+          },
+        ],
+      };
+
+      fs.setFile(indexPath, JSON.stringify(index));
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+      });
+
+      expect(result.sessions).toHaveLength(2);
+      expect(result.total).toBe(2);
+      expect(result.offset).toBe(0);
+      expect(result.limit).toBe(50);
+      expect(result.sessions[0]?.sessionId).toBe("session-2");
+      expect(result.sessions[1]?.sessionId).toBe("session-1");
+    });
+
+    it("should build entries from JSONL files when sessions-index.json is missing", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const projectDir = `/home/testuser/.claude/projects/${encodedPath}`;
+
+      const session1Content = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-1",
+          sessionId: "jsonl-session-1",
+          timestamp: "2026-01-01T00:00:00Z",
+          gitBranch: "main",
+          message: {
+            role: "user",
+            content: "Test prompt from JSONL",
+          },
+        }),
+        JSON.stringify({
+          type: "summary",
+          timestamp: "2026-01-01T00:01:00Z",
+          message: {
+            content: "Summary from JSONL",
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        `${projectDir}/abcd1234-5678-90ab-cdef-1234567890ab.jsonl`,
+        session1Content,
+      );
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+      });
+
+      expect(result.sessions).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.sessions[0]?.sessionId).toBe("jsonl-session-1");
+      expect(result.sessions[0]?.firstPrompt).toBe("Test prompt from JSONL");
+      expect(result.sessions[0]?.summary).toBe("Summary from JSONL");
+      expect(result.sessions[0]?.gitBranch).toBe("main");
+      expect(result.sessions[0]?.projectPath).toBe(workingDirectory);
+    });
+
+    it("should filter sessions by search string in firstPrompt", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const indexPath = `/home/testuser/.claude/projects/${encodedPath}/sessions-index.json`;
+
+      const index = {
+        originalPath: workingDirectory,
+        entries: [
+          {
+            sessionId: "session-1",
+            fullPath: "path1",
+            firstPrompt: "Implement authentication module",
+            summary: "Work on auth",
+            modified: "2026-01-02T00:00:00Z",
+            created: "2026-01-01T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-2",
+            fullPath: "path2",
+            firstPrompt: "Fix bug in parser",
+            summary: "Bug fix",
+            modified: "2026-01-03T00:00:00Z",
+            created: "2026-01-02T00:00:00Z",
+            gitBranch: "bugfix",
+            projectPath: workingDirectory,
+          },
+        ],
+      };
+
+      fs.setFile(indexPath, JSON.stringify(index));
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+        search: "authentication",
+      });
+
+      expect(result.sessions).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.sessions[0]?.sessionId).toBe("session-1");
+    });
+
+    it("should filter sessions by search string in summary", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const indexPath = `/home/testuser/.claude/projects/${encodedPath}/sessions-index.json`;
+
+      const index = {
+        originalPath: workingDirectory,
+        entries: [
+          {
+            sessionId: "session-1",
+            fullPath: "path1",
+            firstPrompt: "Do something",
+            summary: "Worked on database optimization",
+            modified: "2026-01-02T00:00:00Z",
+            created: "2026-01-01T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-2",
+            fullPath: "path2",
+            firstPrompt: "Another task",
+            summary: "Fixed UI issues",
+            modified: "2026-01-03T00:00:00Z",
+            created: "2026-01-02T00:00:00Z",
+            gitBranch: "bugfix",
+            projectPath: workingDirectory,
+          },
+        ],
+      };
+
+      fs.setFile(indexPath, JSON.stringify(index));
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+        search: "optimization",
+      });
+
+      expect(result.sessions).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.sessions[0]?.sessionId).toBe("session-1");
+    });
+
+    it("should sort sessions by modified date descending by default", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const indexPath = `/home/testuser/.claude/projects/${encodedPath}/sessions-index.json`;
+
+      const index = {
+        originalPath: workingDirectory,
+        entries: [
+          {
+            sessionId: "session-1",
+            fullPath: "path1",
+            firstPrompt: "First",
+            summary: "Summary 1",
+            modified: "2026-01-01T00:00:00Z",
+            created: "2026-01-01T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-2",
+            fullPath: "path2",
+            firstPrompt: "Second",
+            summary: "Summary 2",
+            modified: "2026-01-03T00:00:00Z",
+            created: "2026-01-02T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-3",
+            fullPath: "path3",
+            firstPrompt: "Third",
+            summary: "Summary 3",
+            modified: "2026-01-02T00:00:00Z",
+            created: "2026-01-03T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+        ],
+      };
+
+      fs.setFile(indexPath, JSON.stringify(index));
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+      });
+
+      expect(result.sessions).toHaveLength(3);
+      expect(result.sessions[0]?.sessionId).toBe("session-2"); // 2026-01-03
+      expect(result.sessions[1]?.sessionId).toBe("session-3"); // 2026-01-02
+      expect(result.sessions[2]?.sessionId).toBe("session-1"); // 2026-01-01
+    });
+
+    it("should sort sessions by created date ascending", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const indexPath = `/home/testuser/.claude/projects/${encodedPath}/sessions-index.json`;
+
+      const index = {
+        originalPath: workingDirectory,
+        entries: [
+          {
+            sessionId: "session-1",
+            fullPath: "path1",
+            firstPrompt: "First",
+            summary: "Summary 1",
+            modified: "2026-01-04T00:00:00Z",
+            created: "2026-01-03T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-2",
+            fullPath: "path2",
+            firstPrompt: "Second",
+            summary: "Summary 2",
+            modified: "2026-01-05T00:00:00Z",
+            created: "2026-01-01T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-3",
+            fullPath: "path3",
+            firstPrompt: "Third",
+            summary: "Summary 3",
+            modified: "2026-01-06T00:00:00Z",
+            created: "2026-01-02T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+        ],
+      };
+
+      fs.setFile(indexPath, JSON.stringify(index));
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+        sortBy: "created",
+        sortOrder: "asc",
+      });
+
+      expect(result.sessions).toHaveLength(3);
+      expect(result.sessions[0]?.sessionId).toBe("session-2"); // 2026-01-01
+      expect(result.sessions[1]?.sessionId).toBe("session-3"); // 2026-01-02
+      expect(result.sessions[2]?.sessionId).toBe("session-1"); // 2026-01-03
+    });
+
+    it("should apply pagination with offset and limit", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const indexPath = `/home/testuser/.claude/projects/${encodedPath}/sessions-index.json`;
+
+      const index = {
+        originalPath: workingDirectory,
+        entries: [
+          {
+            sessionId: "session-1",
+            fullPath: "path1",
+            firstPrompt: "First",
+            summary: "Summary 1",
+            modified: "2026-01-01T00:00:00Z",
+            created: "2026-01-01T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-2",
+            fullPath: "path2",
+            firstPrompt: "Second",
+            summary: "Summary 2",
+            modified: "2026-01-02T00:00:00Z",
+            created: "2026-01-02T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+          {
+            sessionId: "session-3",
+            fullPath: "path3",
+            firstPrompt: "Third",
+            summary: "Summary 3",
+            modified: "2026-01-03T00:00:00Z",
+            created: "2026-01-03T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+        ],
+      };
+
+      fs.setFile(indexPath, JSON.stringify(index));
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+        offset: 1,
+        limit: 1,
+      });
+
+      expect(result.sessions).toHaveLength(1);
+      expect(result.total).toBe(3);
+      expect(result.offset).toBe(1);
+      expect(result.limit).toBe(1);
+      expect(result.sessions[0]?.sessionId).toBe("session-2");
+    });
+
+    it("should return empty result for non-existent directory", async () => {
+      const workingDirectory = "/nonexistent/path";
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+      });
+
+      expect(result.sessions).toHaveLength(0);
+      expect(result.total).toBe(0);
+    });
+
+    it("should handle search with case insensitivity", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const indexPath = `/home/testuser/.claude/projects/${encodedPath}/sessions-index.json`;
+
+      const index = {
+        originalPath: workingDirectory,
+        entries: [
+          {
+            sessionId: "session-1",
+            fullPath: "path1",
+            firstPrompt: "Implement Authentication",
+            summary: "Work on AUTH",
+            modified: "2026-01-02T00:00:00Z",
+            created: "2026-01-01T00:00:00Z",
+            gitBranch: "main",
+            projectPath: workingDirectory,
+          },
+        ],
+      };
+
+      fs.setFile(indexPath, JSON.stringify(index));
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+        search: "authentication",
+      });
+
+      expect(result.sessions).toHaveLength(1);
+      expect(result.sessions[0]?.sessionId).toBe("session-1");
+    });
+
+    it("should derive session ID from path when not found in content", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const projectDir = `/home/testuser/.claude/projects/${encodedPath}`;
+
+      const sessionContent = JSON.stringify({
+        type: "user",
+        uuid: "msg-1",
+        timestamp: "2026-01-01T00:00:00Z",
+        message: {
+          role: "user",
+          content: "Test without sessionId",
+        },
+      });
+
+      fs.setFile(
+        `${projectDir}/abcd1234-5678-90ab-cdef-1234567890ab.jsonl`,
+        sessionContent,
+      );
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+      });
+
+      expect(result.sessions).toHaveLength(1);
+      expect(result.sessions[0]?.sessionId).toBe(
+        "abcd1234-5678-90ab-cdef-1234567890ab",
+      );
+    });
+
+    it("should extract text from content blocks array in first prompt", async () => {
+      const workingDirectory = "/g/gits/tacogips/test-project";
+      const encodedPath = "-g-gits-tacogips-test-project";
+      const projectDir = `/home/testuser/.claude/projects/${encodedPath}`;
+
+      const sessionContent = JSON.stringify({
+        type: "user",
+        uuid: "msg-1",
+        sessionId: "session-with-blocks",
+        timestamp: "2026-01-01T00:00:00Z",
+        message: {
+          role: "user",
+          content: [
+            { type: "text", text: "First text block" },
+            { type: "image", url: "http://example.com/image.png" },
+          ],
+        },
+      });
+
+      fs.setFile(
+        `${projectDir}/fedcba98-7654-3210-fedc-ba9876543210.jsonl`,
+        sessionContent,
+      );
+
+      const result = await reader.listSessionsByWorkingDirectory({
+        workingDirectory,
+      });
+
+      expect(result.sessions).toHaveLength(1);
+      expect(result.sessions[0]?.firstPrompt).toBe("First text block");
+    });
+  });
+
+  describe("encodeProjectPath", () => {
+    it("should encode paths correctly", () => {
+      expect(SessionReader.encodeProjectPath("/g/gits/project")).toBe(
+        "-g-gits-project",
+      );
+      expect(SessionReader.encodeProjectPath("/home/user/workspace")).toBe(
+        "-home-user-workspace",
+      );
+      expect(SessionReader.encodeProjectPath("/tmp")).toBe("-tmp");
+      expect(SessionReader.encodeProjectPath("/a/very/deep/nested/path")).toBe(
+        "-a-very-deep-nested-path",
+      );
+    });
+  });
 });
