@@ -158,6 +158,13 @@ export class JsonlStreamParser {
 
       if ("content" in raw) {
         event.content = raw.content;
+      } else if (
+        "message" in raw &&
+        typeof raw.message === "object" &&
+        raw.message !== null &&
+        "content" in raw.message
+      ) {
+        event.content = raw.message.content;
       }
 
       return event;
