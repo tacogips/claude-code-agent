@@ -11,6 +11,12 @@ import type { Container } from "../container";
 import type { Session, SessionMetadata, TokenUsage } from "../types/session";
 import type { Message, ToolCall, ToolResult } from "../types/message";
 import type { Task } from "../types/task";
+import type {
+  SessionIndex,
+  SessionIndexEntry,
+  SessionListResponse,
+  ListSessionsByPathOptions,
+} from "../types/session-index";
 import { type Result, ok, err } from "../result";
 import { FileNotFoundError, type AgentError } from "../errors";
 import { parseJsonl } from "./jsonl-parser";
@@ -99,6 +105,19 @@ export class SessionReader {
    */
   constructor(container: Container) {
     this.fileSystem = container.fileSystem;
+  }
+
+  /**
+   * Encode a working directory path to Claude Code project directory name format.
+   *
+   * Claude Code replaces all forward slashes with dashes when creating project directories.
+   * Example: `/g/gits/tacogips/QraftBox` becomes `-g-gits-tacogips-QraftBox`
+   *
+   * @param workingDirectory - Absolute working directory path
+   * @returns Encoded directory name
+   */
+  static encodeProjectPath(workingDirectory: string): string {
+    return workingDirectory.replace(/\//g, "-");
   }
 
   /**
@@ -642,6 +661,85 @@ export class SessionReader {
   }
 
   /**
+   * List sessions by working directory path.
+   *
+   * Reads session entries from sessions-index.json if present, otherwise builds
+   * entries by parsing JSONL files in the project directory.
+   *
+   * @param options - Filtering, sorting, and pagination options
+   * @returns Paginated response containing session entries
+   */
+  async listSessionsByWorkingDirectory(
+    options: ListSessionsByPathOptions,
+  ): Promise<SessionListResponse> {
+    const {
+      workingDirectory,
+      search,
+      offset = 0,
+      limit = 50,
+      sortBy = "modified",
+      sortOrder = "desc",
+    } = options;
+
+    // Encode path to directory name
+    const encodedPath = SessionReader.encodeProjectPath(workingDirectory);
+    const projectDirPath = `${this.getDefaultClaudeProjectsDir()}/${encodedPath}`;
+
+    // Try sessions-index.json first
+    let entries: SessionIndexEntry[] = [];
+    const indexPath = `${projectDirPath}/sessions-index.json`;
+
+    try {
+      const indexContent = await this.fileSystem.readFile(indexPath);
+      const index = JSON.parse(indexContent) as SessionIndex;
+      if (Array.isArray(index.entries)) {
+        entries = [...index.entries];
+      }
+    } catch {
+      // No sessions-index.json or parse error - fall back to building from JSONL files
+    }
+
+    // If no entries from index, build from JSONL files
+    if (entries.length === 0) {
+      entries = await this.buildEntriesFromJsonlFiles(
+        projectDirPath,
+        workingDirectory,
+      );
+    }
+
+    // Apply search filter
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      entries = entries.filter(
+        (e) =>
+          e.firstPrompt.toLowerCase().includes(lowerSearch) ||
+          e.summary.toLowerCase().includes(lowerSearch),
+      );
+    }
+
+    // Sort
+    entries.sort((a, b) => {
+      const aVal = sortBy === "modified" ? a.modified : a.created;
+      const bVal = sortBy === "modified" ? b.modified : b.created;
+      const cmp = aVal.localeCompare(bVal);
+      return sortOrder === "asc" ? cmp : -cmp;
+    });
+
+    // Total before pagination
+    const total = entries.length;
+
+    // Apply pagination
+    const paginated = entries.slice(offset, offset + limit);
+
+    return {
+      sessions: paginated,
+      total,
+      offset,
+      limit,
+    };
+  }
+
+  /**
    * Read raw transcript events from a session's JSONL file.
    *
    * Returns parsed TranscriptEvent objects with pagination support.
@@ -799,5 +897,131 @@ export class SessionReader {
     }
 
     return "";
+  }
+
+  /**
+   * Build SessionIndexEntry objects from JSONL files when sessions-index.json is missing.
+   *
+   * Scans all JSONL session files in the project directory and extracts metadata
+   * to construct SessionIndexEntry objects.
+   *
+   * @param projectDirPath - Path to the project directory
+   * @param workingDirectory - Original working directory path (for projectPath field)
+   * @returns Array of session index entries built from JSONL files
+   * @private
+   */
+  private async buildEntriesFromJsonlFiles(
+    projectDirPath: string,
+    workingDirectory: string,
+  ): Promise<SessionIndexEntry[]> {
+    const sessionFiles = await this.findSessionFiles(projectDirPath);
+    const entries: SessionIndexEntry[] = [];
+
+    for (const filePath of sessionFiles) {
+      try {
+        const content = await this.fileSystem.readFile(filePath);
+        const parseResult = parseJsonl<unknown>(content, filePath);
+        if (parseResult.isErr()) {
+          continue;
+        }
+
+        const lines = parseResult.value;
+        let firstPrompt = "";
+        let summary = "";
+        let sessionId = "";
+        let gitBranch = "";
+        let firstTimestamp = "";
+        let lastTimestamp = "";
+
+        for (const line of lines) {
+          if (typeof line !== "object" || line === null) {
+            continue;
+          }
+          const record = line as Record<string, unknown>;
+
+          // Extract sessionId
+          if (!sessionId && typeof record["sessionId"] === "string") {
+            sessionId = record["sessionId"];
+          }
+
+          // Extract git branch
+          if (!gitBranch && typeof record["gitBranch"] === "string") {
+            gitBranch = record["gitBranch"];
+          }
+
+          // Track timestamps
+          if (typeof record["timestamp"] === "string") {
+            if (!firstTimestamp) {
+              firstTimestamp = record["timestamp"];
+            }
+            lastTimestamp = record["timestamp"];
+          }
+
+          // Extract first user prompt
+          const type = record["type"] as string | undefined;
+          if (type === "user" && !firstPrompt) {
+            const message = record["message"] as
+              | Record<string, unknown>
+              | undefined;
+            if (message && typeof message === "object") {
+              const msgContent = message["content"];
+              if (typeof msgContent === "string") {
+                firstPrompt = msgContent.slice(0, 200);
+              } else if (Array.isArray(msgContent)) {
+                // Extract text from content blocks
+                for (const block of msgContent) {
+                  if (
+                    typeof block === "object" &&
+                    block !== null &&
+                    (block as Record<string, unknown>)["type"] === "text"
+                  ) {
+                    const text = (block as Record<string, unknown>)["text"];
+                    if (typeof text === "string") {
+                      firstPrompt = text.slice(0, 200);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Extract summary from the last summary event
+          if (type === "summary") {
+            const message = record["message"] as
+              | Record<string, unknown>
+              | undefined;
+            if (message && typeof message === "object") {
+              const msgContent = message["content"];
+              if (typeof msgContent === "string") {
+                summary = msgContent.slice(0, 200);
+              }
+            }
+          }
+        }
+
+        // Derive session ID from path if not found
+        if (!sessionId) {
+          sessionId = this.deriveSessionIdFromPath(filePath);
+        }
+
+        const now = new Date().toISOString();
+
+        entries.push({
+          sessionId,
+          fullPath: filePath,
+          firstPrompt,
+          summary,
+          modified: lastTimestamp || now,
+          created: firstTimestamp || now,
+          gitBranch,
+          projectPath: workingDirectory,
+        });
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+
+    return entries;
   }
 }

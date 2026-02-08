@@ -166,6 +166,7 @@ export type {
   SessionIndex,
   ProjectInfo,
   SessionListResponse,
+  ListSessionsByPathOptions,
 } from "../types/session-index";
 
 // Session Update Receiver

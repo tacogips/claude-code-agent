@@ -48,3 +48,21 @@ export interface SessionListResponse {
   readonly offset: number;
   readonly limit: number;
 }
+
+/**
+ * Options for listing sessions by working directory path.
+ */
+export interface ListSessionsByPathOptions {
+  /** Absolute path to the working directory (e.g., "/g/gits/tacogips/QraftBox") */
+  readonly workingDirectory: string;
+  /** Optional search string to filter by firstPrompt or summary */
+  readonly search?: string;
+  /** Pagination offset (default: 0) */
+  readonly offset?: number;
+  /** Pagination limit (default: 50) */
+  readonly limit?: number;
+  /** Sort field (default: "modified") */
+  readonly sortBy?: "modified" | "created";
+  /** Sort order (default: "desc") */
+  readonly sortOrder?: "asc" | "desc";
+}
