@@ -157,6 +157,46 @@ describe("JsonlStreamParser", () => {
       expect(flushEvents).toHaveLength(1);
       expect(flushEvents[0]?.type).toBe("user");
     });
+
+    test("extracts content from message.content for user events", () => {
+      const parser = new JsonlStreamParser();
+      const events = parser.feed(
+        '{"type":"user","uuid":"u1","timestamp":"2025-01-06T10:00:00Z","message":{"role":"user","content":"Hello world"}}\n',
+      );
+
+      expect(events).toHaveLength(1);
+      expect(events[0]?.type).toBe("user");
+      expect(events[0]?.content).toBe("Hello world");
+    });
+
+    test("extracts content from message.content for assistant events", () => {
+      const parser = new JsonlStreamParser();
+      const events = parser.feed(
+        '{"type":"assistant","uuid":"a1","message":{"role":"assistant","content":[{"type":"text","text":"Response"}]}}\n',
+      );
+
+      expect(events).toHaveLength(1);
+      expect(events[0]?.type).toBe("assistant");
+      expect(events[0]?.content).toEqual([{ type: "text", text: "Response" }]);
+    });
+
+    test("prefers top-level content over message.content", () => {
+      const parser = new JsonlStreamParser();
+      const events = parser.feed(
+        '{"type":"result","content":"top-level","message":{"content":"nested"}}\n',
+      );
+
+      expect(events).toHaveLength(1);
+      expect(events[0]?.content).toBe("top-level");
+    });
+
+    test("handles message without content field", () => {
+      const parser = new JsonlStreamParser();
+      const events = parser.feed('{"type":"user","message":{"role":"user"}}\n');
+
+      expect(events).toHaveLength(1);
+      expect(events[0]?.content).toBeUndefined();
+    });
   });
 
   describe("flush()", () => {
