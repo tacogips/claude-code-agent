@@ -160,6 +160,14 @@ export { EventEmitter, createEventEmitter } from "./events";
 // Session Reader
 export { SessionReader } from "./session-reader";
 
+// Session Index Types (from sessions-index.json)
+export type {
+  SessionIndexEntry,
+  SessionIndex,
+  ProjectInfo,
+  SessionListResponse,
+} from "../types/session-index";
+
 // Session Update Receiver
 export {
   SessionUpdateReceiver,

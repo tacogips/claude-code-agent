@@ -1940,4 +1940,142 @@ describe("SessionReader", () => {
       expect(sessions[0]?.tokenUsage?.output).toBe(50);
     });
   });
+
+  describe("readTranscript", () => {
+    beforeEach(() => {
+      // Mock HOME environment variable for default directory
+      process.env["HOME"] = "/home/testuser";
+    });
+
+    it("should read and parse transcript events from a session", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-uuid-1",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: {
+            role: "user",
+            content: "Hello",
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-uuid-2",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: "Hi there!",
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/abc/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readTranscript(
+        "88487b4c-f3f6-4a49-b59b-d1d4a098425f",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const { events, total } = result.value;
+        expect(total).toBe(2);
+        expect(events).toHaveLength(2);
+        expect(events[0]?.type).toBe("user");
+        expect(events[0]?.uuid).toBe("msg-uuid-1");
+        expect(events[0]?.timestamp).toBe("2026-01-01T00:00:00Z");
+        expect(events[1]?.type).toBe("assistant");
+        expect(events[1]?.uuid).toBe("msg-uuid-2");
+      }
+    });
+
+    it("should support pagination with offset and limit", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "event1",
+          uuid: "1",
+          timestamp: "2026-01-01T00:00:00Z",
+        }),
+        JSON.stringify({
+          type: "event2",
+          uuid: "2",
+          timestamp: "2026-01-01T00:00:01Z",
+        }),
+        JSON.stringify({
+          type: "event3",
+          uuid: "3",
+          timestamp: "2026-01-01T00:00:02Z",
+        }),
+        JSON.stringify({
+          type: "event4",
+          uuid: "4",
+          timestamp: "2026-01-01T00:00:03Z",
+        }),
+        JSON.stringify({
+          type: "event5",
+          uuid: "5",
+          timestamp: "2026-01-01T00:00:04Z",
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/abc/abcdef12-3456-7890-abcd-ef1234567890.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readTranscript(
+        "abcdef12-3456-7890-abcd-ef1234567890",
+        {
+          offset: 1,
+          limit: 2,
+        },
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const { events, total } = result.value;
+        expect(total).toBe(5);
+        expect(events).toHaveLength(2);
+        expect(events[0]?.uuid).toBe("2");
+        expect(events[1]?.uuid).toBe("3");
+      }
+    });
+
+    it("should return error when session not found", async () => {
+      const result = await reader.readTranscript("nonexistent-session");
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error).toBeInstanceOf(FileNotFoundError);
+      }
+    });
+
+    it("should return all events when no pagination options provided", async () => {
+      const sessionContent = [
+        JSON.stringify({ type: "event1", uuid: "1" }),
+        JSON.stringify({ type: "event2", uuid: "2" }),
+        JSON.stringify({ type: "event3", uuid: "3" }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/abc/fedcba98-7654-3210-fedc-ba9876543210.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readTranscript(
+        "fedcba98-7654-3210-fedc-ba9876543210",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const { events, total } = result.value;
+        expect(total).toBe(3);
+        expect(events).toHaveLength(3);
+      }
+    });
+  });
 });

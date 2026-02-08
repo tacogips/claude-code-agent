@@ -272,7 +272,7 @@ export function sessionRoutes(
     });
 
     // POST /api/sessions/:id/resume - Resume session
-    sessions.post("/:id/resume", async ({ set, token }) => {
+    sessions.post("/:id/resume", async ({ params, body, set, token }) => {
       // Check permission
       if (!tokenManager.hasPermission(token, "session:create")) {
         set.status = 403;
@@ -283,12 +283,37 @@ export function sessionRoutes(
       }
 
       try {
-        // Session resume will be implemented in daemon-core (TASK-005)
-        set.status = 501;
+        const sessionId = params.id;
+
+        // Look up the session to verify it exists
+        const session = await sdk.sessions.getSession(sessionId);
+        if (!session) {
+          set.status = 404;
+          return {
+            error: "Not Found",
+            message: `Session not found: ${sessionId}`,
+          };
+        }
+
+        // Extract optional prompt from body
+        const reqBody = body as { prompt?: string } | undefined;
+        const prompt = reqBody?.prompt;
+
+        // Create a tool agent to resume the session
+        const { ClaudeCodeToolAgent } = await import("../../sdk/agent");
+        const agentOptions =
+          session.projectPath !== null
+            ? { cwd: session.projectPath }
+            : undefined;
+        const agent = new ClaudeCodeToolAgent(agentOptions);
+
+        await agent.resumeSession(sessionId, prompt);
+
+        set.status = 200;
         return {
-          error: "Not Implemented",
-          message:
-            "Session resume will be implemented in daemon-core (TASK-005)",
+          sessionId,
+          status: "running",
+          message: `Session ${sessionId} resumed successfully`,
         };
       } catch (error) {
         set.status = 500;
