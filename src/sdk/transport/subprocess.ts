@@ -455,9 +455,9 @@ export class SubprocessTransport implements Transport {
       args.push("--resume", this.options.resumeSessionId);
     }
 
-    if (this.options.prompt !== undefined) {
-      args.push("--prompt", this.options.prompt);
-    }
+    // Note: --prompt is not a supported CLI flag.
+    // For resume sessions with a prompt, the prompt is sent via stdin
+    // as a user message after initialization (handled in agent.ts).
 
     return args;
   }

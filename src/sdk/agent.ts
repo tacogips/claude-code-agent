@@ -375,18 +375,83 @@ export class ToolAgentSession extends NodeEventEmitter {
   }
 
   /**
-   * Cancel the session.
+   * Cancel the session gracefully.
+   *
+   * Sends an interrupt signal to the CLI, transitions to cancelled state,
+   * and closes the transport. If the interrupt request fails (e.g., CLI
+   * unresponsive), the cancel still proceeds by force-closing the transport.
+   *
+   * Safe to call from any state:
+   * - If already in a terminal state, this is a no-op.
+   * - If in idle/starting/running/waiting/paused state, transitions to cancelled.
    */
   async cancel(): Promise<void> {
-    await this.protocol.sendRequest({ subtype: "interrupt" });
-    this.stateManager.transition("cancelled");
+    if (this.stateManager.isTerminal()) {
+      return;
+    }
+
+    // Try to send interrupt signal, but don't block cancel on it
+    try {
+      await Promise.race([
+        this.protocol.sendRequest({ subtype: "interrupt" }),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    } catch {
+      // Interrupt request failed (transport closed, timeout, etc.) - proceed with cancel
+    }
+
+    // Transition to cancelled state
+    try {
+      if (!this.stateManager.isTerminal()) {
+        this.stateManager.transition("cancelled");
+      }
+    } catch {
+      // State transition may fail if a concurrent transition happened
+    }
+
+    // Clean up protocol and close transport
+    this.protocol.cleanup();
+    await this.transport.close();
+  }
+
+  /**
+   * Force-cancel the session without sending an interrupt signal.
+   *
+   * Immediately kills the subprocess and transitions to cancelled state.
+   * Use this when the CLI is unresponsive and a graceful cancel would hang.
+   *
+   * Safe to call from any state:
+   * - If already in a terminal state, this is a no-op.
+   */
+  async abort(): Promise<void> {
+    if (this.stateManager.isTerminal()) {
+      return;
+    }
+
+    // Transition to cancelled state immediately
+    try {
+      if (!this.stateManager.isTerminal()) {
+        this.stateManager.transition("cancelled");
+      }
+    } catch {
+      // State transition may fail if a concurrent transition happened
+    }
+
+    // Clean up protocol and force-close transport
+    this.protocol.cleanup();
     await this.transport.close();
   }
 
   /**
    * Send interrupt signal to the session.
+   *
+   * Sends an interrupt to the CLI without cancelling the session.
+   * The session remains active and may continue after processing the interrupt.
    */
   async interrupt(): Promise<void> {
+    if (this.stateManager.isTerminal()) {
+      return;
+    }
     await this.protocol.sendRequest({ subtype: "interrupt" });
   }
 
@@ -517,15 +582,23 @@ export class ClaudeCodeToolAgent {
       .processMessages()
       .then(() => {
         // Transport ended - CLI process exited
-        if (!stateManager.isTerminal()) {
-          stateManager.markCompleted();
+        try {
+          if (!stateManager.isTerminal()) {
+            stateManager.markCompleted();
+          }
+        } catch {
+          // State transition may fail if state hasn't reached a valid source state yet
         }
       })
       .catch((err: unknown) => {
-        if (!stateManager.isTerminal()) {
-          stateManager.markFailed(
-            err instanceof Error ? err : new Error(String(err)),
-          );
+        try {
+          if (!stateManager.isTerminal()) {
+            stateManager.markFailed(
+              err instanceof Error ? err : new Error(String(err)),
+            );
+          }
+        } catch {
+          // State transition may fail if state hasn't reached a valid source state yet
         }
       });
 
@@ -544,7 +617,18 @@ export class ClaudeCodeToolAgent {
     // Track active session
     this.activeSessions.set(sessionId, session);
 
-    // Clean up on session complete
+    // Clean up when session reaches any terminal state
+    stateManager.on("stateChange", (change: { to: string }) => {
+      if (
+        change.to === "completed" ||
+        change.to === "failed" ||
+        change.to === "cancelled"
+      ) {
+        this.activeSessions.delete(sessionId);
+      }
+    });
+
+    // Also clean up on session complete event (for waitForCompletion callers)
     session.on("complete", () => {
       this.activeSessions.delete(sessionId);
       protocol.cleanup();
@@ -566,8 +650,8 @@ export class ClaudeCodeToolAgent {
     stateManager.transition("starting");
     stateManager.markStarted();
 
-    // Send initial prompt (only for new sessions, not resumed ones)
-    if (config.resumeSessionId === undefined) {
+    // Send initial prompt via stdin (for both new and resumed sessions with a prompt)
+    if (config.prompt !== undefined && config.prompt !== "") {
       const userMessage = {
         type: "user",
         message: {

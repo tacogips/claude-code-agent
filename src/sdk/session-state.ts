@@ -44,8 +44,8 @@ interface PendingOperation {
  * Defines which states can transition to which other states.
  */
 const VALID_TRANSITIONS: Record<SessionState, readonly SessionState[]> = {
-  idle: ["starting"],
-  starting: ["running", "failed"],
+  idle: ["starting", "cancelled"],
+  starting: ["running", "failed", "cancelled"],
   running: [
     "waiting_tool_call",
     "waiting_permission",
