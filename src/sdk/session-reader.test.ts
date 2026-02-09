@@ -1982,7 +1982,7 @@ describe("SessionReader", () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        const { events, total } = result.value;
+        const { events, total, tokenUsage } = result.value;
         expect(total).toBe(2);
         expect(events).toHaveLength(2);
         expect(events[0]?.type).toBe("user");
@@ -1990,6 +1990,7 @@ describe("SessionReader", () => {
         expect(events[0]?.timestamp).toBe("2026-01-01T00:00:00Z");
         expect(events[1]?.type).toBe("assistant");
         expect(events[1]?.uuid).toBe("msg-uuid-2");
+        expect(tokenUsage).toBeUndefined(); // No usage in this test
       }
     });
 
@@ -2075,6 +2076,396 @@ describe("SessionReader", () => {
         const { events, total } = result.value;
         expect(total).toBe(3);
         expect(events).toHaveLength(3);
+      }
+    });
+
+    it("should include tokenUsage when assistant messages have usage data", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-uuid-1",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: {
+            role: "user",
+            content: "Hello",
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-uuid-2",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: "Hi there!",
+            usage: {
+              input_tokens: 100,
+              output_tokens: 50,
+              cache_read_input_tokens: 20,
+              cache_creation_input_tokens: 10,
+            },
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/abc/12345678-1234-1234-1234-123456789abc.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readTranscript(
+        "12345678-1234-1234-1234-123456789abc",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const { tokenUsage } = result.value;
+        expect(tokenUsage).toBeDefined();
+        expect(tokenUsage?.input).toBe(100);
+        expect(tokenUsage?.output).toBe(50);
+        expect(tokenUsage?.cacheRead).toBe(20);
+        expect(tokenUsage?.cacheWrite).toBe(10);
+      }
+    });
+
+    it("should aggregate tokenUsage across multiple assistant messages", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-1",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: {
+            role: "assistant",
+            content: "First",
+            usage: {
+              input_tokens: 100,
+              output_tokens: 50,
+            },
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: "Second",
+            usage: {
+              input_tokens: 200,
+              output_tokens: 75,
+              cache_read_input_tokens: 30,
+            },
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/abc/abcdabcd-1111-2222-3333-444444444444.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readTranscript(
+        "abcdabcd-1111-2222-3333-444444444444",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const { tokenUsage } = result.value;
+        expect(tokenUsage).toBeDefined();
+        expect(tokenUsage?.input).toBe(300); // 100 + 200
+        expect(tokenUsage?.output).toBe(125); // 50 + 75
+        expect(tokenUsage?.cacheRead).toBe(30); // 0 + 30
+        expect(tokenUsage?.cacheWrite).toBeUndefined(); // No cache write
+      }
+    });
+
+    it("should return undefined tokenUsage when no usage data present", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-uuid-1",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: {
+            role: "user",
+            content: "Hello",
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-uuid-2",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: "Hi there!",
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/abc/11112222-3333-4444-5555-666666666666.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readTranscript(
+        "11112222-3333-4444-5555-666666666666",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const { tokenUsage } = result.value;
+        expect(tokenUsage).toBeUndefined();
+      }
+    });
+  });
+
+  describe("readSessionUsage", () => {
+    beforeEach(() => {
+      process.env["HOME"] = "/home/testuser";
+    });
+
+    it("should extract token usage by session ID", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-1",
+          sessionId: "usage-session",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: {
+            role: "user",
+            content: "Hello",
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "usage-session",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: "Response",
+            usage: {
+              input_tokens: 150,
+              output_tokens: 75,
+              cache_read_input_tokens: 25,
+              cache_creation_input_tokens: 15,
+            },
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/usage/aaaabbbb-cccc-dddd-eeee-ffffffffffff.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readSessionUsage(
+        "aaaabbbb-cccc-dddd-eeee-ffffffffffff",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const usage = result.value;
+        expect(usage).toBeDefined();
+        expect(usage?.input).toBe(150);
+        expect(usage?.output).toBe(75);
+        expect(usage?.cacheRead).toBe(25);
+        expect(usage?.cacheWrite).toBe(15);
+      }
+    });
+
+    it("should aggregate usage across multiple assistant messages", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-1",
+          sessionId: "multi-usage",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: {
+            role: "assistant",
+            content: "First",
+            usage: {
+              input_tokens: 100,
+              output_tokens: 50,
+              cache_creation_input_tokens: 10,
+            },
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "multi-usage",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: "Second",
+            usage: {
+              input_tokens: 200,
+              output_tokens: 100,
+              cache_read_input_tokens: 50,
+            },
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-3",
+          sessionId: "multi-usage",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: {
+            role: "assistant",
+            content: "Third",
+            usage: {
+              input_tokens: 150,
+              output_tokens: 75,
+            },
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/multi/bbbbcccc-dddd-eeee-ffff-000000000000.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readSessionUsage(
+        "bbbbcccc-dddd-eeee-ffff-000000000000",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const usage = result.value;
+        expect(usage).toBeDefined();
+        expect(usage?.input).toBe(450); // 100 + 200 + 150
+        expect(usage?.output).toBe(225); // 50 + 100 + 75
+        expect(usage?.cacheRead).toBe(50); // 0 + 50 + 0
+        expect(usage?.cacheWrite).toBe(10); // 10 + 0 + 0
+      }
+    });
+
+    it("should return undefined when no usage data present", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-1",
+          sessionId: "no-usage",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: {
+            role: "user",
+            content: "Hello",
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "no-usage",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: "Response without usage",
+          },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/none/ccccdddd-eeee-ffff-0000-111111111111.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readSessionUsage(
+        "ccccdddd-eeee-ffff-0000-111111111111",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const usage = result.value;
+        expect(usage).toBeUndefined();
+      }
+    });
+
+    it("should return error when session not found", async () => {
+      const result = await reader.readSessionUsage("nonexistent-session-id");
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error).toBeInstanceOf(FileNotFoundError);
+      }
+    });
+
+    it("should handle sessions with only cache read tokens", async () => {
+      const sessionContent = JSON.stringify({
+        type: "assistant",
+        uuid: "msg-1",
+        sessionId: "cache-read-only",
+        timestamp: "2026-01-01T00:00:00Z",
+        message: {
+          role: "assistant",
+          content: "Response",
+          usage: {
+            input_tokens: 100,
+            output_tokens: 50,
+            cache_read_input_tokens: 40,
+          },
+        },
+      });
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/cache/ddddeeee-ffff-0000-1111-222222222222.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readSessionUsage(
+        "ddddeeee-ffff-0000-1111-222222222222",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const usage = result.value;
+        expect(usage).toBeDefined();
+        expect(usage?.input).toBe(100);
+        expect(usage?.output).toBe(50);
+        expect(usage?.cacheRead).toBe(40);
+        expect(usage?.cacheWrite).toBeUndefined();
+      }
+    });
+
+    it("should handle sessions with only cache write tokens", async () => {
+      const sessionContent = JSON.stringify({
+        type: "assistant",
+        uuid: "msg-1",
+        sessionId: "cache-write-only",
+        timestamp: "2026-01-01T00:00:00Z",
+        message: {
+          role: "assistant",
+          content: "Response",
+          usage: {
+            input_tokens: 100,
+            output_tokens: 50,
+            cache_creation_input_tokens: 30,
+          },
+        },
+      });
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/write/eeeeffff-0000-1111-2222-333333333333.jsonl",
+        sessionContent,
+      );
+
+      const result = await reader.readSessionUsage(
+        "eeeeffff-0000-1111-2222-333333333333",
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const usage = result.value;
+        expect(usage).toBeDefined();
+        expect(usage?.input).toBe(100);
+        expect(usage?.output).toBe(50);
+        expect(usage?.cacheRead).toBeUndefined();
+        expect(usage?.cacheWrite).toBe(30);
       }
     });
   });

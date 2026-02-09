@@ -747,13 +747,20 @@ export class SessionReader {
    *
    * @param sessionId - Unique session identifier
    * @param options - Pagination options (offset and limit)
-   * @returns Result containing events array and total count, or an error
+   * @returns Result containing events array, total count, and token usage, or an error
    */
   async readTranscript(
     sessionId: string,
     options?: { offset?: number; limit?: number },
   ): Promise<
-    Result<{ events: readonly TranscriptEvent[]; total: number }, AgentError>
+    Result<
+      {
+        events: readonly TranscriptEvent[];
+        total: number;
+        tokenUsage?: TokenUsage;
+      },
+      AgentError
+    >
   > {
     // Find session file path
     const filePath = await this.findSessionFilePath(sessionId);
@@ -780,12 +787,88 @@ export class SessionReader {
 
     const total = events.length;
 
+    // Extract and aggregate token usage from assistant events
+    const usages: TokenUsage[] = [];
+    for (const event of events) {
+      if (event.type === "assistant") {
+        const usage = this.extractUsage(event.raw as Record<string, unknown>);
+        if (usage) {
+          usages.push(usage);
+        }
+      }
+    }
+    const tokenUsage = this.aggregateUsage(usages);
+
     // Apply pagination
     const offset = options?.offset ?? 0;
     const limit = options?.limit ?? total;
     const paginatedEvents = events.slice(offset, offset + limit);
 
+    // Build result object with optional tokenUsage field
+    if (tokenUsage !== undefined) {
+      return ok({ events: paginatedEvents, total, tokenUsage });
+    }
     return ok({ events: paginatedEvents, total });
+  }
+
+  /**
+   * Read token usage for a specific session by ID.
+   *
+   * Extracts and aggregates token usage from all assistant messages
+   * in the session without parsing full message content.
+   *
+   * @param sessionId - Unique session identifier
+   * @returns Result containing token usage or undefined if no usage data, or an error
+   */
+  async readSessionUsage(
+    sessionId: string,
+  ): Promise<Result<TokenUsage | undefined, AgentError>> {
+    // Find session file path
+    const filePath = await this.findSessionFilePath(sessionId);
+    if (filePath === null) {
+      return err(new FileNotFoundError(`Session not found: ${sessionId}`));
+    }
+
+    // Read file content
+    let content: string;
+    try {
+      content = await this.fileSystem.readFile(filePath);
+    } catch (error) {
+      if (error instanceof FileNotFoundError) {
+        return err(error);
+      }
+      return err(new FileNotFoundError(filePath));
+    }
+
+    // Parse JSONL and extract usage data
+    const parseResult = parseJsonl<unknown>(content, filePath);
+    if (parseResult.isErr()) {
+      return err(parseResult.error);
+    }
+
+    const lines = parseResult.value;
+    const usages: TokenUsage[] = [];
+
+    for (const line of lines) {
+      // Type guard: ensure line is an object
+      if (typeof line !== "object" || line === null) {
+        continue;
+      }
+
+      const record = line as Record<string, unknown>;
+
+      // Extract usage from assistant messages
+      const type = record["type"] as string | undefined;
+      if (type === "assistant") {
+        const usage = this.extractUsage(record);
+        if (usage) {
+          usages.push(usage);
+        }
+      }
+    }
+
+    const tokenUsage = this.aggregateUsage(usages);
+    return ok(tokenUsage);
   }
 
   /**
