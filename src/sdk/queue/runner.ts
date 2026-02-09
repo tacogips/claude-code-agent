@@ -562,6 +562,14 @@ export class QueueRunner {
     // See: design-docs/reference-claude-code-internals.md for CLI options.
     const args: string[] = ["-p", "--output-format", "stream-json"];
 
+    // Append additional CLI arguments from queue configuration
+    if (
+      queue.additionalArgs !== undefined &&
+      queue.additionalArgs.length > 0
+    ) {
+      args.push(...queue.additionalArgs);
+    }
+
     // Add --resume flag if continuing session
     if (!shouldStartNewSession) {
       args.push("--resume");
