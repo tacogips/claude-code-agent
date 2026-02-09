@@ -70,6 +70,15 @@ export async function startGroupSession(
   // See src/sdk/queue/runner.ts for detailed description of the planned enhancement.
   // Summary: Reuse long-lived processes via /clear instead of spawning new processes.
   const args = ["-p", "--output-format", "stream-json"];
+
+  // Pass additional CLI arguments from group config
+  if (
+    group.config.additionalArgs !== undefined &&
+    group.config.additionalArgs.length > 0
+  ) {
+    args.push(...group.config.additionalArgs);
+  }
+
   if (resumeFlag) {
     args.push("--resume");
   }

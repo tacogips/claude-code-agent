@@ -202,6 +202,8 @@ export interface ToolAgentOptions {
   cliPath?: string;
   /** Default timeout for operations in ms */
   defaultTimeout?: number;
+  /** Additional CLI arguments to pass to Claude Code (e.g., ['--dangerously-skip-permissions']) */
+  additionalArgs?: string[];
 }
 
 /**
@@ -790,6 +792,8 @@ export class ClaudeCodeToolAgent {
       options.allowedTools = this.options.allowedTools;
     if (this.options.disallowedTools !== undefined)
       options.disallowedTools = this.options.disallowedTools;
+    if (this.options.additionalArgs !== undefined)
+      options.additionalArgs = this.options.additionalArgs;
 
     return options;
   }

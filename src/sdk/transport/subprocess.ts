@@ -87,6 +87,13 @@ export interface TransportOptions {
    * Initial prompt to send. When set with resumeSessionId, used as --prompt.
    */
   prompt?: string;
+
+  /**
+   * Additional CLI arguments to pass to Claude Code.
+   * These are appended as-is to the command line.
+   * Example: ['--dangerously-skip-permissions', '--model', 'claude-opus-4-6']
+   */
+  additionalArgs?: string[];
 }
 
 /**
@@ -453,6 +460,14 @@ export class SubprocessTransport implements Transport {
 
     if (this.options.resumeSessionId !== undefined) {
       args.push("--resume", this.options.resumeSessionId);
+    }
+
+    // Append additional CLI arguments as-is
+    if (
+      this.options.additionalArgs !== undefined &&
+      this.options.additionalArgs.length > 0
+    ) {
+      args.push(...this.options.additionalArgs);
     }
 
     // Note: --prompt is not a supported CLI flag.
