@@ -18,6 +18,7 @@ import { registerDaemonCommands } from "./commands/daemon";
 import { registerBookmarkCommands } from "./commands/bookmark";
 import { registerTokenCommands } from "./commands/token";
 import { registerFilesCommands } from "./commands/files";
+import { createActivityCommand } from "./commands/activity";
 import { ClaudeCodeAgent } from "../sdk/agent";
 import { createProductionContainer } from "../container";
 
@@ -112,6 +113,9 @@ export function createCli(): Command {
 
   // Files commands
   registerFilesCommands(program, getAgent);
+
+  // Activity commands
+  program.addCommand(createActivityCommand());
 
   // Group commands
   // TODO: Implement in cli-group-commands.md plan

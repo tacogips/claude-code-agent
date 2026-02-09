@@ -142,7 +142,10 @@ export class SSEConnection {
     }
 
     // Check eventTypes filter
-    if (this.filter.eventTypes !== undefined && this.filter.eventTypes.length > 0) {
+    if (
+      this.filter.eventTypes !== undefined &&
+      this.filter.eventTypes.length > 0
+    ) {
       const eventType = event.type as EventType;
       if (!this.filter.eventTypes.includes(eventType)) {
         return false;
@@ -262,7 +265,7 @@ export function createSSEStream(
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
       "X-Accel-Buffering": "no", // Disable nginx buffering
     },
   });

@@ -23,6 +23,15 @@ export type GroupStatus =
 
 /**
  * Budget enforcement configuration.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "maxBudgetUsd": 25.0,
+ *   "onBudgetExceeded": "pause",
+ *   "warningThreshold": 0.8
+ * }
+ * ```
  */
 export interface BudgetConfig {
   /** Maximum budget in USD */
@@ -35,6 +44,16 @@ export interface BudgetConfig {
 
 /**
  * Concurrency configuration for session group execution.
+ *
+ * @example Example data
+ * ```json
+ * {
+ *   "maxConcurrent": 3,
+ *   "respectDependencies": true,
+ *   "pauseOnError": true,
+ *   "errorThreshold": 2
+ * }
+ * ```
  */
 export interface ConcurrencyConfig {
   /** Maximum number of concurrent sessions */
@@ -83,6 +102,60 @@ export interface GroupConfig {
 
 /**
  * Session within a session group.
+ *
+ * @example Pending session (not yet started)
+ * ```json
+ * {
+ *   "id": "001-auth-service",
+ *   "projectPath": "/home/user/projects/auth-service",
+ *   "prompt": "Implement JWT token validation",
+ *   "status": "pending",
+ *   "dependsOn": [],
+ *   "createdAt": "2026-01-10T10:00:00.000Z"
+ * }
+ * ```
+ *
+ * @example Running session with dependencies
+ * ```json
+ * {
+ *   "id": "002-api-gateway",
+ *   "projectPath": "/home/user/projects/api-gateway",
+ *   "prompt": "Integrate auth service for request validation",
+ *   "status": "active",
+ *   "dependsOn": ["001-auth-service"],
+ *   "claudeSessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *   "createdAt": "2026-01-10T10:00:00.000Z",
+ *   "startedAt": "2026-01-10T10:15:00.000Z",
+ *   "tokens": {
+ *     "input": 1500,
+ *     "output": 4200,
+ *     "cacheRead": 50000
+ *   },
+ *   "cost": 0.0325
+ * }
+ * ```
+ *
+ * @example Completed session
+ * ```json
+ * {
+ *   "id": "001-auth-service",
+ *   "projectPath": "/home/user/projects/auth-service",
+ *   "prompt": "Implement JWT token validation",
+ *   "status": "completed",
+ *   "dependsOn": [],
+ *   "claudeSessionId": "abc12345-def6-7890-ghij-klmnopqrstuv",
+ *   "createdAt": "2026-01-10T10:00:00.000Z",
+ *   "startedAt": "2026-01-10T10:00:30.000Z",
+ *   "completedAt": "2026-01-10T10:12:45.000Z",
+ *   "tokens": {
+ *     "input": 2800,
+ *     "output": 8500,
+ *     "cacheRead": 120000,
+ *     "cacheWrite": 45000
+ *   },
+ *   "cost": 0.0892
+ * }
+ * ```
  */
 export interface GroupSession {
   /** Unique session identifier (e.g., "001-uuid-session1") */
@@ -118,6 +191,60 @@ export interface GroupSession {
  *
  * Represents a collection of related sessions that can span multiple projects,
  * execute concurrently, and share configuration.
+ *
+ * @example Complete SessionGroup
+ * ```json
+ * {
+ *   "id": "20260110-100000-auth-refactor",
+ *   "name": "Authentication System Refactor",
+ *   "slug": "auth-refactor",
+ *   "description": "Refactor auth across all microservices",
+ *   "status": "running",
+ *   "sessions": [
+ *     {
+ *       "id": "001-auth-service",
+ *       "projectPath": "/home/user/projects/auth-service",
+ *       "prompt": "Implement JWT token validation",
+ *       "status": "completed",
+ *       "dependsOn": [],
+ *       "claudeSessionId": "abc12345-def6-7890-ghij-klmnopqrstuv",
+ *       "createdAt": "2026-01-10T10:00:00.000Z",
+ *       "startedAt": "2026-01-10T10:00:30.000Z",
+ *       "completedAt": "2026-01-10T10:12:45.000Z",
+ *       "cost": 0.0892
+ *     },
+ *     {
+ *       "id": "002-api-gateway",
+ *       "projectPath": "/home/user/projects/api-gateway",
+ *       "prompt": "Integrate auth service",
+ *       "status": "active",
+ *       "dependsOn": ["001-auth-service"],
+ *       "claudeSessionId": "0dc4ee1f-2e78-462f-a400-16d14ab6a418",
+ *       "createdAt": "2026-01-10T10:00:00.000Z",
+ *       "startedAt": "2026-01-10T10:13:00.000Z",
+ *       "cost": 0.0325
+ *     },
+ *     {
+ *       "id": "003-user-service",
+ *       "projectPath": "/home/user/projects/user-service",
+ *       "prompt": "Update user endpoints with new auth",
+ *       "status": "pending",
+ *       "dependsOn": ["001-auth-service"],
+ *       "createdAt": "2026-01-10T10:00:00.000Z"
+ *     }
+ *   ],
+ *   "config": {
+ *     "model": "sonnet",
+ *     "maxBudgetUsd": 25.0,
+ *     "maxConcurrentSessions": 3,
+ *     "onBudgetExceeded": "pause",
+ *     "warningThreshold": 0.8
+ *   },
+ *   "createdAt": "2026-01-10T10:00:00.000Z",
+ *   "updatedAt": "2026-01-10T10:15:30.000Z",
+ *   "startedAt": "2026-01-10T10:00:30.000Z"
+ * }
+ * ```
  */
 export interface SessionGroup {
   /** Unique identifier (e.g., "20260104-143022-cross-project-refactor") */

@@ -25,11 +25,13 @@
     "test:ui": "vitest --ui",
     "typecheck": "tsc --noEmit",
     "lint": "bun run typecheck",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"src/**/*.ts\" --ignore-path .prettierignore",
     "clean": "rm -rf dist",
     "ui:build": "cd src/viewer/browser/static && bun run build",
-    "ui:dev": "cd src/viewer/browser/static && bun run dev"
+    "ui:dev": "cd src/viewer/browser/static && bun run dev",
+    "test:e2e": "bun run tests/e2e/web-viewer.e2e.ts",
+    "test:e2e:build": "bun run ui:build && bun run test:e2e"
   },
   "homepage": "https://github.com/user/repo",
   "repository": {
@@ -42,10 +44,12 @@
     "@types/bun": "1.1.14",
     "@types/minimatch": "6.0.0",
     "@types/mustache": "4.2.6",
+    "@types/ws": "8.18.1",
     "@vitest/ui": "2.1.8",
     "prettier": "3.4.2",
     "typescript": "5.7.2",
-    "vitest": "2.1.8"
+    "vitest": "2.1.8",
+    "ws": "8.19.0"
   },
   "dependencies": {
     "@elysiajs/cors": "1.4.1",

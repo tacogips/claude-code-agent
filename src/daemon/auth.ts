@@ -10,6 +10,8 @@
 import type { Elysia } from "elysia";
 import type { Container } from "../container";
 import type { ApiToken, CreateTokenOptions, Permission } from "./types";
+import { FileLockServiceImpl } from "../services/file-lock";
+import { AtomicWriter } from "../services/atomic-writer";
 
 /**
  * Token storage file format.
@@ -70,6 +72,8 @@ export class TokenManager {
   private tokens: ApiToken[] = [];
   private readonly tokenFilePath: string;
   private readonly container: Container;
+  private readonly lockService: FileLockServiceImpl;
+  private readonly atomicWriter: AtomicWriter;
 
   /**
    * Create a new TokenManager.
@@ -80,6 +84,12 @@ export class TokenManager {
   constructor(container: Container, tokenFilePath: string) {
     this.container = container;
     this.tokenFilePath = tokenFilePath;
+    // Create lock service and atomic writer from container
+    this.lockService = new FileLockServiceImpl(
+      container.fileSystem,
+      container.clock,
+    );
+    this.atomicWriter = new AtomicWriter(container.fileSystem);
   }
 
   /**
@@ -163,17 +173,13 @@ export class TokenManager {
   }
 
   /**
-   * Save tokens to storage file.
+   * Save tokens to storage file using atomic writer.
    */
   private async saveTokens(): Promise<void> {
-    const { fileSystem } = this.container;
     const storage: TokenStorage = { tokens: this.tokens };
 
     try {
-      await fileSystem.writeFile(
-        this.tokenFilePath,
-        JSON.stringify(storage, null, 2),
-      );
+      await this.atomicWriter.writeJson(this.tokenFilePath, storage);
     } catch (error) {
       throw new Error(
         `Failed to save tokens to ${this.tokenFilePath}: ${error}`,
@@ -186,46 +192,52 @@ export class TokenManager {
    *
    * Generates a random token, hashes it, and stores the metadata.
    * Returns the full token string (only time it's available).
+   * Uses locking to prevent race conditions in concurrent token creation.
    *
    * @param options - Token creation options
    * @returns Full token string (cca_...)
    */
   async createToken(options: CreateTokenOptions): Promise<string> {
-    const fullToken = this.generateToken();
-    const hash = await this.hashToken(fullToken);
+    return this.lockService.withLock(this.tokenFilePath, async () => {
+      // Reload tokens from file to ensure we have latest
+      await this.loadTokens();
 
-    // Extract short ID from token (first 8 chars after cca_ prefix)
-    // Format: cca_<base64> -> ID is first 8 chars of base64
-    const tokenId = fullToken.slice(4, 12); // Skip "cca_" and take 8 chars
+      const fullToken = this.generateToken();
+      const hash = await this.hashToken(fullToken);
 
-    const now = new Date().toISOString();
+      // Extract short ID from token (first 8 chars after cca_ prefix)
+      // Format: cca_<base64> -> ID is first 8 chars of base64
+      const tokenId = fullToken.slice(4, 12); // Skip "cca_" and take 8 chars
 
-    let token: ApiToken;
-    if (options.expiresIn !== undefined) {
-      const durationMs = parseDuration(options.expiresIn);
-      const expiresAt = new Date(Date.now() + durationMs).toISOString();
-      token = {
-        id: tokenId,
-        name: options.name,
-        hash,
-        permissions: options.permissions,
-        createdAt: now,
-        expiresAt,
-      };
-    } else {
-      token = {
-        id: tokenId,
-        name: options.name,
-        hash,
-        permissions: options.permissions,
-        createdAt: now,
-      };
-    }
+      const now = new Date().toISOString();
 
-    this.tokens.push(token);
-    await this.saveTokens();
+      let token: ApiToken;
+      if (options.expiresIn !== undefined) {
+        const durationMs = parseDuration(options.expiresIn);
+        const expiresAt = new Date(Date.now() + durationMs).toISOString();
+        token = {
+          id: tokenId,
+          name: options.name,
+          hash,
+          permissions: options.permissions,
+          createdAt: now,
+          expiresAt,
+        };
+      } else {
+        token = {
+          id: tokenId,
+          name: options.name,
+          hash,
+          permissions: options.permissions,
+          createdAt: now,
+        };
+      }
 
-    return fullToken;
+      this.tokens.push(token);
+      await this.saveTokens();
+
+      return fullToken;
+    });
   }
 
   /**
@@ -236,43 +248,49 @@ export class TokenManager {
    * - Token is not expired
    *
    * Updates lastUsedAt on successful validation.
+   * Uses locking to prevent race conditions when updating lastUsedAt.
    *
    * @param token - Full token string
    * @returns Token metadata if valid, null otherwise
    */
   async validateToken(token: string): Promise<ApiToken | null> {
-    const hash = await this.hashToken(token);
+    return this.lockService.withLock(this.tokenFilePath, async () => {
+      // Reload tokens from file to ensure we have latest
+      await this.loadTokens();
 
-    // Find token by hash
-    const tokenIndex = this.tokens.findIndex((t) => t.hash === hash);
-    if (tokenIndex === -1) {
-      return null;
-    }
+      const hash = await this.hashToken(token);
 
-    const storedToken = this.tokens[tokenIndex];
-    if (storedToken === undefined) {
-      return null;
-    }
-
-    // Check expiration
-    if (storedToken.expiresAt !== undefined) {
-      const now = new Date();
-      const expiresAt = new Date(storedToken.expiresAt);
-      if (now > expiresAt) {
-        return null; // Token expired
+      // Find token by hash
+      const tokenIndex = this.tokens.findIndex((t) => t.hash === hash);
+      if (tokenIndex === -1) {
+        return null;
       }
-    }
 
-    // Update lastUsedAt
-    const updatedToken: ApiToken = {
-      ...storedToken,
-      lastUsedAt: new Date().toISOString(),
-    };
+      const storedToken = this.tokens[tokenIndex];
+      if (storedToken === undefined) {
+        return null;
+      }
 
-    this.tokens[tokenIndex] = updatedToken;
-    await this.saveTokens();
+      // Check expiration
+      if (storedToken.expiresAt !== undefined) {
+        const now = new Date();
+        const expiresAt = new Date(storedToken.expiresAt);
+        if (now > expiresAt) {
+          return null; // Token expired
+        }
+      }
 
-    return updatedToken;
+      // Update lastUsedAt
+      const updatedToken: ApiToken = {
+        ...storedToken,
+        lastUsedAt: new Date().toISOString(),
+      };
+
+      this.tokens[tokenIndex] = updatedToken;
+      await this.saveTokens();
+
+      return updatedToken;
+    });
   }
 
   /**
@@ -290,19 +308,25 @@ export class TokenManager {
    * Revoke a token by ID.
    *
    * Removes the token from storage.
+   * Uses locking to prevent race conditions in concurrent token revocation.
    *
    * @param tokenId - Token ID to revoke
    * @throws Error if token not found
    */
   async revokeToken(tokenId: string): Promise<void> {
-    const initialLength = this.tokens.length;
-    this.tokens = this.tokens.filter((t) => t.id !== tokenId);
+    await this.lockService.withLock(this.tokenFilePath, async () => {
+      // Reload tokens from file to ensure we have latest
+      await this.loadTokens();
 
-    if (this.tokens.length === initialLength) {
-      throw new Error(`Token not found: ${tokenId}`);
-    }
+      const initialLength = this.tokens.length;
+      this.tokens = this.tokens.filter((t) => t.id !== tokenId);
 
-    await this.saveTokens();
+      if (this.tokens.length === initialLength) {
+        throw new Error(`Token not found: ${tokenId}`);
+      }
+
+      await this.saveTokens();
+    });
   }
 
   /**
@@ -310,27 +334,43 @@ export class TokenManager {
    *
    * Creates a new token with the same permissions and name,
    * then revokes the old token.
+   * Uses locking to ensure atomicity of rotate operation.
    *
    * @param tokenId - Token ID to rotate
    * @returns New token string
    * @throws Error if token not found
    */
   async rotateToken(tokenId: string): Promise<string> {
-    const oldToken = this.tokens.find((t) => t.id === tokenId);
-    if (oldToken === undefined) {
-      throw new Error(`Token not found: ${tokenId}`);
-    }
+    return this.lockService.withLock(this.tokenFilePath, async () => {
+      // Reload tokens from file to ensure we have latest
+      await this.loadTokens();
 
-    // Create new token with same permissions (no expiration)
-    const newToken = await this.createToken({
-      name: oldToken.name,
-      permissions: oldToken.permissions,
+      const oldToken = this.tokens.find((t) => t.id === tokenId);
+      if (oldToken === undefined) {
+        throw new Error(`Token not found: ${tokenId}`);
+      }
+
+      // Generate new token
+      const fullToken = this.generateToken();
+      const hash = await this.hashToken(fullToken);
+      const newTokenId = fullToken.slice(4, 12);
+      const now = new Date().toISOString();
+
+      const newToken: ApiToken = {
+        id: newTokenId,
+        name: oldToken.name,
+        hash,
+        permissions: oldToken.permissions,
+        createdAt: now,
+      };
+
+      // Remove old token and add new token
+      this.tokens = this.tokens.filter((t) => t.id !== oldToken.id);
+      this.tokens.push(newToken);
+      await this.saveTokens();
+
+      return fullToken;
     });
-
-    // Revoke old token
-    await this.revokeToken(tokenId);
-
-    return newToken;
   }
 
   /**

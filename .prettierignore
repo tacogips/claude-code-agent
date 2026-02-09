@@ -1,0 +1,2 @@
+# Ignore browser viewer static folder (has its own prettier config with svelte plugin)
+src/viewer/browser/static/

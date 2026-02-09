@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { untrack } from "svelte";
   import SessionList from "$lib/components/SessionList.svelte";
   import type { SessionMetadata } from "../../../../../types/session";
 
@@ -94,16 +94,21 @@
     window.location.href = `/sessions/${sessionId}`;
   }
 
-  onMount(() => {
-    fetchSessions();
-    connectWebSocket();
-  });
+  // Initialize on mount using $effect
+  $effect(() => {
+    // Run only once on mount (no dependencies tracked)
+    untrack(() => {
+      fetchSessions();
+      connectWebSocket();
+    });
 
-  onDestroy(() => {
-    if (ws) {
-      ws.close();
-      ws = null;
-    }
+    // Cleanup on destroy
+    return () => {
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+    };
   });
 </script>
 

@@ -42,9 +42,18 @@ describe("InMemoryBookmarkRepository", () => {
 
   describe("findBySession", () => {
     test("should return all bookmarks for a session", async () => {
-      const bookmark1 = createBookmark({ id: "bm-001", sessionId: "session-001" });
-      const bookmark2 = createBookmark({ id: "bm-002", sessionId: "session-001" });
-      const bookmark3 = createBookmark({ id: "bm-003", sessionId: "session-002" });
+      const bookmark1 = createBookmark({
+        id: "bm-001",
+        sessionId: "session-001",
+      });
+      const bookmark2 = createBookmark({
+        id: "bm-002",
+        sessionId: "session-001",
+      });
+      const bookmark3 = createBookmark({
+        id: "bm-003",
+        sessionId: "session-002",
+      });
 
       await repo.save(bookmark1);
       await repo.save(bookmark2);
@@ -98,7 +107,11 @@ describe("InMemoryBookmarkRepository", () => {
 
     test("should filter by type", async () => {
       const sessionBm = createBookmark({ id: "bm-001", type: "session" });
-      const messageBm = createBookmark({ id: "bm-002", type: "message", messageId: "msg-001" });
+      const messageBm = createBookmark({
+        id: "bm-002",
+        type: "message",
+        messageId: "msg-001",
+      });
 
       await repo.save(sessionBm);
       await repo.save(messageBm);
@@ -109,8 +122,14 @@ describe("InMemoryBookmarkRepository", () => {
     });
 
     test("should filter by sessionId", async () => {
-      const bookmark1 = createBookmark({ id: "bm-001", sessionId: "session-001" });
-      const bookmark2 = createBookmark({ id: "bm-002", sessionId: "session-002" });
+      const bookmark1 = createBookmark({
+        id: "bm-001",
+        sessionId: "session-001",
+      });
+      const bookmark2 = createBookmark({
+        id: "bm-002",
+        sessionId: "session-002",
+      });
 
       await repo.save(bookmark1);
       await repo.save(bookmark2);
@@ -134,7 +153,10 @@ describe("InMemoryBookmarkRepository", () => {
 
     test("should filter by nameContains (case-insensitive)", async () => {
       const bookmark1 = createBookmark({ id: "bm-001", name: "Auth Bug Fix" });
-      const bookmark2 = createBookmark({ id: "bm-002", name: "Feature Request" });
+      const bookmark2 = createBookmark({
+        id: "bm-002",
+        name: "Feature Request",
+      });
 
       await repo.save(bookmark1);
       await repo.save(bookmark2);
@@ -157,7 +179,9 @@ describe("InMemoryBookmarkRepository", () => {
       await repo.save(bookmark1);
       await repo.save(bookmark2);
 
-      const results = await repo.list({ since: new Date("2026-01-03T00:00:00Z") });
+      const results = await repo.list({
+        since: new Date("2026-01-03T00:00:00Z"),
+      });
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual(bookmark2);
     });
@@ -169,7 +193,10 @@ describe("InMemoryBookmarkRepository", () => {
       await repo.save(bookmark1);
       await repo.save(bookmark2);
 
-      const results = await repo.list(undefined, { field: "name", direction: "asc" });
+      const results = await repo.list(undefined, {
+        field: "name",
+        direction: "asc",
+      });
       expect(results[0]?.name).toBe("Alpha");
       expect(results[1]?.name).toBe("Zebra");
     });
@@ -187,7 +214,10 @@ describe("InMemoryBookmarkRepository", () => {
       await repo.save(bookmark1);
       await repo.save(bookmark2);
 
-      const results = await repo.list(undefined, { field: "createdAt", direction: "desc" });
+      const results = await repo.list(undefined, {
+        field: "createdAt",
+        direction: "desc",
+      });
       expect(results[0]?.id).toBe("bm-002");
       expect(results[1]?.id).toBe("bm-001");
     });
@@ -240,7 +270,10 @@ describe("InMemoryBookmarkRepository", () => {
     });
 
     test("should find bookmarks by tag", async () => {
-      const bookmark1 = createBookmark({ id: "bm-001", tags: ["authentication"] });
+      const bookmark1 = createBookmark({
+        id: "bm-001",
+        tags: ["authentication"],
+      });
       const bookmark2 = createBookmark({ id: "bm-002", tags: ["feature"] });
 
       await repo.save(bookmark1);
@@ -261,7 +294,10 @@ describe("InMemoryBookmarkRepository", () => {
 
     test("should prioritize exact name matches", async () => {
       const exactMatch = createBookmark({ id: "bm-001", name: "auth" });
-      const partialMatch = createBookmark({ id: "bm-002", name: "authentication" });
+      const partialMatch = createBookmark({
+        id: "bm-002",
+        name: "authentication",
+      });
 
       await repo.save(partialMatch);
       await repo.save(exactMatch);
@@ -316,9 +352,9 @@ describe("InMemoryBookmarkRepository", () => {
     });
 
     test("should throw when bookmark not found", async () => {
-      await expect(repo.update("nonexistent", { name: "Updated" })).rejects.toThrow(
-        "Bookmark not found: nonexistent",
-      );
+      await expect(
+        repo.update("nonexistent", { name: "Updated" }),
+      ).rejects.toThrow("Bookmark not found: nonexistent");
     });
 
     test("should not change ID", async () => {
@@ -353,7 +389,10 @@ describe("InMemoryBookmarkRepository", () => {
   describe("getAllTags", () => {
     test("should return all unique tags sorted", async () => {
       const bookmark1 = createBookmark({ id: "bm-001", tags: ["auth", "bug"] });
-      const bookmark2 = createBookmark({ id: "bm-002", tags: ["feature", "auth"] });
+      const bookmark2 = createBookmark({
+        id: "bm-002",
+        tags: ["feature", "auth"],
+      });
 
       await repo.save(bookmark1);
       await repo.save(bookmark2);
@@ -378,8 +417,12 @@ describe("InMemoryBookmarkRepository", () => {
     });
 
     test("should count filtered bookmarks", async () => {
-      await repo.save(createBookmark({ id: "bm-001", sessionId: "session-001" }));
-      await repo.save(createBookmark({ id: "bm-002", sessionId: "session-002" }));
+      await repo.save(
+        createBookmark({ id: "bm-001", sessionId: "session-001" }),
+      );
+      await repo.save(
+        createBookmark({ id: "bm-002", sessionId: "session-002" }),
+      );
 
       const count = await repo.count({ sessionId: "session-001" });
       expect(count).toBe(1);

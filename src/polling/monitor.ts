@@ -328,33 +328,36 @@ export class GroupMonitor {
       sessionIterators.set(session.id, iterator);
     }
 
-    // Merge events from all session iterators using a simpler approach
-    // We'll check each iterator in round-robin fashion
-    let activeIteratorCount = sessionIterators.size;
-    const completedIterators = new Set<string>();
-
-    while (activeIteratorCount > 0 && !this.stopped) {
-      // Create an array of promises for all active iterators
-      const pendingPromises: Promise<{
+    // Merge events from all session iterators
+    // Maintain one pending promise per iterator to avoid calling next() multiple times
+    const pendingPromises = new Map<
+      string,
+      Promise<{
         sessionId: string;
         result: IteratorResult<MonitorEvent, void>;
-      }>[] = [];
+      }>
+    >();
+    const completedIterators = new Set<string>();
 
-      for (const [sessionId, iterator] of sessionIterators.entries()) {
-        if (!completedIterators.has(sessionId)) {
-          pendingPromises.push(
-            iterator.next().then((result) => ({ sessionId, result })),
-          );
-        }
-      }
+    // Initialize pending promises for all iterators
+    for (const [sessionId, iterator] of sessionIterators.entries()) {
+      pendingPromises.set(
+        sessionId,
+        iterator.next().then((result) => ({ sessionId, result })),
+      );
+    }
 
-      if (pendingPromises.length === 0 || this.stopped) {
+    while (pendingPromises.size > 0 && !this.stopped) {
+      // Get array of all pending promises
+      const promiseArray = Array.from(pendingPromises.values());
+
+      if (promiseArray.length === 0 || this.stopped) {
         break;
       }
 
       // Wait for the first iterator to return a value, or for stop() to be called
       const raceResult = await Promise.race([
-        Promise.race(pendingPromises).then((result) => ({
+        Promise.race(promiseArray).then((result) => ({
           type: "event" as const,
           data: result,
         })),
@@ -368,9 +371,9 @@ export class GroupMonitor {
       const { sessionId, result } = raceResult.data;
 
       if (result.done === true) {
-        // Mark this iterator as completed
+        // Mark this iterator as completed and remove its pending promise
         completedIterators.add(sessionId);
-        activeIteratorCount--;
+        pendingPromises.delete(sessionId);
         continue;
       }
 
@@ -378,6 +381,18 @@ export class GroupMonitor {
       const event = result.value;
       this.stateManager.processEvents([event]);
       yield event;
+
+      // Replace the resolved promise with a new one for the same iterator
+      const iterator = sessionIterators.get(sessionId);
+      if (iterator !== undefined && !completedIterators.has(sessionId)) {
+        pendingPromises.set(
+          sessionId,
+          iterator.next().then((nextResult) => ({
+            sessionId,
+            result: nextResult,
+          })),
+        );
+      }
     }
   }
 

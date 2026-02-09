@@ -7,14 +7,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TranscriptWatcher } from "./watcher";
 import { MockFileSystem } from "../test/mocks/filesystem";
-import { MockProcessManager } from "../test/mocks/process-manager";
-import { MockClock } from "../test/mocks/clock";
 import type { Container } from "../container";
-import {
-  InMemoryGroupRepository,
-  InMemoryQueueRepository,
-  InMemoryBookmarkRepository,
-} from "../repository/in-memory";
+import { createTestContainer } from "../container";
 
 describe("TranscriptWatcher", () => {
   let fs: MockFileSystem;
@@ -23,14 +17,9 @@ describe("TranscriptWatcher", () => {
 
   beforeEach(() => {
     fs = new MockFileSystem();
-    container = {
+    container = createTestContainer({
       fileSystem: fs,
-      processManager: new MockProcessManager(),
-      clock: new MockClock(),
-      groupRepository: new InMemoryGroupRepository(),
-      queueRepository: new InMemoryQueueRepository(),
-      bookmarkRepository: new InMemoryBookmarkRepository(),
-    };
+    });
   });
 
   afterEach(() => {

@@ -11,6 +11,8 @@ import type { Container } from "../../container";
 import type { IndexStats, ModifyingTool } from "./types";
 import { FileChangeExtractor } from "./extractor";
 import { createTaggedLogger } from "../../logger";
+import { FileLockServiceImpl } from "../../services/file-lock";
+import { AtomicWriter } from "../../services/atomic-writer";
 import path from "node:path";
 import { minimatch } from "minimatch";
 
@@ -93,6 +95,8 @@ export class FileChangeIndex {
   private readonly clock;
   private readonly extractor: FileChangeExtractor;
   private readonly indexPath: string;
+  private readonly lockService: FileLockServiceImpl;
+  private readonly atomicWriter: AtomicWriter;
 
   /** In-memory index cache */
   private fileIndex: Map<string, FileIndexEntry[]>;
@@ -107,6 +111,11 @@ export class FileChangeIndex {
     this.fileSystem = container.fileSystem;
     this.clock = container.clock;
     this.extractor = new FileChangeExtractor(container);
+    this.lockService = new FileLockServiceImpl(
+      container.fileSystem,
+      container.clock,
+    );
+    this.atomicWriter = new AtomicWriter(container.fileSystem);
 
     // Index storage location
     const homeDir = process.env["HOME"] ?? process.env["USERPROFILE"] ?? "";
@@ -350,27 +359,29 @@ export class FileChangeIndex {
   /**
    * Save index to disk.
    *
-   * Writes the in-memory index to JSON storage.
+   * Writes the in-memory index to JSON storage with locking and atomic writes.
    */
   private async saveIndex(): Promise<void> {
     // Ensure index directory exists
     const indexDir = path.dirname(this.indexPath);
     await this.fileSystem.mkdir(indexDir, { recursive: true });
 
-    // Convert Map to plain object for JSON serialization
-    const fileIndexObject: Record<string, readonly FileIndexEntry[]> = {};
-    for (const [filePath, entries] of this.fileIndex.entries()) {
-      fileIndexObject[filePath] = entries;
-    }
+    // Acquire lock and write atomically
+    await this.lockService.withLock(this.indexPath, async () => {
+      // Convert Map to plain object for JSON serialization
+      const fileIndexObject: Record<string, readonly FileIndexEntry[]> = {};
+      for (const [filePath, entries] of this.fileIndex.entries()) {
+        fileIndexObject[filePath] = entries;
+      }
 
-    const data: IndexData = {
-      metadata: this.metadata,
-      fileIndex: fileIndexObject,
-    };
+      const data: IndexData = {
+        metadata: this.metadata,
+        fileIndex: fileIndexObject,
+      };
 
-    // Write to disk
-    const content = JSON.stringify(data, null, 2);
-    await this.fileSystem.writeFile(this.indexPath, content);
+      // Write atomically
+      await this.atomicWriter.writeJson(this.indexPath, data);
+    });
 
     logger.debug(`Index saved to ${this.indexPath}`);
   }

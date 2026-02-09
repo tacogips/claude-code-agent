@@ -717,3 +717,245 @@ describe("requirePermission", () => {
     });
   });
 });
+
+describe("TokenManager - Concurrency Tests", () => {
+  let container: Container;
+  let tokenManager: TokenManager;
+  const tokenFilePath = "/tmp/test-tokens-concurrent.json";
+
+  beforeEach(async () => {
+    container = createTestContainer();
+    tokenManager = new TokenManager(container, tokenFilePath);
+    await tokenManager.initialize();
+  });
+
+  describe("concurrent createToken", () => {
+    test("no lost tokens when creating concurrently", async () => {
+      // Create 10 tokens concurrently
+      const promises = Array.from({ length: 10 }, (_, i) =>
+        tokenManager.createToken({
+          name: `Token ${i}`,
+          permissions: ["session:read"],
+        }),
+      );
+
+      await Promise.all(promises);
+
+      // Verify all 10 tokens were created
+      const tokens = await tokenManager.listTokens();
+      expect(tokens).toHaveLength(10);
+
+      // Verify all token names are unique
+      const names = tokens.map((t) => t.name);
+      const uniqueNames = new Set(names);
+      expect(uniqueNames.size).toBe(10);
+    });
+
+    test("all tokens can be validated after concurrent creation", async () => {
+      // Create tokens concurrently and store the full token strings
+      const promises = Array.from({ length: 5 }, (_, i) =>
+        tokenManager.createToken({
+          name: `Concurrent Token ${i}`,
+          permissions: ["session:read"],
+        }),
+      );
+
+      const fullTokens = await Promise.all(promises);
+
+      // Validate each token
+      for (const fullToken of fullTokens) {
+        const validated = await tokenManager.validateToken(fullToken);
+        expect(validated).not.toBeNull();
+        expect(validated?.name).toMatch(/^Concurrent Token \d$/);
+      }
+    });
+  });
+
+  describe("concurrent revokeToken", () => {
+    test("no errors when revoking different tokens concurrently", async () => {
+      // Create 5 tokens
+      const createPromises = Array.from({ length: 5 }, (_, i) =>
+        tokenManager.createToken({
+          name: `To Revoke ${i}`,
+          permissions: ["session:read"],
+        }),
+      );
+
+      await Promise.all(createPromises);
+
+      // Get all token IDs
+      const tokens = await tokenManager.listTokens();
+      const tokenIds = tokens.map((t) => t.id);
+
+      // Revoke all tokens concurrently
+      const revokePromises = tokenIds.map((id) => tokenManager.revokeToken(id));
+      await Promise.all(revokePromises);
+
+      // Verify all tokens were revoked
+      const afterRevoke = await tokenManager.listTokens();
+      expect(afterRevoke).toHaveLength(0);
+    });
+
+    test("handles concurrent revoke of same token gracefully", async () => {
+      // Create one token
+      await tokenManager.createToken({
+        name: "To Revoke",
+        permissions: ["session:read"],
+      });
+
+      const tokens = await tokenManager.listTokens();
+      const tokenId = tokens[0]?.id;
+      expect(tokenId).toBeDefined();
+
+      // Try to revoke the same token 3 times concurrently
+      const revokePromises = Array.from({ length: 3 }, () =>
+        tokenManager.revokeToken(tokenId!),
+      );
+
+      // At least one should succeed, others should fail
+      const results = await Promise.allSettled(revokePromises);
+
+      const fulfilled = results.filter((r) => r.status === "fulfilled");
+      const rejected = results.filter((r) => r.status === "rejected");
+
+      // At least one should succeed
+      expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+      // Others should fail with "Token not found"
+      rejected.forEach((result) => {
+        if (result.status === "rejected") {
+          expect(result.reason).toBeInstanceOf(Error);
+          expect((result.reason as Error).message).toContain("Token not found");
+        }
+      });
+    });
+  });
+
+  describe("concurrent validateToken", () => {
+    test("concurrent validations update lastUsedAt correctly", async () => {
+      // Create one token
+      const fullToken = await tokenManager.createToken({
+        name: "Concurrent Validate",
+        permissions: ["session:read"],
+      });
+
+      // Validate the same token 5 times concurrently
+      const validatePromises = Array.from({ length: 5 }, () =>
+        tokenManager.validateToken(fullToken),
+      );
+
+      const results = await Promise.all(validatePromises);
+
+      // All validations should succeed
+      results.forEach((result) => {
+        expect(result).not.toBeNull();
+        expect(result?.name).toBe("Concurrent Validate");
+        expect(result?.lastUsedAt).toBeDefined();
+      });
+
+      // File should have only one token with updated lastUsedAt
+      const tokens = await tokenManager.listTokens();
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]?.lastUsedAt).toBeDefined();
+    });
+  });
+
+  describe("concurrent rotateToken", () => {
+    test("rotating different tokens concurrently works", async () => {
+      // Create 3 tokens
+      const createPromises = Array.from({ length: 3 }, (_, i) =>
+        tokenManager.createToken({
+          name: `To Rotate ${i}`,
+          permissions: ["session:read"],
+        }),
+      );
+
+      await Promise.all(createPromises);
+
+      // Get all token IDs
+      const tokens = await tokenManager.listTokens();
+      const tokenIds = tokens.map((t) => t.id);
+
+      // Rotate all tokens concurrently
+      const rotatePromises = tokenIds.map((id) => tokenManager.rotateToken(id));
+      const newTokens = await Promise.all(rotatePromises);
+
+      // Verify all rotations succeeded
+      expect(newTokens).toHaveLength(3);
+      newTokens.forEach((token) => {
+        expect(token).toStartWith("cca_");
+      });
+
+      // Verify we still have 3 tokens
+      const afterRotate = await tokenManager.listTokens();
+      expect(afterRotate).toHaveLength(3);
+
+      // Verify all new tokens can be validated
+      for (const newToken of newTokens) {
+        const validated = await tokenManager.validateToken(newToken);
+        expect(validated).not.toBeNull();
+      }
+    });
+  });
+
+  describe("mixed concurrent operations", () => {
+    test("concurrent create, validate, and revoke operations", async () => {
+      // Create some initial tokens
+      const initialTokens = await Promise.all([
+        tokenManager.createToken({
+          name: "Initial 1",
+          permissions: ["session:read"],
+        }),
+        tokenManager.createToken({
+          name: "Initial 2",
+          permissions: ["session:read"],
+        }),
+      ]);
+
+      // Get the token ID to revoke before starting mixed operations
+      const tokensBeforeMix = await tokenManager.listTokens();
+      const tokenToRevokeId = tokensBeforeMix.find(
+        (t) => t.name === "Initial 1",
+      )?.id;
+      expect(tokenToRevokeId).toBeDefined();
+
+      // Mix of operations:
+      // - Create new tokens
+      // - Validate existing tokens
+      // - Revoke one token
+      const mixedPromises = [
+        // Create new tokens
+        tokenManager.createToken({
+          name: "New 1",
+          permissions: ["session:read"],
+        }),
+        tokenManager.createToken({
+          name: "New 2",
+          permissions: ["session:read"],
+        }),
+        // Validate existing tokens
+        tokenManager.validateToken(initialTokens[0]!),
+        tokenManager.validateToken(initialTokens[1]!),
+        // Revoke one initial token
+        tokenManager.revokeToken(tokenToRevokeId!),
+      ];
+
+      await Promise.all(mixedPromises);
+
+      // Verify final state
+      const finalTokens = await tokenManager.listTokens();
+
+      // Should have 3 tokens (2 initial - 1 revoked + 2 new)
+      expect(finalTokens).toHaveLength(3);
+
+      // Verify "Initial 1" was revoked
+      expect(finalTokens.find((t) => t.name === "Initial 1")).toBeUndefined();
+
+      // Verify "Initial 2" still exists
+      expect(finalTokens.find((t) => t.name === "Initial 2")).toBeDefined();
+
+      // Verify new tokens exist
+      expect(finalTokens.find((t) => t.name === "New 1")).toBeDefined();
+      expect(finalTokens.find((t) => t.name === "New 2")).toBeDefined();
+    });
+  });
+});

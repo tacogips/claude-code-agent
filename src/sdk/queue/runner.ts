@@ -13,54 +13,17 @@ import type { QueueManager } from "./manager";
 import type {
   QueueRepository,
   CommandQueue,
-  QueueCommand,
-  QueueStatus,
-  CommandStatus,
 } from "../../repository/queue-repository";
 import type { ManagedProcess } from "../../interfaces/process-manager";
 import { createTaggedLogger } from "../../logger";
+import { QueueUpdater } from "./runner-updaters";
+import { captureClaudeSessionId } from "./session-capture";
+import type { RunOptions, QueueResult } from "./runner-types";
 
 const logger = createTaggedLogger("queue-runner");
 
-/**
- * Options for running a queue.
- */
-export interface RunOptions {
-  /**
-   * Callback invoked when a command starts.
-   */
-  readonly onCommandStart?: ((command: QueueCommand) => void) | undefined;
-
-  /**
-   * Callback invoked when a command completes successfully.
-   */
-  readonly onCommandComplete?: ((command: QueueCommand) => void) | undefined;
-
-  /**
-   * Callback invoked when a command fails.
-   */
-  readonly onCommandFail?:
-    | ((command: QueueCommand, error: string) => void)
-    | undefined;
-}
-
-/**
- * Result of queue execution.
- */
-export interface QueueResult {
-  /** Final queue status */
-  readonly status: QueueStatus;
-  /** Number of commands completed */
-  readonly completedCommands: number;
-  /** Number of commands failed */
-  readonly failedCommands: number;
-  /** Number of commands skipped */
-  readonly skippedCommands: number;
-  /** Total cost in USD */
-  readonly totalCostUsd: number;
-  /** Total duration in milliseconds */
-  readonly totalDurationMs: number;
-}
+// Re-export types for backward compatibility
+export type { RunOptions, QueueResult } from "./runner-types";
 
 /**
  * Queue Runner for executing Command Queue commands sequentially.
@@ -90,9 +53,9 @@ export interface QueueResult {
  */
 export class QueueRunner {
   private readonly container: Container;
-  private readonly repository: QueueRepository;
   private readonly manager: QueueManager;
   private readonly eventEmitter: EventEmitter;
+  private readonly updater: QueueUpdater;
 
   /** Map of queue IDs to currently running processes */
   private readonly runningProcesses: Map<string, ManagedProcess> = new Map();
@@ -118,9 +81,9 @@ export class QueueRunner {
     eventEmitter: EventEmitter,
   ) {
     this.container = container;
-    this.repository = repository;
     this.manager = manager;
     this.eventEmitter = eventEmitter;
+    this.updater = new QueueUpdater(container, repository);
   }
 
   /**
@@ -155,7 +118,7 @@ export class QueueRunner {
     this.stopRequested.delete(queueId);
 
     // Update queue status to running
-    await this.updateQueueStatus(queueId, "running");
+    await this.updater.updateQueueStatus(queueId, "running");
 
     const startTime = this.container.clock.now().getTime();
 
@@ -182,7 +145,7 @@ export class QueueRunner {
       // Check for pause request
       if (this.pauseRequested.get(queueId) === true) {
         logger.info(`Pause requested for queue ${queueId}`);
-        await this.updateQueueStatus(queueId, "paused");
+        await this.updater.updateQueueStatus(queueId, "paused");
         this.pauseRequested.delete(queueId);
 
         const endTime = this.container.clock.now().getTime();
@@ -215,13 +178,13 @@ export class QueueRunner {
           for (let j = i; j < updatedQueue.commands.length; j++) {
             const cmd = updatedQueue.commands[j];
             if (cmd !== undefined && cmd.status === "pending") {
-              await this.updateCommandStatus(queueId, j, "skipped");
+              await this.updater.updateCommandStatus(queueId, j, "skipped");
               skippedCommands++;
             }
           }
         }
 
-        await this.updateQueueStatus(queueId, "stopped");
+        await this.updater.updateQueueStatus(queueId, "stopped");
         this.stopRequested.delete(queueId);
 
         const endTime = this.container.clock.now().getTime();
@@ -302,11 +265,11 @@ export class QueueRunner {
 
           if (stopOnError) {
             logger.info(`Stopping queue ${queueId} due to command failure`);
-            await this.updateQueueStatus(queueId, "failed");
+            await this.updater.updateQueueStatus(queueId, "failed");
 
             // Mark remaining commands as skipped
             for (let j = i + 1; j < freshQueue.commands.length; j++) {
-              await this.updateCommandStatus(queueId, j, "skipped");
+              await this.updater.updateCommandStatus(queueId, j, "skipped");
               skippedCommands++;
             }
 
@@ -333,7 +296,7 @@ export class QueueRunner {
         }
 
         // Update currentIndex to next command
-        await this.updateQueueCurrentIndex(queueId, i + 1);
+        await this.updater.updateQueueCurrentIndex(queueId, i + 1);
 
         // Update queue reference for next iteration
         const nextQueue = await this.manager.getQueue(queueId);
@@ -346,16 +309,16 @@ export class QueueRunner {
 
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        await this.updateCommandError(queueId, i, errorMessage);
+        await this.updater.updateCommandError(queueId, i, errorMessage);
 
         options?.onCommandFail?.(command, errorMessage);
 
         // Stop on error
-        await this.updateQueueStatus(queueId, "failed");
+        await this.updater.updateQueueStatus(queueId, "failed");
 
         // Mark remaining commands as skipped
         for (let j = i + 1; j < queue.commands.length; j++) {
-          await this.updateCommandStatus(queueId, j, "skipped");
+          await this.updater.updateCommandStatus(queueId, j, "skipped");
           skippedCommands++;
         }
 
@@ -382,7 +345,7 @@ export class QueueRunner {
     }
 
     // All commands completed
-    await this.updateQueueStatus(queueId, "completed");
+    await this.updater.updateQueueStatus(queueId, "completed");
 
     const endTime = this.container.clock.now().getTime();
     const durationMs = endTime - startTime;
@@ -558,7 +521,7 @@ export class QueueRunner {
     );
 
     // Update command status to running
-    await this.updateCommandStatus(queueId, commandIndex, "running");
+    await this.updater.updateCommandStatus(queueId, commandIndex, "running");
 
     const commandStartTime = this.container.clock.now().getTime();
 
@@ -615,15 +578,22 @@ export class QueueRunner {
 
     try {
       // Capture session ID from stdout
-      const sessionId = await this.captureSessionId(process.stdout);
+      const sessionId = await captureClaudeSessionId(
+        process.stdout,
+        this.container.clock,
+      );
 
       // Update queue's current session ID if new session
       if (shouldStartNewSession) {
-        await this.updateQueueSessionId(queueId, sessionId);
+        await this.updater.updateQueueSessionId(queueId, sessionId);
       }
 
       // Update command's session ID
-      await this.updateCommandSessionId(queueId, commandIndex, sessionId);
+      await this.updater.updateCommandSessionId(
+        queueId,
+        commandIndex,
+        sessionId,
+      );
 
       // Wait for process to complete
       const exitCode = await process.exitCode;
@@ -635,12 +605,16 @@ export class QueueRunner {
 
       if (exitCode === 0) {
         // Command succeeded
-        await this.updateCommandStatus(queueId, commandIndex, "completed");
-        await this.updateCommandCompletedAt(queueId, commandIndex);
+        await this.updater.updateCommandStatus(
+          queueId,
+          commandIndex,
+          "completed",
+        );
+        await this.updater.updateCommandCompletedAt(queueId, commandIndex);
 
         // TODO: Extract cost from Claude Code output
         const costUsd = 0;
-        await this.updateCommandCost(queueId, commandIndex, costUsd);
+        await this.updater.updateCommandCost(queueId, commandIndex, costUsd);
 
         this.eventEmitter.emit("command_completed", {
           type: "command_completed",
@@ -660,8 +634,12 @@ export class QueueRunner {
       } else {
         // Command failed
         const errorMessage = `Claude Code exited with code ${exitCode ?? "unknown"}`;
-        await this.updateCommandStatus(queueId, commandIndex, "failed");
-        await this.updateCommandError(queueId, commandIndex, errorMessage);
+        await this.updater.updateCommandStatus(queueId, commandIndex, "failed");
+        await this.updater.updateCommandError(
+          queueId,
+          commandIndex,
+          errorMessage,
+        );
 
         this.eventEmitter.emit("command_failed", {
           type: "command_failed",
@@ -684,8 +662,12 @@ export class QueueRunner {
 
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      await this.updateCommandStatus(queueId, commandIndex, "failed");
-      await this.updateCommandError(queueId, commandIndex, errorMessage);
+      await this.updater.updateCommandStatus(queueId, commandIndex, "failed");
+      await this.updater.updateCommandError(
+        queueId,
+        commandIndex,
+        errorMessage,
+      );
 
       const commandEndTime = this.container.clock.now().getTime();
       const durationMs = commandEndTime - commandStartTime;
@@ -729,293 +711,5 @@ export class QueueRunner {
     }
 
     return command.sessionMode === "new";
-  }
-
-  /**
-   * Capture the Claude Code session ID from stdout.
-   *
-   * Parses stream-json output to extract the session ID.
-   *
-   * @param stdout - Async iterable of stdout lines
-   * @returns The captured session ID
-   */
-  private async captureSessionId(
-    stdout: AsyncIterable<string>,
-  ): Promise<string> {
-    // TODO: Implement proper stream-json parsing
-    // For now, return a placeholder
-    // In a real implementation, we would parse the JSON output
-    // and extract the session ID from the metadata
-
-    for await (const line of stdout) {
-      // Look for session ID in stream-json output
-      // Example: {"type":"session","sessionId":"abc123"}
-      try {
-        const parsed = JSON.parse(line) as { sessionId?: string };
-        if (parsed.sessionId !== undefined) {
-          return parsed.sessionId;
-        }
-      } catch {
-        // Not valid JSON, continue
-      }
-    }
-
-    // Fallback: generate a session ID
-    const timestamp = this.container.clock.now().toISOString();
-    return `session-${timestamp}`;
-  }
-
-  /**
-   * Update queue status in repository.
-   */
-  private async updateQueueStatus(
-    queueId: string,
-    status: QueueStatus,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const updated: CommandQueue = {
-      ...queue,
-      status,
-      updatedAt: this.container.clock.now().toISOString(),
-      ...(status === "running" && queue.startedAt === undefined
-        ? { startedAt: this.container.clock.now().toISOString() }
-        : {}),
-      ...(status === "completed" || status === "failed" || status === "stopped"
-        ? { completedAt: this.container.clock.now().toISOString() }
-        : {}),
-    };
-
-    await this.repository.save(updated);
-  }
-
-  /**
-   * Update queue current session ID.
-   */
-  private async updateQueueSessionId(
-    queueId: string,
-    sessionId: string,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const updated: CommandQueue = {
-      ...queue,
-      currentSessionId: sessionId,
-      updatedAt: this.container.clock.now().toISOString(),
-    };
-
-    await this.repository.save(updated);
-  }
-
-  /**
-   * Update queue current command index.
-   */
-  private async updateQueueCurrentIndex(
-    queueId: string,
-    index: number,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const updated: CommandQueue = {
-      ...queue,
-      currentIndex: index,
-      updatedAt: this.container.clock.now().toISOString(),
-    };
-
-    await this.repository.save(updated);
-  }
-
-  /**
-   * Update command status.
-   */
-  private async updateCommandStatus(
-    queueId: string,
-    commandIndex: number,
-    status: CommandStatus,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const command = queue.commands[commandIndex];
-    if (command === undefined) {
-      throw new Error(`Command at index ${commandIndex} not found`);
-    }
-
-    const updatedCommand: QueueCommand = {
-      ...command,
-      status,
-      ...(status === "running" && command.startedAt === undefined
-        ? { startedAt: this.container.clock.now().toISOString() }
-        : {}),
-    };
-
-    const updatedCommands = [...queue.commands];
-    updatedCommands[commandIndex] = updatedCommand;
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands: updatedCommands,
-      updatedAt: this.container.clock.now().toISOString(),
-    };
-
-    await this.repository.save(updatedQueue);
-  }
-
-  /**
-   * Update command session ID.
-   */
-  private async updateCommandSessionId(
-    queueId: string,
-    commandIndex: number,
-    sessionId: string,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const command = queue.commands[commandIndex];
-    if (command === undefined) {
-      throw new Error(`Command at index ${commandIndex} not found`);
-    }
-
-    const updatedCommand: QueueCommand = {
-      ...command,
-      sessionId,
-    };
-
-    const updatedCommands = [...queue.commands];
-    updatedCommands[commandIndex] = updatedCommand;
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands: updatedCommands,
-      updatedAt: this.container.clock.now().toISOString(),
-    };
-
-    await this.repository.save(updatedQueue);
-  }
-
-  /**
-   * Update command cost.
-   */
-  private async updateCommandCost(
-    queueId: string,
-    commandIndex: number,
-    costUsd: number,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const command = queue.commands[commandIndex];
-    if (command === undefined) {
-      throw new Error(`Command at index ${commandIndex} not found`);
-    }
-
-    const updatedCommand: QueueCommand = {
-      ...command,
-      costUsd,
-    };
-
-    const updatedCommands = [...queue.commands];
-    updatedCommands[commandIndex] = updatedCommand;
-
-    // Also update total cost in queue
-    const totalCostUsd = updatedCommands.reduce(
-      (sum, cmd) => sum + (cmd.costUsd ?? 0),
-      0,
-    );
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands: updatedCommands,
-      totalCostUsd,
-      updatedAt: this.container.clock.now().toISOString(),
-    };
-
-    await this.repository.save(updatedQueue);
-  }
-
-  /**
-   * Update command completedAt timestamp.
-   */
-  private async updateCommandCompletedAt(
-    queueId: string,
-    commandIndex: number,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const command = queue.commands[commandIndex];
-    if (command === undefined) {
-      throw new Error(`Command at index ${commandIndex} not found`);
-    }
-
-    const updatedCommand: QueueCommand = {
-      ...command,
-      completedAt: this.container.clock.now().toISOString(),
-    };
-
-    const updatedCommands = [...queue.commands];
-    updatedCommands[commandIndex] = updatedCommand;
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands: updatedCommands,
-      updatedAt: this.container.clock.now().toISOString(),
-    };
-
-    await this.repository.save(updatedQueue);
-  }
-
-  /**
-   * Update command error message.
-   */
-  private async updateCommandError(
-    queueId: string,
-    commandIndex: number,
-    error: string,
-  ): Promise<void> {
-    const queue = await this.repository.findById(queueId);
-    if (queue === null) {
-      throw new Error(`Queue ${queueId} not found`);
-    }
-
-    const command = queue.commands[commandIndex];
-    if (command === undefined) {
-      throw new Error(`Command at index ${commandIndex} not found`);
-    }
-
-    const updatedCommand: QueueCommand = {
-      ...command,
-      status: "failed",
-      error,
-    };
-
-    const updatedCommands = [...queue.commands];
-    updatedCommands[commandIndex] = updatedCommand;
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands: updatedCommands,
-      updatedAt: this.container.clock.now().toISOString(),
-    };
-
-    await this.repository.save(updatedQueue);
   }
 }
