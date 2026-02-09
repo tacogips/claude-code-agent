@@ -281,6 +281,38 @@ export class ControlProtocolHandler extends EventEmitter {
         return;
       }
 
+      // Check if it's a session result message (CLI has finished)
+      if (
+        typeof msg === "object" &&
+        msg !== null &&
+        "type" in msg &&
+        (msg as { type: unknown }).type === "result"
+      ) {
+        const resultMsg = msg as {
+          subtype?: string;
+          is_error?: boolean;
+          result?: string;
+        };
+        const success =
+          resultMsg.subtype === "success" && resultMsg.is_error !== true;
+        this.emit("result", {
+          success,
+          result: resultMsg.result,
+          raw: msg,
+        });
+        return;
+      }
+
+      // Other known message types (system, assistant) are handled via the "message" event
+      if (
+        typeof msg === "object" &&
+        msg !== null &&
+        "type" in msg &&
+        typeof (msg as { type: unknown }).type === "string"
+      ) {
+        return;
+      }
+
       // Unknown message type - log warning
       logger.warn("Unknown message type received", { msg });
     } catch (error) {

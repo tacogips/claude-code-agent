@@ -274,16 +274,89 @@ export class ToolAgentSession extends NodeEventEmitter {
 
   /**
    * Async iterator that yields messages from the session.
+   *
+   * Messages are received from the protocol handler's event stream
+   * (which reads from the transport via processMessages()). This avoids
+   * competing with processMessages() for the transport's ReadableStream reader.
    */
   async *messages(): AsyncIterable<object> {
-    for await (const msg of this.transport.readMessages()) {
-      await this.protocol.handleIncomingMessage(msg);
-      yield msg;
+    const queue: object[] = [];
+    let resolve: (() => void) | null = null;
+    let done = false;
 
-      // If session reached terminal state, stop iteration
-      if (this.stateManager.isTerminal()) {
-        break;
+    const onMessage = (msg: unknown) => {
+      if (typeof msg === "object" && msg !== null) {
+        queue.push(msg as object);
+        if (resolve !== null) {
+          const r = resolve;
+          resolve = null;
+          r();
+        }
       }
+    };
+
+    const onDone = () => {
+      done = true;
+      if (resolve !== null) {
+        const r = resolve;
+        resolve = null;
+        r();
+      }
+    };
+
+    // Listen for all message events from protocol
+    this.protocol.on("message", onMessage);
+
+    // When transport ends, processMessages() finishes and stateManager transitions
+    this.stateManager.on("stateChange", () => {
+      if (this.stateManager.isTerminal()) {
+        onDone();
+      }
+    });
+
+    // If processMessages already completed before messages() was called
+    if (this.stateManager.isTerminal()) {
+      return;
+    }
+
+    // Use a timeout to detect when the CLI process exits
+    const checkInterval = setInterval(() => {
+      if (this.stateManager.isTerminal()) {
+        onDone();
+      }
+    }, 500);
+
+    try {
+      while (!done) {
+        // Yield any queued messages
+        while (queue.length > 0) {
+          const msg = queue.shift();
+          if (msg !== undefined) {
+            yield msg;
+          }
+          if (this.stateManager.isTerminal()) {
+            return;
+          }
+        }
+
+        if (done) break;
+
+        // Wait for next message or completion
+        await new Promise<void>((r) => {
+          resolve = r;
+        });
+      }
+
+      // Yield remaining messages
+      while (queue.length > 0) {
+        const msg = queue.shift();
+        if (msg !== undefined) {
+          yield msg;
+        }
+      }
+    } finally {
+      clearInterval(checkInterval);
+      this.protocol.removeListener("message", onMessage);
     }
   }
 
@@ -433,11 +506,31 @@ export class ClaudeCodeToolAgent {
       protocol.registerToolRegistry(serverName, registry);
     }
 
+    // Create state manager early so processMessages completion can update it
+    const stateManager = new SessionStateManager(sessionId);
+
+    // Start message processing BEFORE initialize to avoid deadlock.
+    // initialize() sends a control request and waits for a response,
+    // but responses are only read by processMessages(). Starting
+    // processMessages() first ensures the response can be received.
+    protocol
+      .processMessages()
+      .then(() => {
+        // Transport ended - CLI process exited
+        if (!stateManager.isTerminal()) {
+          stateManager.markCompleted();
+        }
+      })
+      .catch((err: unknown) => {
+        if (!stateManager.isTerminal()) {
+          stateManager.markFailed(
+            err instanceof Error ? err : new Error(String(err)),
+          );
+        }
+      });
+
     // Initialize control protocol
     await protocol.initialize();
-
-    // Create state manager
-    const stateManager = new SessionStateManager(sessionId);
 
     // Create session instance
     const session = new ToolAgentSession(
@@ -458,18 +551,29 @@ export class ClaudeCodeToolAgent {
       void transport.close();
     });
 
+    // Listen for session result from CLI
+    protocol.on("result", (result: { success: boolean }) => {
+      if (!stateManager.isTerminal()) {
+        if (result.success) {
+          stateManager.markCompleted();
+        } else {
+          stateManager.markFailed(new Error("Session failed"));
+        }
+      }
+    });
+
     // Mark session as started
     stateManager.transition("starting");
     stateManager.markStarted();
-
-    // Start message processing in background
-    void protocol.processMessages();
 
     // Send initial prompt (only for new sessions, not resumed ones)
     if (config.resumeSessionId === undefined) {
       const userMessage = {
         type: "user",
-        content: config.prompt,
+        message: {
+          role: "user" as const,
+          content: config.prompt,
+        },
       };
       await transport.write(JSON.stringify(userMessage));
       stateManager.incrementMessageCount();
