@@ -70,7 +70,7 @@ describe("SessionStateManager", () => {
 
       expect(() => {
         manager.transition("completed");
-      }).toThrow("Invalid state: idle. Expected one of: starting");
+      }).toThrow("Invalid state: idle. Expected one of: starting, cancelled");
     });
 
     it("should merge metadata into state info", () => {
