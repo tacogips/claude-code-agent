@@ -94,6 +94,8 @@ export interface GroupConfig {
   readonly onBudgetExceeded: "stop" | "warn" | "pause";
   /** Budget warning threshold (0-1) */
   readonly warningThreshold: number;
+  /** Additional CLI arguments to pass to Claude Code (e.g., ['--dangerously-skip-permissions']) */
+  readonly additionalArgs?: readonly string[] | undefined;
   /** Concurrency settings */
   readonly concurrency?: ConcurrencyConfig | undefined;
   /** Default session configuration */

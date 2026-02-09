@@ -84,6 +84,8 @@ export interface CommandQueue {
   readonly startedAt?: string | undefined;
   /** ISO timestamp when completed */
   readonly completedAt?: string | undefined;
+  /** Additional CLI arguments to pass to Claude Code (e.g., ['--dangerously-skip-permissions']) */
+  readonly additionalArgs?: readonly string[] | undefined;
 }
 
 /**
