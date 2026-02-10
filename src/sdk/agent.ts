@@ -212,8 +212,7 @@ export interface ToolAgentOptions {
 export interface SessionConfig {
   /**
    * Initial prompt.
-   * Sent as a stream-json `user` message after control protocol initialization
-   * to preserve low-latency startup while keeping stdin open for MCP control.
+   * Sent as a stream-json `user` message via stdin at startup.
    */
   prompt: string;
   /** Project path (defaults to cwd) */
@@ -548,7 +547,7 @@ export class ClaudeCodeToolAgent {
    * Start a new session.
    *
    * Spawns Claude Code CLI, initializes control protocol,
-   * sends the initial user message, and returns a session instance.
+   * and returns a session instance for interaction.
    */
   async startSession(config: SessionConfig): Promise<ToolAgentSession> {
     const sessionId = this.generateSessionId();
@@ -616,9 +615,7 @@ export class ClaudeCodeToolAgent {
     // Initialize control protocol
     await protocol.initialize();
 
-    // Send initial user prompt through stream-json stdin after protocol init.
-    // This triggers the first turn immediately and avoids startup stalls while
-    // keeping stdin open for control protocol messages.
+    // Send initial prompt through stream-json stdin after initialize.
     if (config.prompt !== "") {
       await transport.write(
         JSON.stringify({

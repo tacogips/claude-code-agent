@@ -126,6 +126,7 @@ describe("ControlProtocolHandler", () => {
 
       await expect(handler.initialize()).rejects.toThrow("already initialized");
     });
+
   });
 
   describe("registerToolRegistry", () => {
@@ -341,9 +342,11 @@ describe("ControlProtocolHandler", () => {
         response: {
           subtype: string;
           response: {
-            jsonrpc: string;
-            id: number;
-            result: { tools: Array<{ name: string }> };
+            mcp_response: {
+              jsonrpc: string;
+              id: number;
+              result: { tools: Array<{ name: string }> };
+            };
           };
         };
       };
@@ -351,7 +354,8 @@ describe("ControlProtocolHandler", () => {
       expect(response.type).toBe("control_response");
       expect(response.response.subtype).toBe("success");
 
-      const mcpResponse = response.response.response;
+      const mcpResponse = (response.response.response as { mcp_response: any })
+        .mcp_response;
       expect(mcpResponse.jsonrpc).toBe("2.0");
       expect(mcpResponse.id).toBe(1);
       expect(mcpResponse.result.tools).toHaveLength(1);
@@ -398,10 +402,12 @@ describe("ControlProtocolHandler", () => {
         response: {
           subtype: string;
           response: {
-            jsonrpc: string;
-            id: number;
-            result: {
-              content: Array<{ type: string; text: string }>;
+            mcp_response: {
+              jsonrpc: string;
+              id: number;
+              result: {
+                content: Array<{ type: string; text: string }>;
+              };
             };
           };
         };
@@ -410,7 +416,8 @@ describe("ControlProtocolHandler", () => {
       expect(response.type).toBe("control_response");
       expect(response.response.subtype).toBe("success");
 
-      const mcpResponse = response.response.response;
+      const mcpResponse = (response.response.response as { mcp_response: any })
+        .mcp_response;
       expect(mcpResponse.jsonrpc).toBe("2.0");
       expect(mcpResponse.id).toBe(2);
       expect(mcpResponse.result.content).toHaveLength(1);
@@ -441,14 +448,17 @@ describe("ControlProtocolHandler", () => {
         response: {
           subtype: string;
           response: {
-            jsonrpc: string;
-            id: number;
-            error: { code: number; message: string };
+            mcp_response: {
+              jsonrpc: string;
+              id: number;
+              error: { code: number; message: string };
+            };
           };
         };
       };
 
-      const mcpResponse = response.response.response;
+      const mcpResponse = (response.response.response as { mcp_response: any })
+        .mcp_response;
       expect(mcpResponse.error).toBeDefined();
       expect(mcpResponse.error.message).toContain("Server not found");
     });
@@ -478,17 +488,20 @@ describe("ControlProtocolHandler", () => {
         response: {
           subtype: string;
           response: {
-            jsonrpc: string;
-            id: number;
-            result: {
-              content: Array<{ type: string; text: string }>;
-              isError: boolean;
+            mcp_response: {
+              jsonrpc: string;
+              id: number;
+              result: {
+                content: Array<{ type: string; text: string }>;
+                isError: boolean;
+              };
             };
           };
         };
       };
 
-      const mcpResponse = response.response.response;
+      const mcpResponse = (response.response.response as { mcp_response: any })
+        .mcp_response;
       expect(mcpResponse.result.isError).toBe(true);
       expect(mcpResponse.result.content[0]?.text).toContain("not found");
     });
@@ -529,17 +542,20 @@ describe("ControlProtocolHandler", () => {
         response: {
           subtype: string;
           response: {
-            jsonrpc: string;
-            id: number;
-            result: {
-              content: Array<{ type: string; text: string }>;
-              isError: boolean;
+            mcp_response: {
+              jsonrpc: string;
+              id: number;
+              result: {
+                content: Array<{ type: string; text: string }>;
+                isError: boolean;
+              };
             };
           };
         };
       };
 
-      const mcpResponse = response.response.response;
+      const mcpResponse = (response.response.response as { mcp_response: any })
+        .mcp_response;
       expect(mcpResponse.result.isError).toBe(true);
       expect(mcpResponse.result.content[0]?.text).toContain(
         "Tool execution failed",
@@ -567,14 +583,17 @@ describe("ControlProtocolHandler", () => {
         response: {
           subtype: string;
           response: {
-            jsonrpc: string;
-            id: number;
-            error: { code: number; message: string };
+            mcp_response: {
+              jsonrpc: string;
+              id: number;
+              error: { code: number; message: string };
+            };
           };
         };
       };
 
-      const mcpResponse = response.response.response;
+      const mcpResponse = (response.response.response as { mcp_response: any })
+        .mcp_response;
       expect(mcpResponse.error).toBeDefined();
       expect(mcpResponse.error.code).toBe(-32601);
       expect(mcpResponse.error.message).toContain("Method not found");
@@ -787,14 +806,18 @@ describe("ControlProtocolHandler", () => {
         response: {
           subtype: string;
           response: {
-            result: {
-              content: Array<{ type: string; text: string }>;
+            mcp_response: {
+              result: {
+                content: Array<{ type: string; text: string }>;
+              };
             };
           };
         };
       };
 
-      expect(response.response.response.result.content[0]?.text).toBe(
+      const mcpResponse = (response.response.response as { mcp_response: any })
+        .mcp_response;
+      expect(mcpResponse.result.content[0]?.text).toBe(
         "Result: 42",
       );
     });

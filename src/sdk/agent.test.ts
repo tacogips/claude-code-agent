@@ -4,7 +4,7 @@
  * @module sdk/agent.test
  */
 
-import { describe, test, expect, beforeEach } from "vitest";
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { ClaudeCodeAgent, ClaudeCodeToolAgent } from "./agent";
 import type { SessionConfig } from "./agent";
 import { createTestContainer } from "../container";
@@ -19,6 +19,8 @@ import { QueueManager, QueueRunner } from "./queue";
 import { BookmarkManager } from "./bookmarks";
 import { tool, createSdkMcpServer } from "./tool-registry";
 import type { SdkTool } from "./types/tool";
+import { SubprocessTransport } from "./transport/subprocess";
+import { ControlProtocolHandler } from "./control-protocol";
 
 describe("ClaudeCodeAgent", () => {
   let container: Container;
@@ -702,6 +704,10 @@ More text
 
 // Tests for ClaudeCodeToolAgent (SDK tool execution agent)
 describe("ClaudeCodeToolAgent", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe("TEST-011: Agent Creation", () => {
     test("creates agent with no options", () => {
       const agent = new ClaudeCodeToolAgent();
@@ -752,6 +758,67 @@ describe("ClaudeCodeToolAgent", () => {
   });
 
   describe("TEST-012: Session Management", () => {
+    test("does not pass initial prompt via transport options", async () => {
+      const agent = new ClaudeCodeToolAgent();
+
+      let capturedOptions: Record<string, unknown> | undefined;
+
+      vi.spyOn(SubprocessTransport.prototype, "connect").mockImplementation(
+        async function (this: unknown) {
+          capturedOptions = (this as { options?: Record<string, unknown> })
+            .options;
+        },
+      );
+      vi.spyOn(SubprocessTransport.prototype, "write").mockResolvedValue();
+      vi.spyOn(SubprocessTransport.prototype, "close").mockResolvedValue();
+      vi.spyOn(
+        ControlProtocolHandler.prototype,
+        "initialize",
+      ).mockResolvedValue();
+      vi.spyOn(
+        ControlProtocolHandler.prototype,
+        "processMessages",
+      ).mockImplementation(async () => {
+        await new Promise(() => {});
+      });
+
+      await agent.startSession({ prompt: "hello from issue-32 test" });
+
+      expect(capturedOptions).toBeDefined();
+      expect(capturedOptions?.["prompt"]).toBeUndefined();
+    });
+
+    test("sends initial prompt via stdin after initialize", async () => {
+      const agent = new ClaudeCodeToolAgent();
+
+      vi.spyOn(SubprocessTransport.prototype, "connect").mockResolvedValue();
+      const writeSpy = vi
+        .spyOn(SubprocessTransport.prototype, "write")
+        .mockResolvedValue();
+      vi.spyOn(SubprocessTransport.prototype, "close").mockResolvedValue();
+      const initializeSpy = vi.spyOn(
+        ControlProtocolHandler.prototype,
+        "initialize",
+      ).mockResolvedValue();
+      vi.spyOn(
+        ControlProtocolHandler.prototype,
+        "processMessages",
+      ).mockImplementation(async () => {
+        await new Promise(() => {});
+      });
+
+      await agent.startSession({ prompt: "hello from issue-32 test" });
+
+      expect(writeSpy).toHaveBeenCalledTimes(1);
+      const writeArg = writeSpy.mock.calls[0]?.[0] as string;
+      expect(writeArg).toContain('"type":"user"');
+      expect(writeArg).toContain('"role":"user"');
+      expect(writeArg).toContain('"content":"hello from issue-32 test"');
+      expect(writeSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        initializeSpy.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+      );
+    });
+
     test("starts session with mock transport", async () => {
       interface AddArgs {
         a: number;
