@@ -84,7 +84,9 @@ export interface TransportOptions {
   resumeSessionId?: string;
 
   /**
-   * Initial prompt to send. When set with resumeSessionId, used as --prompt.
+   * Initial prompt to send at startup.
+   * Passed as a CLI positional argument (not stdin) to trigger immediate turn
+   * processing while keeping stdin open for control protocol messages.
    */
   prompt?: string;
 
@@ -94,6 +96,77 @@ export interface TransportOptions {
    * Example: ['--dangerously-skip-permissions', '--model', 'claude-opus-4-6']
    */
   additionalArgs?: string[];
+}
+
+/**
+ * Build Claude Code CLI command arguments from transport options.
+ *
+ * The initial prompt is appended as a positional argument at the end so CLI
+ * begins processing immediately without waiting for stdin user messages.
+ */
+export function buildSubprocessCommand(options: TransportOptions): string[] {
+  const cliPath = options.cliPath ?? "claude";
+  const args = [
+    cliPath,
+    "--print",
+    "--output-format",
+    "stream-json",
+    "--input-format",
+    "stream-json",
+    "--include-partial-messages",
+    "--verbose",
+  ];
+
+  if (options.mcpConfig !== undefined) {
+    args.push("--mcp-config", JSON.stringify(options.mcpConfig));
+  }
+
+  if (options.permissionMode !== undefined) {
+    args.push("--permission-mode", options.permissionMode);
+  }
+
+  if (options.model !== undefined) {
+    args.push("--model", options.model);
+  }
+
+  if (options.maxBudgetUsd !== undefined) {
+    args.push("--max-budget", String(options.maxBudgetUsd));
+  }
+
+  if (options.maxTurns !== undefined) {
+    args.push("--max-turns", String(options.maxTurns));
+  }
+
+  if (options.systemPrompt !== undefined) {
+    args.push("--system-prompt", options.systemPrompt);
+  }
+
+  if (options.allowedTools !== undefined && options.allowedTools.length > 0) {
+    args.push("--allowed-tools", options.allowedTools.join(","));
+  }
+
+  if (
+    options.disallowedTools !== undefined &&
+    options.disallowedTools.length > 0
+  ) {
+    args.push("--disallowed-tools", options.disallowedTools.join(","));
+  }
+
+  if (options.resumeSessionId !== undefined) {
+    args.push("--resume", options.resumeSessionId);
+  }
+
+  // Append additional CLI arguments before the positional prompt.
+  if (options.additionalArgs !== undefined && options.additionalArgs.length > 0) {
+    args.push(...options.additionalArgs);
+  }
+
+  // Pass initial prompt as positional argument to start first turn immediately.
+  if (options.prompt !== undefined && options.prompt !== "") {
+    args.push(options.prompt);
+  }
+
+  return args;
 }
 
 /**
@@ -410,78 +483,7 @@ export class SubprocessTransport implements Transport {
    * @private
    */
   private buildCommand(): string[] {
-    const cliPath = this.options.cliPath ?? "claude";
-    const args = [
-      cliPath,
-      "--print",
-      "--output-format",
-      "stream-json",
-      "--input-format",
-      "stream-json",
-      "--include-partial-messages",
-      "--verbose",
-    ];
-
-    if (this.options.mcpConfig !== undefined) {
-      args.push("--mcp-config", JSON.stringify(this.options.mcpConfig));
-    }
-
-    if (this.options.permissionMode !== undefined) {
-      args.push("--permission-mode", this.options.permissionMode);
-    }
-
-    if (this.options.model !== undefined) {
-      args.push("--model", this.options.model);
-    }
-
-    if (this.options.maxBudgetUsd !== undefined) {
-      args.push("--max-budget", String(this.options.maxBudgetUsd));
-    }
-
-    if (this.options.maxTurns !== undefined) {
-      args.push("--max-turns", String(this.options.maxTurns));
-    }
-
-    if (this.options.systemPrompt !== undefined) {
-      args.push("--system-prompt", this.options.systemPrompt);
-    }
-
-    if (
-      this.options.allowedTools !== undefined &&
-      this.options.allowedTools.length > 0
-    ) {
-      args.push("--allowed-tools", this.options.allowedTools.join(","));
-    }
-
-    if (
-      this.options.disallowedTools !== undefined &&
-      this.options.disallowedTools.length > 0
-    ) {
-      args.push("--disallowed-tools", this.options.disallowedTools.join(","));
-    }
-
-    if (this.options.resumeSessionId !== undefined) {
-      args.push("--resume", this.options.resumeSessionId);
-    }
-
-    // Pass initial prompt as positional argument.
-    // This starts the turn immediately while keeping stdin open for control protocol.
-    if (this.options.prompt !== undefined && this.options.prompt !== "") {
-      args.push(this.options.prompt);
-    }
-
-    // Append additional CLI arguments as-is
-    if (
-      this.options.additionalArgs !== undefined &&
-      this.options.additionalArgs.length > 0
-    ) {
-      args.push(...this.options.additionalArgs);
-    }
-
-    // Note: --prompt is not a supported CLI flag.
-    // Prompt text is passed as a positional argument when provided.
-
-    return args;
+    return buildSubprocessCommand(this.options);
   }
 
   /**

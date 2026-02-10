@@ -210,7 +210,11 @@ export interface ToolAgentOptions {
  * Configuration for starting a session.
  */
 export interface SessionConfig {
-  /** Initial prompt */
+  /**
+   * Initial prompt.
+   * Sent as a stream-json `user` message after control protocol initialization
+   * to preserve low-latency startup while keeping stdin open for MCP control.
+   */
   prompt: string;
   /** Project path (defaults to cwd) */
   projectPath?: string;
@@ -542,7 +546,7 @@ export class ClaudeCodeToolAgent {
    * Start a new session.
    *
    * Spawns Claude Code CLI, initializes control protocol,
-   * and returns a session instance for interaction.
+   * sends the initial user message, and returns a session instance.
    */
   async startSession(config: SessionConfig): Promise<ToolAgentSession> {
     const sessionId = this.generateSessionId();
@@ -550,12 +554,9 @@ export class ClaudeCodeToolAgent {
     // Create transport options
     const transportOptions = this.buildTransportOptions();
 
-    // Add resume and initial prompt support
+    // Add resume support
     if (config.resumeSessionId !== undefined) {
       transportOptions.resumeSessionId = config.resumeSessionId;
-    }
-    if (config.prompt !== undefined && config.prompt !== "") {
-      transportOptions.prompt = config.prompt;
     }
 
     const transport = new SubprocessTransport(transportOptions);
@@ -606,6 +607,21 @@ export class ClaudeCodeToolAgent {
 
     // Initialize control protocol
     await protocol.initialize();
+
+    // Send initial user prompt through stream-json stdin after protocol init.
+    // This triggers the first turn immediately and avoids startup stalls while
+    // keeping stdin open for control protocol messages.
+    if (config.prompt !== "") {
+      await transport.write(
+        JSON.stringify({
+          type: "user",
+          message: {
+            role: "user",
+            content: config.prompt,
+          },
+        }),
+      );
+    }
 
     // Create session instance
     const session = new ToolAgentSession(

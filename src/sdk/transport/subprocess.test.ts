@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { SubprocessTransport } from "./subprocess";
+import { SubprocessTransport, buildSubprocessCommand } from "./subprocess";
 import { CLINotFoundError } from "../errors";
 
 describe("SubprocessTransport", () => {
@@ -282,5 +282,40 @@ describe("SubprocessTransport CLI Arguments", () => {
       disallowedTools: ["Bash", "Edit"],
     });
     expect(true).toBe(true);
+  });
+
+  test("passes initial prompt as positional argument (no --prompt flag)", () => {
+    const args = buildSubprocessCommand({
+      prompt: "hello from sdk",
+    });
+
+    expect(args.includes("--prompt")).toBe(false);
+    expect(args.at(-1)).toBe("hello from sdk");
+  });
+
+  test("supports resume + prompt positional startup path", () => {
+    const args = buildSubprocessCommand({
+      resumeSessionId: "session-123",
+      prompt: "continue please",
+    });
+
+    const resumeIndex = args.indexOf("--resume");
+    expect(resumeIndex).toBeGreaterThan(-1);
+    expect(args[resumeIndex + 1]).toBe("session-123");
+    expect(args.at(-1)).toBe("continue please");
+  });
+
+  test("keeps additional args before positional prompt", () => {
+    const args = buildSubprocessCommand({
+      additionalArgs: ["--dangerously-skip-permissions"],
+      prompt: "run task",
+    });
+
+    const promptIndex = args.indexOf("run task");
+    const extraArgIndex = args.indexOf("--dangerously-skip-permissions");
+
+    expect(extraArgIndex).toBeGreaterThan(-1);
+    expect(promptIndex).toBeGreaterThan(extraArgIndex);
+    expect(args.at(-1)).toBe("run task");
   });
 });
