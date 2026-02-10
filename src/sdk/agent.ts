@@ -220,6 +220,8 @@ export interface SessionConfig {
   projectPath?: string;
   /** Session ID to resume (if resuming an existing session) */
   resumeSessionId?: string;
+  /** Session-level system prompt override */
+  systemPrompt?: string | { preset: "claude_code"; append?: string };
 }
 
 /**
@@ -558,6 +560,12 @@ export class ClaudeCodeToolAgent {
     if (config.resumeSessionId !== undefined) {
       transportOptions.resumeSessionId = config.resumeSessionId;
     }
+    if (config.systemPrompt !== undefined) {
+      const resolvedSystemPrompt = this.resolveSystemPrompt(config.systemPrompt);
+      if (resolvedSystemPrompt !== undefined) {
+        transportOptions.systemPrompt = resolvedSystemPrompt;
+      }
+    }
 
     const transport = new SubprocessTransport(transportOptions);
     await transport.connect();
@@ -679,16 +687,24 @@ export class ClaudeCodeToolAgent {
    *
    * @param sessionId - ID of the session to resume
    * @param prompt - Optional additional prompt for the resumed session
+   * @param systemPrompt - Optional system prompt override for resumed session
    * @returns Running session instance
    */
   async resumeSession(
     sessionId: string,
     prompt?: string,
+    systemPrompt?: string | { preset: "claude_code"; append?: string },
   ): Promise<ToolAgentSession> {
-    return this.startSession({
+    const config: SessionConfig = {
       prompt: prompt ?? "",
       resumeSessionId: sessionId,
-    });
+    };
+
+    if (systemPrompt !== undefined) {
+      config.systemPrompt = systemPrompt;
+    }
+
+    return this.startSession(config);
   }
 
   /**
@@ -768,12 +784,7 @@ export class ClaudeCodeToolAgent {
    * Only include defined properties to satisfy exactOptionalPropertyTypes.
    */
   private buildTransportOptions(): TransportOptions {
-    const systemPrompt =
-      typeof this.options.systemPrompt === "string"
-        ? this.options.systemPrompt
-        : this.options.systemPrompt?.preset === "claude_code"
-          ? this.options.systemPrompt.append
-          : undefined;
+    const systemPrompt = this.resolveSystemPrompt(this.options.systemPrompt);
 
     const options: TransportOptions = {
       mcpConfig: this.buildMcpConfig(),
@@ -799,6 +810,21 @@ export class ClaudeCodeToolAgent {
       options.additionalArgs = this.options.additionalArgs;
 
     return options;
+  }
+
+  /**
+   * Normalize system prompt option value.
+   */
+  private resolveSystemPrompt(
+    value: string | { preset: "claude_code"; append?: string } | undefined,
+  ): string | undefined {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (value?.preset === "claude_code") {
+      return value.append;
+    }
+    return undefined;
   }
 
   /**

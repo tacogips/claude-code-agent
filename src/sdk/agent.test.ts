@@ -6,6 +6,7 @@
 
 import { describe, test, expect, beforeEach } from "vitest";
 import { ClaudeCodeAgent, ClaudeCodeToolAgent } from "./agent";
+import type { SessionConfig } from "./agent";
 import { createTestContainer } from "../container";
 import type { Container } from "../container";
 import { InMemoryGroupRepository } from "../repository/in-memory/group-repository";
@@ -797,6 +798,15 @@ describe("ClaudeCodeToolAgent", () => {
       await agent.close();
 
       expect(agent.getActiveSessions()).toHaveLength(0);
+    });
+
+    test("session config accepts system prompt override", () => {
+      const config: SessionConfig = {
+        prompt: "hello",
+        systemPrompt: "You are a strict reviewer",
+      };
+
+      expect(config.systemPrompt).toBe("You are a strict reviewer");
     });
   });
 
