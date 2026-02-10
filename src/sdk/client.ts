@@ -45,6 +45,16 @@ export interface ClientOptions extends ToolAgentOptions {
 }
 
 /**
+ * Per-query options.
+ */
+export interface QueryOptions {
+  /**
+   * System prompt override for this query/session.
+   */
+  readonly systemPrompt?: SessionConfig["systemPrompt"];
+}
+
+/**
  * Message from Claude session.
  *
  * This is a generic message type that can represent user messages,
@@ -210,7 +220,7 @@ export class ClaudeCodeClient extends EventEmitter {
    * await client.query('Now multiply that by 3');
    * ```
    */
-  async query(prompt: string): Promise<void> {
+  async query(prompt: string, options?: QueryOptions): Promise<void> {
     if (this.connectionState !== "connected") {
       throw new Error("Client is not connected. Call connect() first.");
     }
@@ -222,6 +232,9 @@ export class ClaudeCodeClient extends EventEmitter {
         // Start new session
         logger.debug("Starting new session");
         const config: SessionConfig = { prompt };
+        if (options?.systemPrompt !== undefined) {
+          config.systemPrompt = options.systemPrompt;
+        }
         this.currentSession = await this.agent.startSession(config);
 
         // Forward session events
@@ -238,6 +251,9 @@ export class ClaudeCodeClient extends EventEmitter {
 
         // Start new session
         const config: SessionConfig = { prompt };
+        if (options?.systemPrompt !== undefined) {
+          config.systemPrompt = options.systemPrompt;
+        }
         this.currentSession = await this.agent.startSession(config);
         this.forwardSessionEvents(this.currentSession);
       }
@@ -248,7 +264,7 @@ export class ClaudeCodeClient extends EventEmitter {
         logger.info("Attempting reconnection...");
         await this.reconnect();
         // Retry query after reconnection
-        await this.query(prompt);
+        await this.query(prompt, options);
       } else {
         throw error;
       }

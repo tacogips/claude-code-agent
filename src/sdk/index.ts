@@ -290,7 +290,12 @@ export {
 } from "./agent";
 
 // SDK Client
-export { ClaudeCodeClient, type ClientOptions, type Message } from "./client";
+export {
+  ClaudeCodeClient,
+  type ClientOptions,
+  type QueryOptions,
+  type Message,
+} from "./client";
 
 // Tool Registry
 export {

@@ -210,12 +210,18 @@ export interface ToolAgentOptions {
  * Configuration for starting a session.
  */
 export interface SessionConfig {
-  /** Initial prompt */
+  /**
+   * Initial prompt.
+   * Sent as a stream-json `user` message after control protocol initialization
+   * to preserve low-latency startup while keeping stdin open for MCP control.
+   */
   prompt: string;
   /** Project path (defaults to cwd) */
   projectPath?: string;
   /** Session ID to resume (if resuming an existing session) */
   resumeSessionId?: string;
+  /** Session-level system prompt override */
+  systemPrompt?: string | { preset: "claude_code"; append?: string };
 }
 
 /**
@@ -542,7 +548,7 @@ export class ClaudeCodeToolAgent {
    * Start a new session.
    *
    * Spawns Claude Code CLI, initializes control protocol,
-   * and returns a session instance for interaction.
+   * sends the initial user message, and returns a session instance.
    */
   async startSession(config: SessionConfig): Promise<ToolAgentSession> {
     const sessionId = this.generateSessionId();
@@ -550,11 +556,14 @@ export class ClaudeCodeToolAgent {
     // Create transport options
     const transportOptions = this.buildTransportOptions();
 
-    // Add resume and prompt support
+    // Add resume support
     if (config.resumeSessionId !== undefined) {
       transportOptions.resumeSessionId = config.resumeSessionId;
-      if (config.prompt !== "") {
-        transportOptions.prompt = config.prompt;
+    }
+    if (config.systemPrompt !== undefined) {
+      const resolvedSystemPrompt = this.resolveSystemPrompt(config.systemPrompt);
+      if (resolvedSystemPrompt !== undefined) {
+        transportOptions.systemPrompt = resolvedSystemPrompt;
       }
     }
 
@@ -607,6 +616,21 @@ export class ClaudeCodeToolAgent {
     // Initialize control protocol
     await protocol.initialize();
 
+    // Send initial user prompt through stream-json stdin after protocol init.
+    // This triggers the first turn immediately and avoids startup stalls while
+    // keeping stdin open for control protocol messages.
+    if (config.prompt !== "") {
+      await transport.write(
+        JSON.stringify({
+          type: "user",
+          message: {
+            role: "user",
+            content: config.prompt,
+          },
+        }),
+      );
+    }
+
     // Create session instance
     const session = new ToolAgentSession(
       sessionId,
@@ -652,19 +676,6 @@ export class ClaudeCodeToolAgent {
     stateManager.transition("starting");
     stateManager.markStarted();
 
-    // Send initial prompt via stdin (for both new and resumed sessions with a prompt)
-    if (config.prompt !== undefined && config.prompt !== "") {
-      const userMessage = {
-        type: "user",
-        message: {
-          role: "user" as const,
-          content: config.prompt,
-        },
-      };
-      await transport.write(JSON.stringify(userMessage));
-      stateManager.incrementMessageCount();
-    }
-
     return session;
   }
 
@@ -676,16 +687,24 @@ export class ClaudeCodeToolAgent {
    *
    * @param sessionId - ID of the session to resume
    * @param prompt - Optional additional prompt for the resumed session
+   * @param systemPrompt - Optional system prompt override for resumed session
    * @returns Running session instance
    */
   async resumeSession(
     sessionId: string,
     prompt?: string,
+    systemPrompt?: string | { preset: "claude_code"; append?: string },
   ): Promise<ToolAgentSession> {
-    return this.startSession({
+    const config: SessionConfig = {
       prompt: prompt ?? "",
       resumeSessionId: sessionId,
-    });
+    };
+
+    if (systemPrompt !== undefined) {
+      config.systemPrompt = systemPrompt;
+    }
+
+    return this.startSession(config);
   }
 
   /**
@@ -765,12 +784,7 @@ export class ClaudeCodeToolAgent {
    * Only include defined properties to satisfy exactOptionalPropertyTypes.
    */
   private buildTransportOptions(): TransportOptions {
-    const systemPrompt =
-      typeof this.options.systemPrompt === "string"
-        ? this.options.systemPrompt
-        : this.options.systemPrompt?.preset === "claude_code"
-          ? this.options.systemPrompt.append
-          : undefined;
+    const systemPrompt = this.resolveSystemPrompt(this.options.systemPrompt);
 
     const options: TransportOptions = {
       mcpConfig: this.buildMcpConfig(),
@@ -796,6 +810,21 @@ export class ClaudeCodeToolAgent {
       options.additionalArgs = this.options.additionalArgs;
 
     return options;
+  }
+
+  /**
+   * Normalize system prompt option value.
+   */
+  private resolveSystemPrompt(
+    value: string | { preset: "claude_code"; append?: string } | undefined,
+  ): string | undefined {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (value?.preset === "claude_code") {
+      return value.append;
+    }
+    return undefined;
   }
 
   /**
