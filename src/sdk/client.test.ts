@@ -6,7 +6,7 @@
 
 import { describe, test, expect, mock } from "bun:test";
 import { ClaudeCodeClient } from "./client";
-import type { ToolAgentSession } from "./agent";
+import type { ToolAgentSession, SessionConfig } from "./agent";
 import type { SessionStateInfo } from "./types/state";
 
 /**
@@ -89,8 +89,12 @@ class MockSession {
 class MockAgent {
   private sessionCounter = 0;
   private closeCalled = false;
+  private startConfigs: SessionConfig[] = [];
 
-  async startSession(): Promise<ToolAgentSession> {
+  async startSession(config?: SessionConfig): Promise<ToolAgentSession> {
+    if (config !== undefined) {
+      this.startConfigs.push(config);
+    }
     this.sessionCounter += 1;
     const session = new MockSession(`mock-session-${this.sessionCounter}`);
 
@@ -118,6 +122,10 @@ class MockAgent {
 
   getSessionCount(): number {
     return this.sessionCounter;
+  }
+
+  getStartConfigs(): SessionConfig[] {
+    return this.startConfigs;
   }
 }
 
@@ -222,6 +230,23 @@ describe("ClaudeCodeClient", () => {
 
       // Session should be created
       expect(mockAgent.getSessionCount()).toBe(1);
+      const [config] = mockAgent.getStartConfigs();
+      expect(config?.prompt).toBe(prompt);
+    });
+
+    test("accepts per-query system prompt override", async () => {
+      const client = new ClaudeCodeClient();
+      const mockAgent = new MockAgent();
+      (client as unknown as { agent: MockAgent }).agent = mockAgent;
+
+      await client.connect();
+      await client.query("Explain this", {
+        systemPrompt: "Answer in one sentence.",
+      });
+
+      const [config] = mockAgent.getStartConfigs();
+      expect(config?.prompt).toBe("Explain this");
+      expect(config?.systemPrompt).toBe("Answer in one sentence.");
     });
 
     test("handles subsequent queries (starts new session)", async () => {
