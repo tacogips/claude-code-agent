@@ -212,8 +212,9 @@ export interface ToolAgentOptions {
 export interface SessionConfig {
   /**
    * Initial prompt.
-   * Sent as a stream-json `user` message after control protocol initialization
-   * to preserve low-latency startup while keeping stdin open for MCP control.
+   * Passed to Claude Code CLI as a positional argument so the first turn can
+   * start immediately while stdin remains available for control protocol
+   * messages.
    */
   prompt: string;
   /** Project path (defaults to cwd) */
@@ -548,7 +549,7 @@ export class ClaudeCodeToolAgent {
    * Start a new session.
    *
    * Spawns Claude Code CLI, initializes control protocol,
-   * sends the initial user message, and returns a session instance.
+   * and returns a session instance for interaction.
    */
   async startSession(config: SessionConfig): Promise<ToolAgentSession> {
     const sessionId = this.generateSessionId();
@@ -559,6 +560,9 @@ export class ClaudeCodeToolAgent {
     // Add resume support
     if (config.resumeSessionId !== undefined) {
       transportOptions.resumeSessionId = config.resumeSessionId;
+    }
+    if (config.prompt !== "") {
+      transportOptions.prompt = config.prompt;
     }
     if (config.systemPrompt !== undefined) {
       const resolvedSystemPrompt = this.resolveSystemPrompt(config.systemPrompt);
@@ -615,21 +619,6 @@ export class ClaudeCodeToolAgent {
 
     // Initialize control protocol
     await protocol.initialize();
-
-    // Send initial user prompt through stream-json stdin after protocol init.
-    // This triggers the first turn immediately and avoids startup stalls while
-    // keeping stdin open for control protocol messages.
-    if (config.prompt !== "") {
-      await transport.write(
-        JSON.stringify({
-          type: "user",
-          message: {
-            role: "user",
-            content: config.prompt,
-          },
-        }),
-      );
-    }
 
     // Create session instance
     const session = new ToolAgentSession(
