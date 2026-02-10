@@ -212,9 +212,7 @@ export interface ToolAgentOptions {
 export interface SessionConfig {
   /**
    * Initial prompt.
-   * Passed to Claude Code CLI as a positional argument so the first turn can
-   * start immediately while stdin remains available for control protocol
-   * messages.
+   * Sent as a stream-json `user` message via stdin at startup.
    */
   prompt: string;
   /** Project path (defaults to cwd) */
@@ -561,9 +559,6 @@ export class ClaudeCodeToolAgent {
     if (config.resumeSessionId !== undefined) {
       transportOptions.resumeSessionId = config.resumeSessionId;
     }
-    if (config.prompt !== "") {
-      transportOptions.prompt = config.prompt;
-    }
     if (config.systemPrompt !== undefined) {
       const resolvedSystemPrompt = this.resolveSystemPrompt(config.systemPrompt);
       if (resolvedSystemPrompt !== undefined) {
@@ -619,6 +614,19 @@ export class ClaudeCodeToolAgent {
 
     // Initialize control protocol
     await protocol.initialize();
+
+    // Send initial prompt through stream-json stdin after initialize.
+    if (config.prompt !== "") {
+      await transport.write(
+        JSON.stringify({
+          type: "user",
+          message: {
+            role: "user",
+            content: config.prompt,
+          },
+        }),
+      );
+    }
 
     // Create session instance
     const session = new ToolAgentSession(

@@ -758,7 +758,7 @@ describe("ClaudeCodeToolAgent", () => {
   });
 
   describe("TEST-012: Session Management", () => {
-    test("passes initial prompt through transport options (positional CLI path)", async () => {
+    test("does not pass initial prompt via transport options", async () => {
       const agent = new ClaudeCodeToolAgent();
 
       let capturedOptions: Record<string, unknown> | undefined;
@@ -785,10 +785,10 @@ describe("ClaudeCodeToolAgent", () => {
       await agent.startSession({ prompt: "hello from issue-32 test" });
 
       expect(capturedOptions).toBeDefined();
-      expect(capturedOptions?.["prompt"]).toBe("hello from issue-32 test");
+      expect(capturedOptions?.["prompt"]).toBeUndefined();
     });
 
-    test("does not send initial prompt via stdin write after initialize", async () => {
+    test("sends initial prompt via stdin after initialize", async () => {
       const agent = new ClaudeCodeToolAgent();
 
       vi.spyOn(SubprocessTransport.prototype, "connect").mockResolvedValue();
@@ -796,7 +796,7 @@ describe("ClaudeCodeToolAgent", () => {
         .spyOn(SubprocessTransport.prototype, "write")
         .mockResolvedValue();
       vi.spyOn(SubprocessTransport.prototype, "close").mockResolvedValue();
-      vi.spyOn(
+      const initializeSpy = vi.spyOn(
         ControlProtocolHandler.prototype,
         "initialize",
       ).mockResolvedValue();
@@ -809,7 +809,14 @@ describe("ClaudeCodeToolAgent", () => {
 
       await agent.startSession({ prompt: "hello from issue-32 test" });
 
-      expect(writeSpy).not.toHaveBeenCalled();
+      expect(writeSpy).toHaveBeenCalledTimes(1);
+      const writeArg = writeSpy.mock.calls[0]?.[0] as string;
+      expect(writeArg).toContain('"type":"user"');
+      expect(writeArg).toContain('"role":"user"');
+      expect(writeArg).toContain('"content":"hello from issue-32 test"');
+      expect(writeSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+        initializeSpy.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+      );
     });
 
     test("starts session with mock transport", async () => {

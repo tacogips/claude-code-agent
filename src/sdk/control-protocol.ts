@@ -172,7 +172,6 @@ export class ControlProtocolHandler extends EventEmitter {
     }
 
     logger.debug("Initializing control protocol");
-
     const response = await this.sendRequest({ subtype: "initialize" });
 
     if (response.response.subtype === "error") {
@@ -445,7 +444,9 @@ export class ControlProtocolHandler extends EventEmitter {
           payload.server_name,
           payload.message,
         );
-        await this.sendControlResponse(request_id, mcpResponse);
+        await this.sendControlResponse(request_id, {
+          mcp_response: mcpResponse,
+        });
       } else if (payload.subtype === "can_use_tool") {
         // Emit event for permission callback
         // For now, auto-approve all tools
