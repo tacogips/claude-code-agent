@@ -550,12 +550,12 @@ export class ClaudeCodeToolAgent {
     // Create transport options
     const transportOptions = this.buildTransportOptions();
 
-    // Add resume and prompt support
+    // Add resume and initial prompt support
     if (config.resumeSessionId !== undefined) {
       transportOptions.resumeSessionId = config.resumeSessionId;
-      if (config.prompt !== "") {
-        transportOptions.prompt = config.prompt;
-      }
+    }
+    if (config.prompt !== undefined && config.prompt !== "") {
+      transportOptions.prompt = config.prompt;
     }
 
     const transport = new SubprocessTransport(transportOptions);
@@ -651,19 +651,6 @@ export class ClaudeCodeToolAgent {
     // Mark session as started
     stateManager.transition("starting");
     stateManager.markStarted();
-
-    // Send initial prompt via stdin (for both new and resumed sessions with a prompt)
-    if (config.prompt !== undefined && config.prompt !== "") {
-      const userMessage = {
-        type: "user",
-        message: {
-          role: "user" as const,
-          content: config.prompt,
-        },
-      };
-      await transport.write(JSON.stringify(userMessage));
-      stateManager.incrementMessageCount();
-    }
 
     return session;
   }

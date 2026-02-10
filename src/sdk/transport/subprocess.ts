@@ -413,10 +413,12 @@ export class SubprocessTransport implements Transport {
     const cliPath = this.options.cliPath ?? "claude";
     const args = [
       cliPath,
+      "--print",
       "--output-format",
       "stream-json",
       "--input-format",
       "stream-json",
+      "--include-partial-messages",
       "--verbose",
     ];
 
@@ -462,6 +464,12 @@ export class SubprocessTransport implements Transport {
       args.push("--resume", this.options.resumeSessionId);
     }
 
+    // Pass initial prompt as positional argument.
+    // This starts the turn immediately while keeping stdin open for control protocol.
+    if (this.options.prompt !== undefined && this.options.prompt !== "") {
+      args.push(this.options.prompt);
+    }
+
     // Append additional CLI arguments as-is
     if (
       this.options.additionalArgs !== undefined &&
@@ -471,8 +479,7 @@ export class SubprocessTransport implements Transport {
     }
 
     // Note: --prompt is not a supported CLI flag.
-    // For resume sessions with a prompt, the prompt is sent via stdin
-    // as a user message after initialization (handled in agent.ts).
+    // Prompt text is passed as a positional argument when provided.
 
     return args;
   }
