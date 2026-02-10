@@ -8,7 +8,7 @@
  * @module sdk/receiver
  */
 
-import { readFile, stat } from "node:fs/promises";
+import { open, readFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { JsonlStreamParser, type TranscriptEvent } from "../polling/parser";
@@ -93,13 +93,16 @@ export interface ISessionUpdateReceiver {
 interface ResolvedReceiverOptions {
   readonly pollingIntervalMs: number;
   readonly includeExisting: boolean;
-  readonly transcriptPath: string;
+  readonly transcriptPath: string | undefined;
 }
 
 export class SessionUpdateReceiver implements ISessionUpdateReceiver {
   private readonly _sessionId: string;
   private readonly options: ResolvedReceiverOptions;
-  private readonly transcriptPath: string;
+  private readonly legacyTranscriptPath: string;
+  private readonly projectsRootPath: string;
+  private resolvedTranscriptPath: string | null = null;
+  private lastPathLookupAt: number = 0;
 
   private _isClosed: boolean = false;
   private _isPolling: boolean = false;
@@ -134,10 +137,12 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
     this.options = {
       pollingIntervalMs: options?.pollingIntervalMs ?? 300,
       includeExisting: options?.includeExisting ?? true,
-      transcriptPath: options?.transcriptPath ?? defaultTranscriptPath,
+      transcriptPath: options?.transcriptPath,
     };
 
-    this.transcriptPath = this.options.transcriptPath;
+    this.legacyTranscriptPath = defaultTranscriptPath;
+    this.projectsRootPath = join(homedir(), ".claude", "projects");
+    this.resolvedTranscriptPath = this.options.transcriptPath ?? null;
   }
 
   /**
@@ -274,11 +279,12 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
    */
   private async skipExistingContent(): Promise<void> {
     try {
-      const fileStat = await stat(this.transcriptPath);
+      const transcriptPath = await this.resolveTranscriptPath();
+      const fileStat = await stat(transcriptPath);
       this.fileOffset = fileStat.size;
       // Feed existing content to parser to keep it in sync
       if (fileStat.size > 0) {
-        const existingContent = await readFile(this.transcriptPath, "utf8");
+        const existingContent = await readFile(transcriptPath, "utf8");
         this.parser.feed(existingContent);
       }
     } catch {
@@ -294,8 +300,10 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
    */
   private async handleIncludeExisting(): Promise<void> {
     try {
+      const transcriptPath = await this.resolveTranscriptPath();
+
       // Get file stat first
-      const fileStat = await stat(this.transcriptPath);
+      const fileStat = await stat(transcriptPath);
 
       // If file is empty, just set offset and return
       if (fileStat.size === 0) {
@@ -304,7 +312,7 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
       }
 
       // Read entire file
-      const content = await readFile(this.transcriptPath, "utf8");
+      const content = await readFile(transcriptPath, "utf8");
 
       // Parse content
       const events = this.parser.feed(content);
@@ -341,8 +349,10 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
     }
 
     try {
+      const transcriptPath = await this.resolveTranscriptPath();
+
       // Check if file exists
-      const fileStat = await stat(this.transcriptPath);
+      const fileStat = await stat(transcriptPath);
 
       // Handle file truncation
       if (fileStat.size < this.fileOffset) {
@@ -355,11 +365,12 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
         return; // No new content
       }
 
-      // Read entire file
-      const content = await readFile(this.transcriptPath, "utf8");
-
-      // Extract new content from offset
-      const newContent = content.slice(this.fileOffset);
+      // Read only the new range to avoid re-reading the entire file every poll
+      const newContent = await this.readRange(
+        transcriptPath,
+        this.fileOffset,
+        fileStat.size - this.fileOffset,
+      );
 
       if (newContent.length === 0) {
         return; // No new content
@@ -402,6 +413,161 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
     } else {
       // Queue for later
       this.updateQueue.push(update);
+    }
+  }
+
+  /**
+   * Resolve transcript path for current Claude Code layouts.
+   *
+   * Supports both legacy ~/.claude/sessions/<id>/transcript.jsonl and
+   * current ~/.claude/projects/<project-hash>/<id>.jsonl layouts.
+   */
+  private async resolveTranscriptPath(): Promise<string> {
+    if (this.options.transcriptPath !== undefined) {
+      return this.options.transcriptPath;
+    }
+
+    if (this.resolvedTranscriptPath !== null) {
+      return this.resolvedTranscriptPath;
+    }
+
+    const now = Date.now();
+    if (now - this.lastPathLookupAt < 1000) {
+      return this.legacyTranscriptPath;
+    }
+    this.lastPathLookupAt = now;
+
+    if (await this.fileExists(this.legacyTranscriptPath)) {
+      this.resolvedTranscriptPath = this.legacyTranscriptPath;
+      return this.legacyTranscriptPath;
+    }
+
+    const projectSessionFile = await this.findSessionFileInProjects();
+    if (projectSessionFile !== null) {
+      this.resolvedTranscriptPath = projectSessionFile;
+      return projectSessionFile;
+    }
+
+    // Fall back to legacy path. If file appears later, future polls will keep trying.
+    return this.legacyTranscriptPath;
+  }
+
+  private async fileExists(path: string): Promise<boolean> {
+    try {
+      await stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async findSessionFileInProjects(): Promise<string | null> {
+    let projectDirs: Awaited<ReturnType<typeof readdir>>;
+    try {
+      projectDirs = await readdir(this.projectsRootPath, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+
+    const targetFile = `${this._sessionId}.jsonl`;
+
+    for (const entry of projectDirs) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const directPath = join(this.projectsRootPath, entry.name, targetFile);
+      if (await this.fileExists(directPath)) {
+        return directPath;
+      }
+
+      // Subagent files can be nested under session directories.
+      const nestedPath = await this.findFileByNameDepthLimited(
+        join(this.projectsRootPath, entry.name),
+        targetFile,
+        3,
+      );
+      if (nestedPath !== null) {
+        return nestedPath;
+      }
+    }
+
+    return null;
+  }
+
+  private async findFileByNameDepthLimited(
+    rootDir: string,
+    fileName: string,
+    maxDepth: number,
+  ): Promise<string | null> {
+    type SearchNode = { path: string; depth: number };
+    const queue: SearchNode[] = [{ path: rootDir, depth: 0 }];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === undefined) {
+        continue;
+      }
+
+      let entries: Awaited<ReturnType<typeof readdir>>;
+      try {
+        entries = await readdir(current.path, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name === fileName) {
+          return join(current.path, entry.name);
+        }
+
+        if (entry.isDirectory() && current.depth < maxDepth) {
+          queue.push({
+            path: join(current.path, entry.name),
+            depth: current.depth + 1,
+          });
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Read a UTF-8 byte range from a file.
+   */
+  private async readRange(
+    path: string,
+    offset: number,
+    length: number,
+  ): Promise<string> {
+    if (length <= 0) {
+      return "";
+    }
+
+    const fileHandle = await open(path, "r");
+    try {
+      const buffer = new Uint8Array(length);
+      let totalRead = 0;
+
+      while (totalRead < length) {
+        const { bytesRead } = await fileHandle.read(
+          buffer,
+          totalRead,
+          length - totalRead,
+          offset + totalRead,
+        );
+
+        if (bytesRead === 0) {
+          break;
+        }
+
+        totalRead += bytesRead;
+      }
+
+      return new TextDecoder().decode(buffer.subarray(0, totalRead));
+    } finally {
+      await fileHandle.close();
     }
   }
 }
