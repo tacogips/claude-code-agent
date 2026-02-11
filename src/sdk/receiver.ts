@@ -464,7 +464,9 @@ export class SessionUpdateReceiver implements ISessionUpdateReceiver {
   private async findSessionFileInProjects(): Promise<string | null> {
     let projectDirs: Awaited<ReturnType<typeof readdir>>;
     try {
-      projectDirs = await readdir(this.projectsRootPath, { withFileTypes: true });
+      projectDirs = await readdir(this.projectsRootPath, {
+        withFileTypes: true,
+      });
     } catch {
       return null;
     }

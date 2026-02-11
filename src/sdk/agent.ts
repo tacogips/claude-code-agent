@@ -560,10 +560,19 @@ export class ClaudeCodeToolAgent {
       transportOptions.resumeSessionId = config.resumeSessionId;
     }
     if (config.systemPrompt !== undefined) {
-      const resolvedSystemPrompt = this.resolveSystemPrompt(config.systemPrompt);
+      const resolvedSystemPrompt = this.resolveSystemPrompt(
+        config.systemPrompt,
+      );
       if (resolvedSystemPrompt !== undefined) {
         transportOptions.systemPrompt = resolvedSystemPrompt;
       }
+    }
+
+    // Pass prompt as positional CLI argument so CLI processes it immediately
+    // on startup, rather than relying on stdin delivery which may race with
+    // CLI initialization (see issue #34).
+    if (config.prompt !== "") {
+      transportOptions.prompt = config.prompt;
     }
 
     const transport = new SubprocessTransport(transportOptions);
@@ -615,18 +624,9 @@ export class ClaudeCodeToolAgent {
     // Initialize control protocol
     await protocol.initialize();
 
-    // Send initial prompt through stream-json stdin after initialize.
-    if (config.prompt !== "") {
-      await transport.write(
-        JSON.stringify({
-          type: "user",
-          message: {
-            role: "user",
-            content: config.prompt,
-          },
-        }),
-      );
-    }
+    // NOTE: The initial prompt is now passed as a positional CLI argument
+    // (via transportOptions.prompt) so it is processed immediately on startup.
+    // Do NOT also send it via stdin to avoid double-processing (issue #34).
 
     // Create session instance
     const session = new ToolAgentSession(

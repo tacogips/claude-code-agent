@@ -157,7 +157,10 @@ export function buildSubprocessCommand(options: TransportOptions): string[] {
   }
 
   // Append additional CLI arguments before the positional prompt.
-  if (options.additionalArgs !== undefined && options.additionalArgs.length > 0) {
+  if (
+    options.additionalArgs !== undefined &&
+    options.additionalArgs.length > 0
+  ) {
     args.push(...options.additionalArgs);
   }
 

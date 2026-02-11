@@ -563,10 +563,7 @@ export class QueueRunner {
     const args: string[] = ["-p", "--output-format", "stream-json"];
 
     // Append additional CLI arguments from queue configuration
-    if (
-      queue.additionalArgs !== undefined &&
-      queue.additionalArgs.length > 0
-    ) {
+    if (queue.additionalArgs !== undefined && queue.additionalArgs.length > 0) {
       args.push(...queue.additionalArgs);
     }
 
