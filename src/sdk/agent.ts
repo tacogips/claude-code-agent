@@ -560,7 +560,9 @@ export class ClaudeCodeToolAgent {
       transportOptions.resumeSessionId = config.resumeSessionId;
     }
     if (config.systemPrompt !== undefined) {
-      const resolvedSystemPrompt = this.resolveSystemPrompt(config.systemPrompt);
+      const resolvedSystemPrompt = this.resolveSystemPrompt(
+        config.systemPrompt,
+      );
       if (resolvedSystemPrompt !== undefined) {
         transportOptions.systemPrompt = resolvedSystemPrompt;
       }

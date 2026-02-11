@@ -126,7 +126,6 @@ describe("ControlProtocolHandler", () => {
 
       await expect(handler.initialize()).rejects.toThrow("already initialized");
     });
-
   });
 
   describe("registerToolRegistry", () => {
@@ -817,9 +816,7 @@ describe("ControlProtocolHandler", () => {
 
       const mcpResponse = (response.response.response as { mcp_response: any })
         .mcp_response;
-      expect(mcpResponse.result.content[0]?.text).toBe(
-        "Result: 42",
-      );
+      expect(mcpResponse.result.content[0]?.text).toBe("Result: 42");
     });
   });
 });
