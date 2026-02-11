@@ -758,7 +758,7 @@ describe("ClaudeCodeToolAgent", () => {
   });
 
   describe("TEST-012: Session Management", () => {
-    test("does not pass initial prompt via transport options", async () => {
+    test("passes initial prompt as positional CLI arg via transport options (issue #34)", async () => {
       const agent = new ClaudeCodeToolAgent();
 
       let capturedOptions: Record<string, unknown> | undefined;
@@ -782,13 +782,13 @@ describe("ClaudeCodeToolAgent", () => {
         await new Promise(() => {});
       });
 
-      await agent.startSession({ prompt: "hello from issue-32 test" });
+      await agent.startSession({ prompt: "hello from issue-34 test" });
 
       expect(capturedOptions).toBeDefined();
-      expect(capturedOptions?.["prompt"]).toBeUndefined();
+      expect(capturedOptions?.["prompt"]).toBe("hello from issue-34 test");
     });
 
-    test("sends initial prompt via stdin after initialize", async () => {
+    test("does not send initial prompt via stdin to avoid double-processing (issue #34)", async () => {
       const agent = new ClaudeCodeToolAgent();
 
       vi.spyOn(SubprocessTransport.prototype, "connect").mockResolvedValue();
@@ -796,7 +796,7 @@ describe("ClaudeCodeToolAgent", () => {
         .spyOn(SubprocessTransport.prototype, "write")
         .mockResolvedValue();
       vi.spyOn(SubprocessTransport.prototype, "close").mockResolvedValue();
-      const initializeSpy = vi.spyOn(
+      vi.spyOn(
         ControlProtocolHandler.prototype,
         "initialize",
       ).mockResolvedValue();
@@ -807,16 +807,10 @@ describe("ClaudeCodeToolAgent", () => {
         await new Promise(() => {});
       });
 
-      await agent.startSession({ prompt: "hello from issue-32 test" });
+      await agent.startSession({ prompt: "hello from issue-34 test" });
 
-      expect(writeSpy).toHaveBeenCalledTimes(1);
-      const writeArg = writeSpy.mock.calls[0]?.[0] as string;
-      expect(writeArg).toContain('"type":"user"');
-      expect(writeArg).toContain('"role":"user"');
-      expect(writeArg).toContain('"content":"hello from issue-32 test"');
-      expect(writeSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        initializeSpy.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
-      );
+      // Prompt is passed as positional CLI arg, NOT via stdin
+      expect(writeSpy).not.toHaveBeenCalled();
     });
 
     test("starts session with mock transport", async () => {
