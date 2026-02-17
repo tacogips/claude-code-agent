@@ -29,17 +29,17 @@ import type { SessionStateInfo, SessionState } from "./types/state";
 /**
  * Main SDK agent providing unified access to all claude-code-agent functionality.
  *
- * The ClaudeCodeAgent class serves as the primary interface for programmatic
+ * The SdkManager class serves as the primary interface for programmatic
  * integration with claude-code-agent. It provides access to all managers and
  * utilities through a single, cohesive API.
  *
  * @example Basic usage
  * ```typescript
- * import { ClaudeCodeAgent } from "claude-code-agent/sdk";
+ * import { SdkManager } from "claude-code-agent/sdk";
  * import { createContainer } from "claude-code-agent/container";
  *
  * const container = createContainer();
- * const agent = await ClaudeCodeAgent.create(container);
+ * const agent = await SdkManager.create(container);
  *
  * // Use session reader
  * const sessions = await agent.sessions.listSessions();
@@ -51,7 +51,7 @@ import type { SessionStateInfo, SessionState } from "./types/state";
  * });
  * ```
  */
-export class ClaudeCodeAgent {
+export class SdkManager {
   /**
    * Container for dependency injection
    */
@@ -98,7 +98,7 @@ export class ClaudeCodeAgent {
   public readonly activity: ActivityManager;
 
   /**
-   * Private constructor - use ClaudeCodeAgent.create() instead.
+   * Private constructor - use SdkManager.create() instead.
    *
    * @param container - Dependency injection container
    * @private
@@ -138,16 +138,16 @@ export class ClaudeCodeAgent {
   }
 
   /**
-   * Create and initialize a new ClaudeCodeAgent instance.
+   * Create and initialize a new SdkManager instance.
    *
    * This is the recommended way to create an agent instance as it ensures
    * all dependencies are properly initialized.
    *
    * @param container - Dependency injection container
-   * @returns Initialized ClaudeCodeAgent instance
+   * @returns Initialized SdkManager instance
    */
-  static async create(container: Container): Promise<ClaudeCodeAgent> {
-    const agent = new ClaudeCodeAgent(container);
+  static async create(container: Container): Promise<SdkManager> {
+    const agent = new SdkManager(container);
     // Future: Add any async initialization here
     return agent;
   }
@@ -175,9 +175,9 @@ export type PermissionMode =
   | "bypassPermissions";
 
 /**
- * Options for creating a ClaudeCodeToolAgent.
+ * Options for creating a SessionRunner.
  */
-export interface ToolAgentOptions {
+export interface SessionRunnerOptions {
   /** Working directory for Claude Code */
   cwd?: string;
   /** MCP servers (SDK and external) */
@@ -244,7 +244,7 @@ export interface SessionResult {
  * Running session instance.
  * Provides methods to interact with and control the session.
  */
-export class ToolAgentSession extends NodeEventEmitter {
+export class RunningSession extends NodeEventEmitter {
   readonly sessionId: string;
   private readonly stateManager: SessionStateManager;
   private readonly protocol: ControlProtocolHandler;
@@ -252,7 +252,7 @@ export class ToolAgentSession extends NodeEventEmitter {
 
   constructor(
     sessionId: string,
-    _agent: ClaudeCodeToolAgent,
+    _agent: SessionRunner,
     transport: Transport,
     protocol: ControlProtocolHandler,
     stateManager: SessionStateManager,
@@ -498,7 +498,7 @@ export class ToolAgentSession extends NodeEventEmitter {
  *
  * @example
  * ```typescript
- * import { ClaudeCodeToolAgent, tool, createSdkMcpServer } from 'claude-code-agent/sdk';
+ * import { SessionRunner, tool, createSdkMcpServer } from 'claude-code-agent/sdk';
  *
  * // Define a tool
  * const addTool = tool({
@@ -517,7 +517,7 @@ export class ToolAgentSession extends NodeEventEmitter {
  * });
  *
  * // Create agent with SDK tools
- * const agent = new ClaudeCodeToolAgent({
+ * const agent = new SessionRunner({
  *   mcpServers: { calc: calculator },
  *   allowedTools: ['mcp__calc__add']
  * });
@@ -532,13 +532,13 @@ export class ToolAgentSession extends NodeEventEmitter {
  * }
  * ```
  */
-export class ClaudeCodeToolAgent {
-  private readonly options: ToolAgentOptions;
+export class SessionRunner {
+  private readonly options: SessionRunnerOptions;
   private readonly toolRegistries: Map<string, ToolRegistry> = new Map();
-  private activeSessions: Map<string, ToolAgentSession> = new Map();
+  private activeSessions: Map<string, RunningSession> = new Map();
   private sessionIdCounter: number = 0;
 
-  constructor(options?: ToolAgentOptions) {
+  constructor(options?: SessionRunnerOptions) {
     this.options = options ?? {};
     this.createToolRegistries();
   }
@@ -549,7 +549,7 @@ export class ClaudeCodeToolAgent {
    * Spawns Claude Code CLI, initializes control protocol,
    * and returns a session instance for interaction.
    */
-  async startSession(config: SessionConfig): Promise<ToolAgentSession> {
+  async startSession(config: SessionConfig): Promise<RunningSession> {
     const sessionId = this.generateSessionId();
 
     // Create transport options
@@ -631,7 +631,7 @@ export class ClaudeCodeToolAgent {
     }
 
     // Create session instance
-    const session = new ToolAgentSession(
+    const session = new RunningSession(
       sessionId,
       this,
       transport,
@@ -693,7 +693,7 @@ export class ClaudeCodeToolAgent {
     sessionId: string,
     prompt?: string,
     systemPrompt?: string | { preset: "claude_code"; append?: string },
-  ): Promise<ToolAgentSession> {
+  ): Promise<RunningSession> {
     const config: SessionConfig = {
       prompt: prompt ?? "",
       resumeSessionId: sessionId,
@@ -724,7 +724,7 @@ export class ClaudeCodeToolAgent {
   /**
    * Get a list of active sessions.
    */
-  getActiveSessions(): ToolAgentSession[] {
+  getActiveSessions(): RunningSession[] {
     return Array.from(this.activeSessions.values());
   }
 

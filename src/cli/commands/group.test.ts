@@ -15,14 +15,14 @@ import {
 } from "vitest";
 import { Command } from "commander";
 import { registerGroupCommands } from "./group";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import type { SessionGroup } from "../../sdk/group/types";
 import { DEFAULT_GROUP_CONFIG } from "../../sdk/group/types";
 import * as output from "../output";
 
 describe("Group Commands", () => {
   let program: Command;
-  let mockAgent: Partial<ClaudeCodeAgent>;
+  let mockAgent: Partial<SdkManager>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let printSuccessSpy: ReturnType<typeof vi.spyOn>;
@@ -61,7 +61,7 @@ describe("Group Commands", () => {
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
-    registerGroupCommands(program, async () => mockAgent as ClaudeCodeAgent);
+    registerGroupCommands(program, async () => mockAgent as SdkManager);
 
     // Clear mock calls from registration
     vi.clearAllMocks();

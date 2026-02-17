@@ -7,7 +7,7 @@
  * @module daemon/routes/groups
  */
 
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import type { TokenManager, AuthenticatedApp } from "../auth";
 import { createSSEStream } from "../sse";
 
@@ -43,12 +43,12 @@ interface RunGroupRequest {
  * All routes require authentication and appropriate permissions.
  *
  * @param app - Authenticated Elysia application instance
- * @param sdk - ClaudeCodeAgent SDK instance
+ * @param sdk - SdkManager SDK instance
  * @param tokenManager - Token manager for permission checks
  */
 export function groupRoutes(
   app: AuthenticatedApp,
-  sdk: ClaudeCodeAgent,
+  sdk: SdkManager,
   tokenManager: TokenManager,
 ): void {
   app.group("/api/groups", (groups) => {

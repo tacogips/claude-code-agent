@@ -18,7 +18,7 @@ import {
   AuthError,
   type AuthenticatedApp,
 } from "./auth";
-import { ClaudeCodeAgent } from "../sdk";
+import { SdkManager } from "../sdk";
 import {
   sessionRoutes,
   groupRoutes,
@@ -60,7 +60,7 @@ export class DaemonServer {
   private readonly config: DaemonConfig;
   private readonly container: Container;
   private readonly tokenManager: TokenManager;
-  private sdk: ClaudeCodeAgent | null = null;
+  private sdk: SdkManager | null = null;
   private server: ReturnType<Elysia["listen"]> | null = null;
   private startTime: number | null = null;
   private connectionCount: number = 0;
@@ -221,7 +221,7 @@ export class DaemonServer {
     }
 
     // Initialize SDK
-    this.sdk = await ClaudeCodeAgent.create(this.container);
+    this.sdk = await SdkManager.create(this.container);
 
     // Initialize token manager
     await this.tokenManager.initialize();

@@ -6,7 +6,7 @@
 
 import { describe, test, expect, mock } from "bun:test";
 import { ClaudeCodeClient } from "./client";
-import type { ToolAgentSession, SessionConfig } from "./agent";
+import type { RunningSession, SessionConfig } from "./agent";
 import type { SessionStateInfo } from "./types/state";
 
 /**
@@ -84,14 +84,14 @@ class MockSession {
 }
 
 /**
- * Mock ClaudeCodeToolAgent for testing.
+ * Mock SessionRunner for testing.
  */
 class MockAgent {
   private sessionCounter = 0;
   private closeCalled = false;
   private startConfigs: SessionConfig[] = [];
 
-  async startSession(config?: SessionConfig): Promise<ToolAgentSession> {
+  async startSession(config?: SessionConfig): Promise<RunningSession> {
     if (config !== undefined) {
       this.startConfigs.push(config);
     }
@@ -105,14 +105,14 @@ class MockAgent {
       stats: { toolCallCount: 0, messageCount: 1 },
     });
 
-    return session as unknown as ToolAgentSession;
+    return session as unknown as RunningSession;
   }
 
   async close(): Promise<void> {
     this.closeCalled = true;
   }
 
-  getActiveSessions(): ToolAgentSession[] {
+  getActiveSessions(): RunningSession[] {
     return [];
   }
 

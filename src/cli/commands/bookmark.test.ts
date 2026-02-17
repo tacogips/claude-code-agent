@@ -15,13 +15,13 @@ import {
 } from "vitest";
 import { Command } from "commander";
 import { registerBookmarkCommands } from "./bookmark";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import type { Bookmark } from "../../sdk/bookmarks/types";
 import * as output from "../output";
 
 describe("Bookmark Commands", () => {
   let program: Command;
-  let mockAgent: Partial<ClaudeCodeAgent>;
+  let mockAgent: Partial<SdkManager>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let printSuccessSpy: ReturnType<typeof vi.spyOn>;
@@ -55,7 +55,7 @@ describe("Bookmark Commands", () => {
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
-    registerBookmarkCommands(program, async () => mockAgent as ClaudeCodeAgent);
+    registerBookmarkCommands(program, async () => mockAgent as SdkManager);
 
     // Clear mock calls from registration
     vi.clearAllMocks();

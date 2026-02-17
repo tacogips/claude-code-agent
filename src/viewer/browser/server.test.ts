@@ -8,15 +8,15 @@
 
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { ViewerServer, DEFAULT_VIEWER_CONFIG } from "./server";
-import { ClaudeCodeAgent } from "../../sdk";
+import { SdkManager } from "../../sdk";
 import { createTestContainer } from "../../container";
 
 describe("ViewerServer", () => {
-  let sdk: ClaudeCodeAgent;
+  let sdk: SdkManager;
 
   beforeEach(async () => {
     const container = createTestContainer();
-    sdk = await ClaudeCodeAgent.create(container);
+    sdk = await SdkManager.create(container);
   });
 
   describe("constructor", () => {

@@ -11,7 +11,7 @@
  */
 
 import { Command } from "commander";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import type { CommandQueue, QueueCommand } from "../../repository";
 import {
   printSuccess,
@@ -54,7 +54,7 @@ type CommandDisplay = QueueCommand & { index: number } & Record<
  * - queue command move <queue-id> <from> <to>
  *
  * @param program - Main CLI program to register commands on
- * @param getAgent - Async function to get ClaudeCodeAgent instance
+ * @param getAgent - Async function to get SdkManager instance
  *
  * @example
  * ```typescript
@@ -65,7 +65,7 @@ type CommandDisplay = QueueCommand & { index: number } & Record<
  */
 export function registerQueueCommands(
   program: Command,
-  getAgent: () => Promise<ClaudeCodeAgent>,
+  getAgent: () => Promise<SdkManager>,
 ): void {
   const queueCmd = program
     .command("queue")

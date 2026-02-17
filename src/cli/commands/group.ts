@@ -8,7 +8,7 @@
  */
 
 import { Command } from "commander";
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import { formatTable, formatJson, printError, printSuccess } from "../output";
 import { createTaggedLogger } from "../../logger";
 
@@ -29,20 +29,20 @@ const logger = createTaggedLogger("cli-group");
  * - delete: Delete group with confirmation
  *
  * @param program - Commander program instance
- * @param getAgent - Async function to get initialized ClaudeCodeAgent
+ * @param getAgent - Async function to get initialized SdkManager
  *
  * @example
  * ```typescript
  * const program = new Command();
  * registerGroupCommands(program, async () => {
  *   const container = createProductionContainer();
- *   return ClaudeCodeAgent.create(container);
+ *   return SdkManager.create(container);
  * });
  * ```
  */
 export function registerGroupCommands(
   program: Command,
-  getAgent: () => Promise<ClaudeCodeAgent>,
+  getAgent: () => Promise<SdkManager>,
 ): void {
   const groupCmd = program
     .command("group")

@@ -1,7 +1,7 @@
 /**
  * Claude Code Client for multi-turn interactive sessions.
  *
- * Provides a wrapper around ClaudeCodeToolAgent for interactive
+ * Provides a wrapper around SessionRunner for interactive
  * conversational sessions with context preservation.
  *
  * @module sdk/client
@@ -9,9 +9,9 @@
 
 import { EventEmitter } from "node:events";
 import {
-  ClaudeCodeToolAgent,
-  type ToolAgentOptions,
-  type ToolAgentSession,
+  SessionRunner,
+  type SessionRunnerOptions,
+  type RunningSession,
   type SessionConfig,
 } from "./agent";
 import type { SessionStateInfo } from "./types/state";
@@ -22,9 +22,9 @@ const logger = createTaggedLogger("client");
 /**
  * Options for creating a ClaudeCodeClient.
  *
- * Extends ToolAgentOptions with additional client-specific options.
+ * Extends SessionRunnerOptions with additional client-specific options.
  */
-export interface ClientOptions extends ToolAgentOptions {
+export interface ClientOptions extends SessionRunnerOptions {
   /**
    * Keep the underlying agent connection alive between queries.
    * Default: false.
@@ -69,7 +69,7 @@ export interface Message {
 /**
  * Multi-turn conversation client for Claude Code.
  *
- * ClaudeCodeClient wraps ClaudeCodeToolAgent to provide a higher-level
+ * ClaudeCodeClient wraps SessionRunner to provide a higher-level
  * interface for interactive sessions. It maintains session context
  * between queries and provides async iteration over response messages.
  *
@@ -140,8 +140,8 @@ export interface Message {
  */
 export class ClaudeCodeClient extends EventEmitter {
   private readonly options: ClientOptions;
-  private agent: ClaudeCodeToolAgent;
-  private currentSession: ToolAgentSession | null = null;
+  private agent: SessionRunner;
+  private currentSession: RunningSession | null = null;
   private connectionState: "disconnected" | "connected" | "connecting" =
     "disconnected";
 
@@ -153,7 +153,7 @@ export class ClaudeCodeClient extends EventEmitter {
   constructor(options?: ClientOptions) {
     super();
     this.options = options ?? {};
-    this.agent = new ClaudeCodeToolAgent(this.options);
+    this.agent = new SessionRunner(this.options);
   }
 
   /**
@@ -405,7 +405,7 @@ export class ClaudeCodeClient extends EventEmitter {
   /**
    * Forward events from the session to the client.
    */
-  private forwardSessionEvents(session: ToolAgentSession): void {
+  private forwardSessionEvents(session: RunningSession): void {
     session.on("message", (msg: unknown) => this.emit("message", msg));
     session.on("toolCall", (call: unknown) => this.emit("toolCall", call));
     session.on("toolResult", (result: unknown) =>
@@ -428,7 +428,7 @@ export class ClaudeCodeClient extends EventEmitter {
     await this.agent.close();
 
     // Create new agent
-    this.agent = new ClaudeCodeToolAgent(this.options);
+    this.agent = new SessionRunner(this.options);
 
     // Reset session
     this.currentSession = null;

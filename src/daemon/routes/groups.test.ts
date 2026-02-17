@@ -13,13 +13,13 @@ import {
   AuthError,
   type AuthenticatedApp,
 } from "../auth";
-import { ClaudeCodeAgent } from "../../sdk";
+import { SdkManager } from "../../sdk";
 import { createTestContainer } from "../../container";
 import type { DaemonConfig } from "../types";
 
 describe("Group Routes - SSE Stream", () => {
   let container: ReturnType<typeof createTestContainer>;
-  let sdk: ClaudeCodeAgent;
+  let sdk: SdkManager;
   let tokenManager: TokenManager;
   let app: Elysia;
   let testToken: string;
@@ -29,7 +29,7 @@ describe("Group Routes - SSE Stream", () => {
     container = createTestContainer();
 
     // Initialize SDK and token manager
-    sdk = await ClaudeCodeAgent.create(container);
+    sdk = await SdkManager.create(container);
     const config: DaemonConfig = {
       host: "127.0.0.1",
       port: 8080,

@@ -9,7 +9,7 @@
  */
 
 import type { Command } from "commander";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import { FileChangeService } from "../../sdk/file-changes";
 import {
   formatTable,
@@ -268,20 +268,20 @@ function outputIndexStats(stats: IndexStats, format: "table" | "json"): void {
  * All commands support global --format option for output formatting.
  *
  * @param program - Commander program instance to attach commands to
- * @param getAgent - Factory function that creates/returns ClaudeCodeAgent instance
+ * @param getAgent - Factory function that creates/returns SdkManager instance
  *
  * @example
  * ```typescript
  * const program = new Command();
  * registerFilesCommands(program, async () => {
  *   const container = createContainer();
- *   return ClaudeCodeAgent.create(container);
+ *   return SdkManager.create(container);
  * });
  * ```
  */
 export function registerFilesCommands(
   program: Command,
-  getAgent: () => Promise<ClaudeCodeAgent>,
+  getAgent: () => Promise<SdkManager>,
 ): void {
   const filesCmd = program
     .command("files")

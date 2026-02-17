@@ -7,7 +7,7 @@
  * @module daemon/routes/sessions
  */
 
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import type { TokenManager, AuthenticatedApp } from "../auth";
 import { createSSEStream } from "../sse";
 
@@ -45,12 +45,12 @@ interface GetMessagesQuery {
  * All routes require authentication and appropriate permissions.
  *
  * @param app - Authenticated Elysia application instance
- * @param sdk - ClaudeCodeAgent SDK instance
+ * @param sdk - SdkManager SDK instance
  * @param tokenManager - Token manager for permission checks
  */
 export function sessionRoutes(
   app: AuthenticatedApp,
-  sdk: ClaudeCodeAgent,
+  sdk: SdkManager,
   tokenManager: TokenManager,
 ): void {
   app.group("/api/sessions", (sessions) => {
@@ -300,12 +300,12 @@ export function sessionRoutes(
         const prompt = reqBody?.prompt;
 
         // Create a tool agent to resume the session
-        const { ClaudeCodeToolAgent } = await import("../../sdk/agent");
+        const { SessionRunner } = await import("../../sdk/agent");
         const agentOptions =
           session.projectPath !== null
             ? { cwd: session.projectPath }
             : undefined;
-        const agent = new ClaudeCodeToolAgent(agentOptions);
+        const agent = new SessionRunner(agentOptions);
 
         await agent.resumeSession(sessionId, prompt);
 

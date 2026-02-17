@@ -8,7 +8,7 @@
  */
 
 import type { Command } from "commander";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import { printError } from "../output";
 
 /**
@@ -18,20 +18,20 @@ import { printError } from "../output";
  * for viewing sessions in real-time.
  *
  * @param program - Commander program instance to attach commands to
- * @param _getAgent - Factory function that creates/returns ClaudeCodeAgent instance (unused in placeholders)
+ * @param _getAgent - Factory function that creates/returns SdkManager instance (unused in placeholders)
  *
  * @example
  * ```typescript
  * const program = new Command();
  * registerServerCommands(program, async () => {
  *   const container = createContainer();
- *   return ClaudeCodeAgent.create(container);
+ *   return SdkManager.create(container);
  * });
  * ```
  */
 export function registerServerCommands(
   program: Command,
-  _getAgent: () => Promise<ClaudeCodeAgent>,
+  _getAgent: () => Promise<SdkManager>,
 ): void {
   const serverCmd = program
     .command("server")

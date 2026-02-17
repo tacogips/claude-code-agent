@@ -15,14 +15,14 @@ import {
 } from "vitest";
 import { Command } from "commander";
 import { registerSessionCommands } from "./session";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import type { Session } from "../../types/session";
 import type { Task } from "../../types/task";
 import * as output from "../output";
 
 describe("Session Commands", () => {
   let program: Command;
-  let mockAgent: Partial<ClaudeCodeAgent>;
+  let mockAgent: Partial<SdkManager>;
   let consoleLogSpy: MockInstance;
   let printErrorSpy: MockInstance;
 
@@ -104,7 +104,7 @@ describe("Session Commands", () => {
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
-    registerSessionCommands(program, async () => mockAgent as ClaudeCodeAgent);
+    registerSessionCommands(program, async () => mockAgent as SdkManager);
 
     // Clear mock calls from registration
     vi.clearAllMocks();

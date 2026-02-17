@@ -13,7 +13,7 @@ import { staticPlugin } from "@elysiajs/static";
 import { resolve, dirname } from "path";
 import { existsSync } from "fs";
 import { fileURLToPath } from "url";
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import { createTaggedLogger } from "../../logger";
 
 const logger = createTaggedLogger("viewer");
@@ -96,7 +96,7 @@ export const DEFAULT_VIEWER_CONFIG: ViewerConfig = {
 export class ViewerServer {
   private readonly app: Elysia;
   private readonly config: ViewerConfig;
-  private readonly sdk: ClaudeCodeAgent;
+  private readonly sdk: SdkManager;
   private server: ReturnType<Elysia["listen"]> | null = null;
   private startTime: number | null = null;
 
@@ -104,9 +104,9 @@ export class ViewerServer {
    * Create a new ViewerServer instance.
    *
    * @param config - Server configuration
-   * @param sdk - ClaudeCodeAgent SDK instance
+   * @param sdk - SdkManager SDK instance
    */
-  constructor(config: ViewerConfig, sdk: ClaudeCodeAgent) {
+  constructor(config: ViewerConfig, sdk: SdkManager) {
     this.config = config;
     this.sdk = sdk;
     this.app = new Elysia();
@@ -310,10 +310,10 @@ export class ViewerServer {
    *
    * Exposed for route handlers that will be implemented in TASK-002 and TASK-003.
    *
-   * @returns ClaudeCodeAgent SDK instance
+   * @returns SdkManager SDK instance
    * @internal
    */
-  getSdk(): ClaudeCodeAgent {
+  getSdk(): SdkManager {
     return this.sdk;
   }
 

@@ -1,11 +1,11 @@
 /**
- * Unit tests for ClaudeCodeAgent.
+ * Unit tests for SdkManager.
  *
  * @module sdk/agent.test
  */
 
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
-import { ClaudeCodeAgent, ClaudeCodeToolAgent } from "./agent";
+import { SdkManager, SessionRunner } from "./agent";
 import type { SessionConfig } from "./agent";
 import { createTestContainer } from "../container";
 import type { Container } from "../container";
@@ -22,7 +22,7 @@ import type { SdkTool } from "./types/tool";
 import { SubprocessTransport } from "./transport/subprocess";
 import { ControlProtocolHandler } from "./control-protocol";
 
-describe("ClaudeCodeAgent", () => {
+describe("SdkManager", () => {
   let container: Container;
 
   beforeEach(() => {
@@ -31,33 +31,33 @@ describe("ClaudeCodeAgent", () => {
 
   describe("TEST-001: Agent Creation - Factory Method", () => {
     test("creates agent with valid container", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
-      expect(agent).toBeInstanceOf(ClaudeCodeAgent);
+      expect(agent).toBeInstanceOf(SdkManager);
       expect(agent).toBeDefined();
     });
 
     test("async initialization completes", async () => {
-      const agentPromise = ClaudeCodeAgent.create(container);
+      const agentPromise = SdkManager.create(container);
 
       expect(agentPromise).toBeInstanceOf(Promise);
 
       const agent = await agentPromise;
-      expect(agent).toBeInstanceOf(ClaudeCodeAgent);
+      expect(agent).toBeInstanceOf(SdkManager);
     });
 
     test("agent instance is returned", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
-      expect(agent).toBeInstanceOf(ClaudeCodeAgent);
+      expect(agent).toBeInstanceOf(SdkManager);
       expect(agent.container).toBeDefined();
       expect(agent.events).toBeDefined();
       expect(agent.sessions).toBeDefined();
     });
 
     test("multiple calls create separate instances", async () => {
-      const agent1 = await ClaudeCodeAgent.create(container);
-      const agent2 = await ClaudeCodeAgent.create(container);
+      const agent1 = await SdkManager.create(container);
+      const agent2 = await SdkManager.create(container);
 
       expect(agent1).not.toBe(agent2);
       expect(agent1.events).not.toBe(agent2.events);
@@ -67,37 +67,37 @@ describe("ClaudeCodeAgent", () => {
 
   describe("TEST-002: Manager Initialization", () => {
     test("sessions property is SessionReader instance", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.sessions).toBeInstanceOf(SessionReader);
     });
 
     test("groups property is GroupManager instance", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.groups).toBeInstanceOf(GroupManager);
     });
 
     test("queues property is QueueManager instance", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.queues).toBeInstanceOf(QueueManager);
     });
 
     test("bookmarks property is BookmarkManager instance", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.bookmarks).toBeInstanceOf(BookmarkManager);
     });
 
     test("events property is EventEmitter instance", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.events).toBeInstanceOf(EventEmitter);
     });
 
     test("all managers initialized with container", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // All managers should be defined
       expect(agent.sessions).toBeDefined();
@@ -109,19 +109,19 @@ describe("ClaudeCodeAgent", () => {
 
   describe("TEST-003: Runner Initialization", () => {
     test("groupRunner property is GroupRunner instance", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.groupRunner).toBeInstanceOf(GroupRunner);
     });
 
     test("queueRunner property is QueueRunner instance", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.queueRunner).toBeInstanceOf(QueueRunner);
     });
 
     test("runners share same EventEmitter as agent.events", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // Verify by subscribing to agent.events and checking if runner events propagate
       let groupEventReceived = false;
@@ -136,7 +136,7 @@ describe("ClaudeCodeAgent", () => {
     });
 
     test("runners have access to container", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // Runners should be functional, which requires container access
       expect(agent.groupRunner).toBeDefined();
@@ -151,13 +151,13 @@ describe("ClaudeCodeAgent", () => {
 
   describe("TEST-004: Container Dependency Injection", () => {
     test("agent.container equals passed container", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.container).toBe(container);
     });
 
     test("container reference accessible via agent.container", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.container).toBeDefined();
       expect(agent.container.fileSystem).toBeDefined();
@@ -171,7 +171,7 @@ describe("ClaudeCodeAgent", () => {
         groupRepository: customGroupRepo,
       });
 
-      const agent = await ClaudeCodeAgent.create(customContainer);
+      const agent = await SdkManager.create(customContainer);
 
       expect(agent.container.groupRepository).toBe(customGroupRepo);
 
@@ -189,7 +189,7 @@ describe("ClaudeCodeAgent", () => {
         queueRepository: customQueueRepo,
       });
 
-      const agent = await ClaudeCodeAgent.create(customContainer);
+      const agent = await SdkManager.create(customContainer);
 
       expect(agent.container.queueRepository).toBe(customQueueRepo);
 
@@ -210,7 +210,7 @@ describe("ClaudeCodeAgent", () => {
         bookmarkRepository: customBookmarkRepo,
       });
 
-      const agent = await ClaudeCodeAgent.create(customContainer);
+      const agent = await SdkManager.create(customContainer);
 
       expect(agent.container.bookmarkRepository).toBe(customBookmarkRepo);
 
@@ -228,7 +228,7 @@ describe("ClaudeCodeAgent", () => {
     });
 
     test("other container services accessible through agent", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.container.fileSystem).toBeDefined();
       expect(agent.container.processManager).toBeDefined();
@@ -238,14 +238,14 @@ describe("ClaudeCodeAgent", () => {
 
   describe("TEST-005: EventEmitter Integration", () => {
     test("EventEmitter created during construction", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.events).toBeDefined();
       expect(agent.events).toBeInstanceOf(EventEmitter);
     });
 
     test("same EventEmitter passed to all managers", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // All managers should share the same EventEmitter
       // We can verify this by subscribing and emitting events
@@ -272,7 +272,7 @@ describe("ClaudeCodeAgent", () => {
     });
 
     test("events can be subscribed via agent.events", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       let eventReceived = false;
       let receivedEventData: unknown = undefined;
@@ -289,7 +289,7 @@ describe("ClaudeCodeAgent", () => {
     });
 
     test("events emitted by managers propagate", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       const receivedEvents: string[] = [];
 
@@ -314,7 +314,7 @@ describe("ClaudeCodeAgent", () => {
     });
 
     test("event listeners can be removed", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       let eventCount = 0;
       const listener = () => {
@@ -337,7 +337,7 @@ describe("ClaudeCodeAgent", () => {
 
   describe("TEST-006: Markdown Parsing", () => {
     test("parses simple markdown content", () => {
-      const agent = new (ClaudeCodeAgent as any)(container);
+      const agent = new (SdkManager as any)(container);
 
       const result = agent.parseMarkdown("# Hello\n\nWorld");
 
@@ -347,7 +347,7 @@ describe("ClaudeCodeAgent", () => {
     });
 
     test("parses empty string", () => {
-      const agent = new (ClaudeCodeAgent as any)(container);
+      const agent = new (SdkManager as any)(container);
 
       const result = agent.parseMarkdown("");
 
@@ -356,7 +356,7 @@ describe("ClaudeCodeAgent", () => {
     });
 
     test("parses complex markdown with code blocks", () => {
-      const agent = new (ClaudeCodeAgent as any)(container);
+      const agent = new (SdkManager as any)(container);
 
       const markdown = `
 # Title
@@ -377,7 +377,7 @@ More text
     });
 
     test("return type matches parseMarkdown module", () => {
-      const agent = new (ClaudeCodeAgent as any)(container);
+      const agent = new (SdkManager as any)(container);
 
       const result = agent.parseMarkdown("# Test");
 
@@ -389,14 +389,14 @@ More text
 
   describe("TEST-007: Manager Accessibility", () => {
     test("sessions API accessible", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.sessions).toBeDefined();
       expect(typeof agent.sessions.listSessions).toBe("function");
     });
 
     test("groups API accessible", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.groups).toBeDefined();
       expect(typeof agent.groups.createGroup).toBe("function");
@@ -407,7 +407,7 @@ More text
     });
 
     test("queues API accessible", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.queues).toBeDefined();
       expect(typeof agent.queues.createQueue).toBe("function");
@@ -421,7 +421,7 @@ More text
     });
 
     test("bookmarks API accessible", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.bookmarks).toBeDefined();
       expect(typeof agent.bookmarks.add).toBe("function");
@@ -437,7 +437,7 @@ More text
     });
 
     test("methods return expected types", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       const group = await agent.groups.createGroup({ name: "Test" });
       expect(group).toHaveProperty("id");
@@ -466,7 +466,7 @@ More text
 
   describe("TEST-008: Runner Accessibility", () => {
     test("GroupRunner methods accessible", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.groupRunner).toBeDefined();
       expect(typeof agent.groupRunner.run).toBe("function");
@@ -474,7 +474,7 @@ More text
     });
 
     test("QueueRunner methods accessible", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.queueRunner).toBeDefined();
       expect(typeof agent.queueRunner.run).toBe("function");
@@ -482,7 +482,7 @@ More text
     });
 
     test("runners interact with correct repositories", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // Create a group
       const group = await agent.groups.createGroup({
@@ -511,7 +511,7 @@ More text
     });
 
     test("events emitted during runner operations", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       let groupCreatedReceived = false;
       agent.events.on("group_created", () => {
@@ -548,7 +548,7 @@ More text
         bookmarkRepository: new InMemoryBookmarkRepository(),
       });
 
-      const agent = await ClaudeCodeAgent.create(customContainer);
+      const agent = await SdkManager.create(customContainer);
 
       expect(agent).toBeDefined();
       expect(agent.groups).toBeDefined();
@@ -557,7 +557,7 @@ More text
     });
 
     test("container properties are accessible", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       expect(agent.container.groupRepository).toBeDefined();
       expect(agent.container.queueRepository).toBeDefined();
@@ -566,7 +566,7 @@ More text
 
     test("async initialization completes successfully", async () => {
       const startTime = Date.now();
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
       const endTime = Date.now();
 
       expect(agent).toBeDefined();
@@ -576,21 +576,21 @@ More text
 
     test("multiple concurrent initializations succeed", async () => {
       const promises = [
-        ClaudeCodeAgent.create(createTestContainer()),
-        ClaudeCodeAgent.create(createTestContainer()),
-        ClaudeCodeAgent.create(createTestContainer()),
+        SdkManager.create(createTestContainer()),
+        SdkManager.create(createTestContainer()),
+        SdkManager.create(createTestContainer()),
       ];
 
       const agents = await Promise.all(promises);
 
       expect(agents).toHaveLength(3);
       agents.forEach((agent) => {
-        expect(agent).toBeInstanceOf(ClaudeCodeAgent);
+        expect(agent).toBeInstanceOf(SdkManager);
       });
     });
 
     test("agent remains functional after initialization", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // Should be able to perform operations
       const group = await agent.groups.createGroup({ name: "Test" });
@@ -606,7 +606,7 @@ More text
 
   describe("TEST-010: Readonly Properties", () => {
     test("properties are defined as readonly", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // TypeScript enforces readonly at compile time
       // At runtime, we can verify the properties exist and are stable
@@ -621,7 +621,7 @@ More text
     });
 
     test("container property remains stable", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
       const originalContainer = agent.container;
 
       // TypeScript will prevent reassignment at compile time
@@ -631,7 +631,7 @@ More text
     });
 
     test("events property remains stable", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
       const originalEvents = agent.events;
 
       // Verify events instance remains the same
@@ -640,7 +640,7 @@ More text
     });
 
     test("manager properties remain stable", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
       const originalSessions = agent.sessions;
       const originalGroups = agent.groups;
       const originalQueues = agent.queues;
@@ -655,7 +655,7 @@ More text
     });
 
     test("runner properties remain stable", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
       const originalGroupRunner = agent.groupRunner;
       const originalQueueRunner = agent.queueRunner;
 
@@ -666,7 +666,7 @@ More text
     });
 
     test("all properties are instances of expected types", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // Verify all properties have correct types
       expect(agent.container).toBe(container);
@@ -680,7 +680,7 @@ More text
     });
 
     test("TypeScript enforces readonly at compile time", async () => {
-      const agent = await ClaudeCodeAgent.create(container);
+      const agent = await SdkManager.create(container);
 
       // This test documents that TypeScript prevents reassignment at compile time
       // Attempting to reassign would cause TypeScript compilation errors:
@@ -702,27 +702,27 @@ More text
   });
 });
 
-// Tests for ClaudeCodeToolAgent (SDK tool execution agent)
-describe("ClaudeCodeToolAgent", () => {
+// Tests for SessionRunner (SDK tool execution agent)
+describe("SessionRunner", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   describe("TEST-011: Agent Creation", () => {
     test("creates agent with no options", () => {
-      const agent = new ClaudeCodeToolAgent();
+      const agent = new SessionRunner();
 
-      expect(agent).toBeInstanceOf(ClaudeCodeToolAgent);
+      expect(agent).toBeInstanceOf(SessionRunner);
       expect(agent).toBeDefined();
     });
 
     test("creates agent with options", () => {
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         cwd: "/test/project",
         model: "claude-opus-4",
       });
 
-      expect(agent).toBeInstanceOf(ClaudeCodeToolAgent);
+      expect(agent).toBeInstanceOf(SessionRunner);
     });
 
     test("creates tool registries from mcpServers", () => {
@@ -748,7 +748,7 @@ describe("ClaudeCodeToolAgent", () => {
         tools: [addTool as unknown as SdkTool],
       });
 
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         mcpServers: { calc: calculator },
       });
 
@@ -759,7 +759,7 @@ describe("ClaudeCodeToolAgent", () => {
 
   describe("TEST-012: Session Management", () => {
     test("does not pass initial prompt via transport options", async () => {
-      const agent = new ClaudeCodeToolAgent();
+      const agent = new SessionRunner();
 
       let capturedOptions: Record<string, unknown> | undefined;
 
@@ -789,7 +789,7 @@ describe("ClaudeCodeToolAgent", () => {
     });
 
     test("sends initial prompt via stdin after initialize", async () => {
-      const agent = new ClaudeCodeToolAgent();
+      const agent = new SessionRunner();
 
       vi.spyOn(SubprocessTransport.prototype, "connect").mockResolvedValue();
       const writeSpy = vi
@@ -842,7 +842,7 @@ describe("ClaudeCodeToolAgent", () => {
 
       // Note: We'd need to inject MockTransport for real unit tests
       // For now, just test agent creation
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         mcpServers: { calc: calculator },
       });
 
@@ -851,7 +851,7 @@ describe("ClaudeCodeToolAgent", () => {
     });
 
     test("tracks active sessions", () => {
-      const agent = new ClaudeCodeToolAgent();
+      const agent = new SessionRunner();
       const sessions = agent.getActiveSessions();
 
       expect(Array.isArray(sessions)).toBe(true);
@@ -859,7 +859,7 @@ describe("ClaudeCodeToolAgent", () => {
     });
 
     test("close agent clears all sessions", async () => {
-      const agent = new ClaudeCodeToolAgent();
+      const agent = new SessionRunner();
 
       await agent.close();
 
@@ -899,7 +899,7 @@ describe("ClaudeCodeToolAgent", () => {
         tools: [multiplyTool as unknown as SdkTool],
       });
 
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         mcpServers: { math: mathServer },
       });
 
@@ -943,7 +943,7 @@ describe("ClaudeCodeToolAgent", () => {
         tools: [queryTool as unknown as SdkTool],
       });
 
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         mcpServers: { calc, db },
       });
 
@@ -953,7 +953,7 @@ describe("ClaudeCodeToolAgent", () => {
 
   describe("TEST-014: Agent Options", () => {
     test("accepts all option types", () => {
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         cwd: "/test/cwd",
         model: "claude-opus-4",
         maxBudgetUsd: 10.0,
@@ -970,7 +970,7 @@ describe("ClaudeCodeToolAgent", () => {
     });
 
     test("system prompt as string", () => {
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         systemPrompt: "You are a helpful assistant",
       });
 
@@ -978,7 +978,7 @@ describe("ClaudeCodeToolAgent", () => {
     });
 
     test("system prompt with preset", () => {
-      const agent = new ClaudeCodeToolAgent({
+      const agent = new SessionRunner({
         systemPrompt: {
           preset: "claude_code",
           append: "Additional instructions",
@@ -989,14 +989,14 @@ describe("ClaudeCodeToolAgent", () => {
     });
   });
 
-  describe("TEST-015: ToolAgentSession", () => {
+  describe("TEST-015: RunningSession", () => {
     test("session has correct properties", async () => {
       // We can't actually start a session without real CLI,
       // but we can test type compatibility
-      const agent = new ClaudeCodeToolAgent();
+      const agent = new SessionRunner();
       const sessions = agent.getActiveSessions();
 
-      // Type check - ensure ToolAgentSession has expected interface
+      // Type check - ensure RunningSession has expected interface
       type SessionType = (typeof sessions)[number];
       type HasSessionId = SessionType extends { sessionId: string }
         ? true

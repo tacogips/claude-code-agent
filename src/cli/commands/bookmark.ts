@@ -9,7 +9,7 @@
  */
 
 import type { Command } from "commander";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import type { BookmarkType } from "../../sdk/bookmarks/types";
 import { formatTable, formatJson, printError, printSuccess } from "../output";
 
@@ -27,20 +27,20 @@ interface GlobalOptions {
  * All commands support global --format option for output formatting.
  *
  * @param program - Commander program instance to attach commands to
- * @param getAgent - Factory function that creates/returns ClaudeCodeAgent instance
+ * @param getAgent - Factory function that creates/returns SdkManager instance
  *
  * @example
  * ```typescript
  * const program = new Command();
  * registerBookmarkCommands(program, async () => {
  *   const container = createContainer();
- *   return ClaudeCodeAgent.create(container);
+ *   return SdkManager.create(container);
  * });
  * ```
  */
 export function registerBookmarkCommands(
   program: Command,
-  getAgent: () => Promise<ClaudeCodeAgent>,
+  getAgent: () => Promise<SdkManager>,
 ): void {
   const bookmarkCmd = program
     .command("bookmark")
