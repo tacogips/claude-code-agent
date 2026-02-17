@@ -131,6 +131,9 @@ WRAPPER
           # Bun runtime
           pkgs-unstable.bun
 
+          # Node.js runtime
+          pkgs-unstable.nodejs
+
           # TypeScript tooling
           pkgs-unstable.typescript
           pkgs-unstable.typescript-language-server
@@ -154,8 +157,27 @@ WRAPPER
           packages = devPackages;
 
           shellHook = ''
+            # Fix for Zed editor on NixOS: Zed downloads its own dynamically linked
+            # Node.js binary which cannot run on NixOS. Replace it with a symlink to
+            # the Nix-provided Node.js.
+            ZED_NODE_DIR="$HOME/.local/share/zed/node"
+            if [ -d "$ZED_NODE_DIR" ]; then
+              NIX_NODE="$(which node)"
+              if [ -n "$NIX_NODE" ]; then
+                for node_bin in "$ZED_NODE_DIR"/node-*/bin/node; do
+                  if [ -e "$node_bin" ] || [ -L "$node_bin" ]; then
+                    if [ "$(readlink -f "$node_bin" 2>/dev/null)" != "$(readlink -f "$NIX_NODE")" ]; then
+                      echo "Patching Zed node binary: $node_bin -> $NIX_NODE"
+                      ln -sf "$NIX_NODE" "$node_bin"
+                    fi
+                  fi
+                done
+              fi
+            fi
+
             echo "TypeScript development environment ready"
             echo "Bun version: $(bun --version)"
+            echo "Node.js version: $(node --version)"
             echo "TypeScript version: $(tsc --version)"
             echo "Task version: $(task --version 2>/dev/null || echo 'not available')"
           '';
