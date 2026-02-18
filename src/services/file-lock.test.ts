@@ -66,7 +66,7 @@ describe("FileLockServiceImpl", () => {
       fs.setFile(
         "/data/resource.json.lock",
         JSON.stringify({
-          pid: process.pid + 1, // Different PID
+          pid: process.pid,
           timestamp: clock.timestamp(),
           hostname: "localhost",
         }),
@@ -146,7 +146,7 @@ describe("FileLockServiceImpl", () => {
       fs.setFile(
         "/data/resource.json.lock",
         JSON.stringify({
-          pid: process.pid + 1,
+          pid: process.pid,
           timestamp: clock.timestamp(),
           hostname: "localhost",
         }),
@@ -181,7 +181,7 @@ describe("FileLockServiceImpl", () => {
       fs.setFile(
         "/data/resource.json.lock",
         JSON.stringify({
-          pid: process.pid + 1,
+          pid: process.pid,
           timestamp: clock.timestamp(),
           hostname: "localhost",
         }),
@@ -240,7 +240,7 @@ describe("FileLockServiceImpl", () => {
       fs.setFile(
         "/data/resource.json.lock",
         JSON.stringify({
-          pid: process.pid + 1,
+          pid: process.pid,
           timestamp: clock.timestamp(),
           hostname: "localhost",
         }),

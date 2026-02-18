@@ -35,8 +35,13 @@ export class BunFileSystem implements FileSystem {
    * @throws Error if file does not exist or cannot be read
    */
   async readFile(filePath: string): Promise<string> {
-    const file = Bun.file(filePath);
-    return file.text();
+    const bun = globalThis as {
+      Bun?: { file: (path: string) => { text: () => Promise<string> } };
+    };
+    if (bun.Bun !== undefined) {
+      return bun.Bun.file(filePath).text();
+    }
+    return fs.readFile(filePath, "utf8");
   }
 
   /**
@@ -52,7 +57,14 @@ export class BunFileSystem implements FileSystem {
     // Ensure parent directory exists
     const dir = path.dirname(filePath);
     await fs.mkdir(dir, { recursive: true });
-    await Bun.write(filePath, content);
+    const bun = globalThis as {
+      Bun?: { write: (path: string, value: string) => Promise<number> };
+    };
+    if (bun.Bun !== undefined) {
+      await bun.Bun.write(filePath, content);
+      return;
+    }
+    await fs.writeFile(filePath, content, "utf8");
   }
 
   /**

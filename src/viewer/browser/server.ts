@@ -12,9 +12,13 @@ import { cors } from "@elysiajs/cors";
 import { staticPlugin } from "@elysiajs/static";
 import { resolve, dirname } from "path";
 import { existsSync } from "fs";
+import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "url";
 import type { SdkManager } from "../../sdk";
 import { createTaggedLogger } from "../../logger";
+import { setupApiRoutes as registerApiRoutes } from "./routes/api";
+import { setupWebSocket as registerWebSocket } from "./routes/ws";
 
 const logger = createTaggedLogger("viewer");
 
@@ -175,9 +179,11 @@ export class ViewerServer {
   private setupStaticRoutes(): void {
     const indexPath = resolve(BUILD_DIR, "index.html");
     const buildExists = existsSync(indexPath);
+    const bun = globalThis as { Bun?: { Glob?: new (...args: unknown[]) => unknown } };
+    const supportsStaticPlugin = bun.Bun !== undefined && typeof bun.Bun.Glob === "function";
 
     // Serve static files from the build directory (only if it exists)
-    if (buildExists) {
+    if (buildExists && supportsStaticPlugin) {
       this.app.use(
         staticPlugin({
           assets: BUILD_DIR,
@@ -190,7 +196,10 @@ export class ViewerServer {
     // SPA fallback: serve index.html for any unmatched routes (client-side routing)
     this.app.get("/*", () => {
       if (buildExists) {
-        return Bun.file(indexPath);
+        return readFile(indexPath, "utf8").then(
+          (html) =>
+            new Response(html, { headers: { "content-type": "text/html" } }),
+        );
       }
       // When no frontend build exists, return a placeholder HTML page
       return new Response(
@@ -216,8 +225,7 @@ export class ViewerServer {
     }));
 
     // Import and setup API routes
-    const { setupApiRoutes } = require("./routes/api");
-    setupApiRoutes(this.app, this.sdk);
+    registerApiRoutes(this.app, this.sdk);
   }
 
   /**
@@ -230,8 +238,7 @@ export class ViewerServer {
    */
   private setupWebSocket(): void {
     // Import and setup WebSocket routes
-    const { setupWebSocket } = require("./routes/ws");
-    setupWebSocket(this.app, this.sdk.events);
+    registerWebSocket(this.app, this.sdk.events);
   }
 
   /**
@@ -279,11 +286,15 @@ export class ViewerServer {
    * @throws {Error} If server is not running
    */
   async stop(): Promise<void> {
-    if (this.server === null) {
+    if (this.server === null && this.startTime === null) {
       throw new Error("Server is not running");
     }
 
     try {
+      if (this.server === null) {
+        this.startTime = null;
+        return;
+      }
       await this.server.stop();
       this.server = null;
       this.startTime = null;
@@ -292,6 +303,11 @@ export class ViewerServer {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("Server is not running")) {
+        this.server = null;
+        this.startTime = null;
+        return;
+      }
       throw new Error(`Failed to stop viewer server: ${errorMessage}`);
     }
   }
@@ -358,13 +374,29 @@ export class ViewerServer {
           break;
       }
 
-      // Execute command using Bun's shell
-      const proc = Bun.spawn(command.split(" "), {
-        stdout: "ignore",
-        stderr: "ignore",
-      });
+      const bun = globalThis as {
+        Bun?: {
+          spawn: (
+            args: string[],
+            opts: { stdout: "ignore"; stderr: "ignore" },
+          ) => { exited: Promise<number> };
+        };
+      };
 
-      await proc.exited;
+      if (bun.Bun !== undefined) {
+        const proc = bun.Bun.spawn(command.split(" "), {
+          stdout: "ignore",
+          stderr: "ignore",
+        });
+        await proc.exited;
+      } else {
+        const child = spawn(command, {
+          shell: true,
+          stdio: "ignore",
+          detached: true,
+        });
+        child.unref();
+      }
 
       logger.info(`Browser opened at ${url}`);
     } catch (error) {
