@@ -47,7 +47,7 @@ type BunLike = {
     ...values: unknown[]
   ) => {
     text: () => Promise<string>;
-    quiet: () => Promise<void>;
+    quiet: () => Promise<unknown>;
   };
 };
 
@@ -94,7 +94,7 @@ async function sendResponse(
 }
 
 if (typeof (globalThis as { Bun?: unknown }).Bun === "undefined") {
-  (globalThis as { Bun: BunLike }).Bun = {
+  (globalThis as unknown as { Bun: BunLike }).Bun = {
     env: process.env,
     version: "1.2.0",
     semver: {
@@ -169,15 +169,15 @@ if (typeof (globalThis as { Bun?: unknown }).Bun === "undefined") {
     $(
       strings: TemplateStringsArray,
       ...values: unknown[]
-    ): { text: () => Promise<string>; quiet: () => Promise<void> } {
+    ): { text: () => Promise<string>; quiet: () => Promise<unknown> } {
       const command = buildCommand(strings, values);
       return {
         async text(): Promise<string> {
-          const { stdout } = await exec(command, { shell: true });
+          const { stdout } = await exec(command, { shell: "/bin/sh" });
           return stdout;
         },
-        async quiet(): Promise<void> {
-          await exec(command, { shell: true });
+        async quiet(): Promise<unknown> {
+          return exec(command, { shell: "/bin/sh" });
         },
       };
     },
