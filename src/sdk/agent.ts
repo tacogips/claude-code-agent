@@ -10,6 +10,9 @@
 import type { Container } from "../container";
 import { EventEmitter } from "./events";
 import { EventEmitter as NodeEventEmitter } from "events";
+import { mkdir, writeFile, rm } from "node:fs/promises";
+import { isAbsolute, resolve, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { SessionReader } from "./session-reader";
 import { GroupManager, GroupRunner } from "./group";
 import { QueueManager, QueueRunner } from "./queue";
@@ -221,6 +224,24 @@ export interface SessionConfig {
   resumeSessionId?: string;
   /** Session-level system prompt override */
   systemPrompt?: string | { preset: "claude_code"; append?: string };
+  /** Optional file/image attachments for the initial prompt */
+  attachments?: SessionAttachment[];
+}
+
+/**
+ * Attachment payload for a session start/resume request.
+ */
+export interface SessionAttachment {
+  /** Path to an existing file on disk */
+  path?: string;
+  /** File name for in-memory content (required when `content` is provided) */
+  fileName?: string;
+  /** MIME type metadata (optional) */
+  mimeType?: string;
+  /** In-memory content encoding */
+  encoding?: "base64" | "utf8";
+  /** In-memory attachment content */
+  content?: string;
 }
 
 /**
@@ -551,131 +572,157 @@ export class SessionRunner {
    */
   async startSession(config: SessionConfig): Promise<RunningSession> {
     const sessionId = this.generateSessionId();
+    let cleanupAttachmentFiles: (() => Promise<void>) | undefined;
 
-    // Create transport options
-    const transportOptions = this.buildTransportOptions();
+    try {
+      // Create transport options
+      const transportOptions = this.buildTransportOptions();
 
-    // Add resume support
-    if (config.resumeSessionId !== undefined) {
-      transportOptions.resumeSessionId = config.resumeSessionId;
-    }
-    if (config.systemPrompt !== undefined) {
-      const resolvedSystemPrompt = this.resolveSystemPrompt(
-        config.systemPrompt,
-      );
-      if (resolvedSystemPrompt !== undefined) {
-        transportOptions.systemPrompt = resolvedSystemPrompt;
+      // Add resume support
+      if (config.resumeSessionId !== undefined) {
+        transportOptions.resumeSessionId = config.resumeSessionId;
       }
-    }
-
-    const transport = new SubprocessTransport(transportOptions);
-    await transport.connect();
-
-    // Create protocol handler with proper optional handling
-    const protocolOptions =
-      this.options.defaultTimeout !== undefined
-        ? { defaultTimeout: this.options.defaultTimeout }
-        : undefined;
-    const protocol = new ControlProtocolHandler(transport, protocolOptions);
-
-    // Register tool registries with protocol
-    for (const [serverName, registry] of this.toolRegistries.entries()) {
-      protocol.registerToolRegistry(serverName, registry);
-    }
-
-    // Create state manager early so processMessages completion can update it
-    const stateManager = new SessionStateManager(sessionId);
-
-    // Start message processing BEFORE initialize to avoid deadlock.
-    // initialize() sends a control request and waits for a response,
-    // but responses are only read by processMessages(). Starting
-    // processMessages() first ensures the response can be received.
-    protocol
-      .processMessages()
-      .then(() => {
-        // Transport ended - CLI process exited
-        try {
-          if (!stateManager.isTerminal()) {
-            stateManager.markCompleted();
-          }
-        } catch {
-          // State transition may fail if state hasn't reached a valid source state yet
+      if (config.systemPrompt !== undefined) {
+        const resolvedSystemPrompt = this.resolveSystemPrompt(
+          config.systemPrompt,
+        );
+        if (resolvedSystemPrompt !== undefined) {
+          transportOptions.systemPrompt = resolvedSystemPrompt;
         }
-      })
-      .catch((err: unknown) => {
-        try {
-          if (!stateManager.isTerminal()) {
-            stateManager.markFailed(
-              err instanceof Error ? err : new Error(String(err)),
-            );
+      }
+
+      const attachmentResolution = await this.resolveSessionAttachments(
+        sessionId,
+        config.attachments,
+        config.projectPath,
+      );
+      cleanupAttachmentFiles = attachmentResolution.cleanup;
+      if (attachmentResolution.paths.length > 0) {
+        transportOptions.attachmentPaths = attachmentResolution.paths;
+      }
+
+      const initialPrompt = this.buildInitialPromptWithAttachments(
+        config.prompt,
+        attachmentResolution.paths,
+      );
+
+      const transport = new SubprocessTransport(transportOptions);
+      await transport.connect();
+
+      // Create protocol handler with proper optional handling
+      const protocolOptions =
+        this.options.defaultTimeout !== undefined
+          ? { defaultTimeout: this.options.defaultTimeout }
+          : undefined;
+      const protocol = new ControlProtocolHandler(transport, protocolOptions);
+
+      // Register tool registries with protocol
+      for (const [serverName, registry] of this.toolRegistries.entries()) {
+        protocol.registerToolRegistry(serverName, registry);
+      }
+
+      // Create state manager early so processMessages completion can update it
+      const stateManager = new SessionStateManager(sessionId);
+
+      // Start message processing BEFORE initialize to avoid deadlock.
+      // initialize() sends a control request and waits for a response,
+      // but responses are only read by processMessages(). Starting
+      // processMessages() first ensures the response can be received.
+      protocol
+        .processMessages()
+        .then(() => {
+          // Transport ended - CLI process exited
+          try {
+            if (!stateManager.isTerminal()) {
+              stateManager.markCompleted();
+            }
+          } catch {
+            // State transition may fail if state hasn't reached a valid source state yet
           }
-        } catch {
-          // State transition may fail if state hasn't reached a valid source state yet
+        })
+        .catch((err: unknown) => {
+          try {
+            if (!stateManager.isTerminal()) {
+              stateManager.markFailed(
+                err instanceof Error ? err : new Error(String(err)),
+              );
+            }
+          } catch {
+            // State transition may fail if state hasn't reached a valid source state yet
+          }
+        });
+
+      // Initialize control protocol
+      await protocol.initialize();
+
+      // Send initial prompt through stream-json stdin after initialize.
+      if (initialPrompt !== "") {
+        await transport.write(
+          JSON.stringify({
+            type: "user",
+            message: {
+              role: "user",
+              content: initialPrompt,
+            },
+          }),
+        );
+      }
+
+      // Create session instance
+      const session = new RunningSession(
+        sessionId,
+        this,
+        transport,
+        protocol,
+        stateManager,
+      );
+
+      // Track active session
+      this.activeSessions.set(sessionId, session);
+
+      // Clean up when session reaches any terminal state
+      stateManager.on("stateChange", (change: { to: string }) => {
+        if (
+          change.to === "completed" ||
+          change.to === "failed" ||
+          change.to === "cancelled"
+        ) {
+          this.activeSessions.delete(sessionId);
         }
       });
 
-    // Initialize control protocol
-    await protocol.initialize();
-
-    // Send initial prompt through stream-json stdin after initialize.
-    if (config.prompt !== "") {
-      await transport.write(
-        JSON.stringify({
-          type: "user",
-          message: {
-            role: "user",
-            content: config.prompt,
-          },
-        }),
-      );
-    }
-
-    // Create session instance
-    const session = new RunningSession(
-      sessionId,
-      this,
-      transport,
-      protocol,
-      stateManager,
-    );
-
-    // Track active session
-    this.activeSessions.set(sessionId, session);
-
-    // Clean up when session reaches any terminal state
-    stateManager.on("stateChange", (change: { to: string }) => {
-      if (
-        change.to === "completed" ||
-        change.to === "failed" ||
-        change.to === "cancelled"
-      ) {
+      // Also clean up on session complete event (for waitForCompletion callers)
+      session.on("complete", () => {
         this.activeSessions.delete(sessionId);
-      }
-    });
-
-    // Also clean up on session complete event (for waitForCompletion callers)
-    session.on("complete", () => {
-      this.activeSessions.delete(sessionId);
-      protocol.cleanup();
-      void transport.close();
-    });
-
-    // Listen for session result from CLI
-    protocol.on("result", (result: { success: boolean }) => {
-      if (!stateManager.isTerminal()) {
-        if (result.success) {
-          stateManager.markCompleted();
-        } else {
-          stateManager.markFailed(new Error("Session failed"));
+        protocol.cleanup();
+        void transport.close();
+        if (cleanupAttachmentFiles !== undefined) {
+          void cleanupAttachmentFiles();
         }
+      });
+
+      // Listen for session result from CLI
+      protocol.on("result", (result: { success: boolean }) => {
+        if (!stateManager.isTerminal()) {
+          if (result.success) {
+            stateManager.markCompleted();
+          } else {
+            stateManager.markFailed(new Error("Session failed"));
+          }
+        }
+      });
+
+      // Mark session as started
+      stateManager.transition("starting");
+      stateManager.markStarted();
+
+      return session;
+    } catch (error) {
+      if (cleanupAttachmentFiles !== undefined) {
+        await cleanupAttachmentFiles();
       }
-    });
-
-    // Mark session as started
-    stateManager.transition("starting");
-    stateManager.markStarted();
-
-    return session;
+      throw error;
+    }
   }
 
   /**
@@ -693,6 +740,7 @@ export class SessionRunner {
     sessionId: string,
     prompt?: string,
     systemPrompt?: string | { preset: "claude_code"; append?: string },
+    attachments?: SessionAttachment[],
   ): Promise<RunningSession> {
     const config: SessionConfig = {
       prompt: prompt ?? "",
@@ -701,6 +749,9 @@ export class SessionRunner {
 
     if (systemPrompt !== undefined) {
       config.systemPrompt = systemPrompt;
+    }
+    if (attachments !== undefined) {
+      config.attachments = attachments;
     }
 
     return this.startSession(config);
@@ -832,5 +883,156 @@ export class SessionRunner {
   private generateSessionId(): string {
     this.sessionIdCounter += 1;
     return `sdk-session-${this.sessionIdCounter}`;
+  }
+
+  /**
+   * Resolve attachment descriptors into concrete file paths.
+   * In-memory content is materialized into temporary files.
+   */
+  private async resolveSessionAttachments(
+    sessionId: string,
+    attachments: SessionAttachment[] | undefined,
+    projectPath: string | undefined,
+  ): Promise<{ paths: string[]; cleanup: (() => Promise<void>) | undefined }> {
+    if (attachments === undefined || attachments.length === 0) {
+      return { paths: [], cleanup: undefined };
+    }
+
+    const baseDir = this.resolveAttachmentBaseDir(projectPath);
+    const tempDir = resolve(
+      tmpdir(),
+      "claude-code-agent",
+      "attachments",
+      sessionId,
+    );
+    const materialized = new Set<string>();
+    const paths: string[] = [];
+
+    for (const attachment of attachments) {
+      if (attachment.path !== undefined && attachment.path !== "") {
+        const resolvedPath = this.resolveAttachmentPath(
+          attachment.path,
+          baseDir,
+        );
+        paths.push(resolvedPath);
+        continue;
+      }
+
+      if (attachment.content !== undefined) {
+        const fileName = this.resolveAttachmentFileName(attachment);
+        const destination = resolve(tempDir, fileName);
+        await mkdir(dirname(destination), { recursive: true });
+
+        const encoding = attachment.encoding ?? "utf8";
+        const data =
+          encoding === "base64"
+            ? Buffer.from(attachment.content, "base64")
+            : Buffer.from(attachment.content, "utf8");
+        await writeFile(destination, new Uint8Array(data));
+        materialized.add(destination);
+        paths.push(destination);
+      }
+    }
+
+    const uniquePaths = Array.from(new Set(paths));
+    if (materialized.size === 0) {
+      return { paths: uniquePaths, cleanup: undefined };
+    }
+
+    const cleanup = async () => {
+      await rm(tempDir, { recursive: true, force: true });
+    };
+    return { paths: uniquePaths, cleanup };
+  }
+
+  /**
+   * Augment the initial prompt with attachment references so Claude can consume them.
+   */
+  private buildInitialPromptWithAttachments(
+    prompt: string,
+    attachmentPaths: string[],
+  ): string {
+    if (attachmentPaths.length === 0) {
+      return prompt;
+    }
+
+    const attachmentSection = [
+      "",
+      "Attached files:",
+      ...attachmentPaths.map((path) => `- ${path}`),
+    ].join("\n");
+
+    return `${prompt}${attachmentSection}`;
+  }
+
+  /**
+   * Resolve base directory for relative attachment paths.
+   */
+  private resolveAttachmentBaseDir(projectPath: string | undefined): string {
+    if (projectPath !== undefined && projectPath !== "") {
+      return resolve(projectPath);
+    }
+    if (this.options.cwd !== undefined && this.options.cwd !== "") {
+      return resolve(this.options.cwd);
+    }
+    return process.cwd();
+  }
+
+  /**
+   * Resolve an attachment path relative to the session/project base directory.
+   */
+  private resolveAttachmentPath(pathValue: string, baseDir: string): string {
+    if (isAbsolute(pathValue)) {
+      return pathValue;
+    }
+    return resolve(baseDir, pathValue);
+  }
+
+  /**
+   * Resolve deterministic file name for an in-memory attachment.
+   */
+  private resolveAttachmentFileName(attachment: SessionAttachment): string {
+    if (attachment.fileName !== undefined && attachment.fileName !== "") {
+      return attachment.fileName;
+    }
+    const mimeExt = this.extensionFromMimeType(attachment.mimeType);
+    if (mimeExt !== undefined) {
+      return `attachment${mimeExt}`;
+    }
+    return "attachment.bin";
+  }
+
+  /**
+   * Best-effort MIME type to extension mapping for in-memory attachments.
+   */
+  private extensionFromMimeType(
+    mimeType: string | undefined,
+  ): string | undefined {
+    if (mimeType === undefined || mimeType === "") {
+      return undefined;
+    }
+
+    const lower = mimeType.toLowerCase();
+    if (lower === "image/png") return ".png";
+    if (lower === "image/jpeg") return ".jpg";
+    if (lower === "image/gif") return ".gif";
+    if (lower === "image/webp") return ".webp";
+    if (lower === "application/pdf") return ".pdf";
+    if (lower === "text/plain") return ".txt";
+
+    const slash = lower.indexOf("/");
+    if (slash === -1) return undefined;
+    const subtype = lower
+      .slice(slash + 1)
+      .split(";")[0]
+      ?.trim();
+    if (subtype === undefined || subtype === "") {
+      return undefined;
+    }
+    const normalizedSubtype = subtype.replace(/[^a-z0-9.+-]/g, "");
+    if (normalizedSubtype === "") {
+      return undefined;
+    }
+    return `.${normalizedSubtype}`;
   }
 }

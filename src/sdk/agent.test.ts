@@ -6,7 +6,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { SdkManager, SessionRunner } from "./agent";
-import type { SessionConfig } from "./agent";
+import type { RunningSession, SessionConfig } from "./agent";
 import { createTestContainer } from "../container";
 import type { Container } from "../container";
 import { InMemoryGroupRepository } from "../repository/in-memory/group-repository";
@@ -816,6 +816,66 @@ describe("SessionRunner", () => {
       expect(writeSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
         initializeSpy.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
       );
+    });
+
+    test("passes attachment paths to transport and appends them to initial prompt", async () => {
+      const agent = new SessionRunner();
+
+      let capturedOptions: Record<string, unknown> | undefined;
+
+      vi.spyOn(SubprocessTransport.prototype, "connect").mockImplementation(
+        async function (this: unknown) {
+          capturedOptions = (this as { options?: Record<string, unknown> })
+            .options;
+        },
+      );
+      const writeSpy = vi
+        .spyOn(SubprocessTransport.prototype, "write")
+        .mockResolvedValue();
+      vi.spyOn(SubprocessTransport.prototype, "close").mockResolvedValue();
+      vi.spyOn(
+        ControlProtocolHandler.prototype,
+        "initialize",
+      ).mockResolvedValue();
+      vi.spyOn(
+        ControlProtocolHandler.prototype,
+        "processMessages",
+      ).mockImplementation(async () => {
+        await new Promise(() => {});
+      });
+
+      await agent.startSession({
+        prompt: "analyze attachments",
+        attachments: [{ path: "./fixtures/image.png" }],
+      });
+
+      const attachmentPaths = capturedOptions?.["attachmentPaths"] as
+        | string[]
+        | undefined;
+      expect(attachmentPaths).toBeDefined();
+      expect(attachmentPaths?.[0]).toContain("fixtures/image.png");
+
+      const writeArg = writeSpy.mock.calls[0]?.[0] as string;
+      expect(writeArg).toContain("analyze attachments");
+      expect(writeArg).toContain("Attached files:");
+      expect(writeArg).toContain("fixtures/image.png");
+    });
+
+    test("resumeSession accepts attachments", async () => {
+      const agent = new SessionRunner();
+
+      const startSpy = vi
+        .spyOn(agent, "startSession")
+        .mockResolvedValue({} as RunningSession);
+
+      await agent.resumeSession("session-123", "continue", undefined, [
+        { path: "/tmp/image.png" },
+      ]);
+
+      const configArg = startSpy.mock.calls[0]?.[0] as SessionConfig;
+      expect(configArg.resumeSessionId).toBe("session-123");
+      expect(configArg.attachments).toHaveLength(1);
+      expect(configArg.attachments?.[0]?.path).toBe("/tmp/image.png");
     });
 
     test("starts session with mock transport", async () => {

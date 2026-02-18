@@ -8,6 +8,7 @@
  */
 
 import type { Subprocess, FileSink } from "bun";
+import { dirname, resolve } from "node:path";
 import { CLINotFoundError, CLIConnectionError } from "../errors";
 import type { Transport } from "./transport";
 
@@ -91,6 +92,12 @@ export interface TransportOptions {
   prompt?: string;
 
   /**
+   * Attachment file paths for the initial prompt.
+   * Used to grant Claude Code tool-access to parent directories via --add-dir.
+   */
+  attachmentPaths?: string[];
+
+  /**
    * Additional CLI arguments to pass to Claude Code.
    * These are appended as-is to the command line.
    * Example: ['--dangerously-skip-permissions', '--model', 'claude-opus-4-6']
@@ -154,6 +161,18 @@ export function buildSubprocessCommand(options: TransportOptions): string[] {
 
   if (options.resumeSessionId !== undefined) {
     args.push("--resume", options.resumeSessionId);
+  }
+
+  if (
+    options.attachmentPaths !== undefined &&
+    options.attachmentPaths.length > 0
+  ) {
+    const directories = Array.from(
+      new Set(options.attachmentPaths.map((path) => resolve(dirname(path)))),
+    );
+    if (directories.length > 0) {
+      args.push("--add-dir", ...directories);
+    }
   }
 
   // Append additional CLI arguments before the positional prompt.

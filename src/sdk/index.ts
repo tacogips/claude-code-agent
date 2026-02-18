@@ -285,6 +285,7 @@ export {
   RunningSession,
   type SessionRunnerOptions,
   type SessionConfig as AgentSessionConfig,
+  type SessionAttachment as AgentSessionAttachment,
   type SessionResult,
   type PermissionMode,
 } from "./agent";

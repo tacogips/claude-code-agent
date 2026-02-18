@@ -1,6 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { exec as execCallback } from "node:child_process";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { promisify } from "node:util";
 import { expect } from "vitest";
 
@@ -39,7 +43,11 @@ type BunLike = {
     port: number;
     stop: (_closeActiveConnections?: boolean) => Promise<void>;
     reload: (_options?: unknown) => void;
-    requestIP: (_request: Request) => { address: string; family: string; port: number };
+    requestIP: (_request: Request) => {
+      address: string;
+      family: string;
+      port: number;
+    };
     upgrade: (_request: Request, _opts?: unknown) => boolean;
   };
   $: (
@@ -47,7 +55,7 @@ type BunLike = {
     ...values: unknown[]
   ) => {
     text: () => Promise<string>;
-    quiet: () => Promise<void>;
+    quiet: () => Promise<unknown>;
   };
 };
 
@@ -94,7 +102,7 @@ async function sendResponse(
 }
 
 if (typeof (globalThis as { Bun?: unknown }).Bun === "undefined") {
-  (globalThis as { Bun: BunLike }).Bun = {
+  (globalThis as unknown as { Bun: BunLike }).Bun = {
     env: process.env,
     version: "1.2.0",
     semver: {
@@ -169,15 +177,15 @@ if (typeof (globalThis as { Bun?: unknown }).Bun === "undefined") {
     $(
       strings: TemplateStringsArray,
       ...values: unknown[]
-    ): { text: () => Promise<string>; quiet: () => Promise<void> } {
+    ): { text: () => Promise<string>; quiet: () => Promise<unknown> } {
       const command = buildCommand(strings, values);
       return {
         async text(): Promise<string> {
-          const { stdout } = await exec(command, { shell: true });
+          const { stdout } = await exec(command, { shell: "/bin/sh" });
           return stdout;
         },
-        async quiet(): Promise<void> {
-          await exec(command, { shell: true });
+        async quiet(): Promise<unknown> {
+          return exec(command, { shell: "/bin/sh" });
         },
       };
     },

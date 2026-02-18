@@ -179,8 +179,11 @@ export class ViewerServer {
   private setupStaticRoutes(): void {
     const indexPath = resolve(BUILD_DIR, "index.html");
     const buildExists = existsSync(indexPath);
-    const bun = globalThis as { Bun?: { Glob?: new (...args: unknown[]) => unknown } };
-    const supportsStaticPlugin = bun.Bun !== undefined && typeof bun.Bun.Glob === "function";
+    const bun = globalThis as {
+      Bun?: { Glob?: new (...args: unknown[]) => unknown };
+    };
+    const supportsStaticPlugin =
+      bun.Bun !== undefined && typeof bun.Bun.Glob === "function";
 
     // Serve static files from the build directory (only if it exists)
     if (buildExists && supportsStaticPlugin) {

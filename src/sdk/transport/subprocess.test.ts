@@ -318,4 +318,31 @@ describe("SubprocessTransport CLI Arguments", () => {
     expect(promptIndex).toBeGreaterThan(extraArgIndex);
     expect(args.at(-1)).toBe("run task");
   });
+
+  test("adds attachment parent directories via --add-dir", () => {
+    const args = buildSubprocessCommand({
+      attachmentPaths: [
+        "/tmp/attachments/a/image.png",
+        "/tmp/attachments/a/doc.pdf",
+        "/tmp/attachments/b/notes.txt",
+      ],
+    });
+
+    const addDirIndex = args.indexOf("--add-dir");
+    expect(addDirIndex).toBeGreaterThan(-1);
+
+    const firstDir = args[addDirIndex + 1];
+    const secondDir = args[addDirIndex + 2];
+    expect(firstDir).toBe("/tmp/attachments/a");
+    expect(secondDir).toBe("/tmp/attachments/b");
+  });
+
+  test("deduplicates add-dir values for attachments", () => {
+    const args = buildSubprocessCommand({
+      attachmentPaths: ["/tmp/attachments/a/1.png", "/tmp/attachments/a/2.png"],
+    });
+
+    const directories = args.filter((arg) => arg === "/tmp/attachments/a");
+    expect(directories).toHaveLength(1);
+  });
 });
