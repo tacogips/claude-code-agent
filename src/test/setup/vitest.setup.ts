@@ -1,6 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { exec as execCallback } from "node:child_process";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { promisify } from "node:util";
 import { expect } from "vitest";
 
@@ -39,7 +43,11 @@ type BunLike = {
     port: number;
     stop: (_closeActiveConnections?: boolean) => Promise<void>;
     reload: (_options?: unknown) => void;
-    requestIP: (_request: Request) => { address: string; family: string; port: number };
+    requestIP: (_request: Request) => {
+      address: string;
+      family: string;
+      port: number;
+    };
     upgrade: (_request: Request, _opts?: unknown) => boolean;
   };
   $: (
