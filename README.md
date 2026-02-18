@@ -22,16 +22,16 @@ External App  <-->  claude-code-agent  <-->  Claude Code
 
 ## Features
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Session Viewer** | Browser-based session transcript viewing | In Development |
-| **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files | In Development |
-| **Session Groups** | Orchestrate multi-project concurrent execution | Planned |
-| **Command Queue** | Queue prompts for sequential execution with Web UI management | Planned |
-| **Markdown Parsing** | Parse message content into structured JSON | Planned |
-| **SDK** | TypeScript API for programmatic integration | In Development |
-| **Daemon Mode** | HTTP API for remote execution with authentication | Planned |
-| **Bookmarks** | Mark and retrieve important sessions/messages | Planned |
+| Feature                  | Description                                                   | Status         |
+| ------------------------ | ------------------------------------------------------------- | -------------- |
+| **Session Viewer**       | Browser-based session transcript viewing                      | In Development |
+| **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files        | In Development |
+| **Session Groups**       | Orchestrate multi-project concurrent execution                | Planned        |
+| **Command Queue**        | Queue prompts for sequential execution with Web UI management | Planned        |
+| **Markdown Parsing**     | Parse message content into structured JSON                    | Planned        |
+| **SDK**                  | TypeScript API for programmatic integration                   | In Development |
+| **Daemon Mode**          | HTTP API for remote execution with authentication             | Planned        |
+| **Bookmarks**            | Mark and retrieve important sessions/messages                 | Planned        |
 
 ## Installation
 
@@ -152,50 +152,79 @@ curl -X POST https://localhost:8443/api/sessions \
 ## SDK Usage
 
 ```typescript
-import { ClaudeCodeAgent, SessionGroup } from 'claude-code-agent';
+import { ClaudeCodeAgent, SessionGroup } from "claude-code-agent";
 
 const agent = new ClaudeCodeAgent({
-  configDir: '~/.config/claude-code-agent',
-  dataDir: '~/.local/claude-code-agent',
+  configDir: "~/.config/claude-code-agent",
+  dataDir: "~/.local/claude-code-agent",
 });
 
 // Run a single session
 const session = await agent.runSession({
-  projectPath: '/path/to/project',
-  prompt: 'Implement feature X',
+  projectPath: "/path/to/project",
+  prompt: "Implement feature X",
   onProgress: (event) => console.log(event),
 });
 
 // Create and run a session group
 const group = await agent.createGroup({
-  name: 'My Task',
+  name: "My Task",
   maxConcurrent: 3,
 });
 
 await group.addSession({
-  projectPath: '/path/to/project-a',
-  prompt: 'Task A',
+  projectPath: "/path/to/project-a",
+  prompt: "Task A",
 });
 
 await group.run({
-  onSessionComplete: (session) => { /* ... */ },
-  onGroupComplete: (stats) => { /* ... */ },
+  onSessionComplete: (session) => {
+    /* ... */
+  },
+  onGroupComplete: (stats) => {
+    /* ... */
+  },
 });
 
 // Create and run a command queue
 const queue = await agent.createQueue({
-  name: 'Feature Implementation',
-  projectPath: '/path/to/project',
+  name: "Feature Implementation",
+  projectPath: "/path/to/project",
 });
 
-await queue.addCommand({ prompt: 'Analyze codebase' });
-await queue.addCommand({ prompt: 'Implement feature' });
-await queue.addCommand({ prompt: 'Write tests' });
+await queue.addCommand({ prompt: "Analyze codebase" });
+await queue.addCommand({ prompt: "Implement feature" });
+await queue.addCommand({ prompt: "Write tests" });
 
 await queue.run({
   onCommandStart: (cmd) => console.log(`Starting: ${cmd.prompt}`),
   onCommandComplete: (cmd) => console.log(`Done: ${cmd.prompt}`),
 });
+```
+
+### SDK Attachment Example (Image/Binary)
+
+```typescript
+import { SessionRunner } from "claude-code-agent/sdk";
+
+const runner = new SessionRunner({ cwd: process.cwd() });
+
+const session = await runner.startSession({
+  prompt: "Compare attached UI screenshots and list visual regressions.",
+  attachments: [
+    { path: "./screenshots/before.png", mimeType: "image/png" },
+    { path: "./screenshots/after.png", mimeType: "image/png" },
+    {
+      fileName: "notes.txt",
+      encoding: "utf8",
+      content: "Focus on header spacing and sidebar contrast.",
+    },
+  ],
+});
+
+for await (const message of session.messages()) {
+  console.log(message);
+}
 ```
 
 ## CLI Command Reference
@@ -206,29 +235,29 @@ await queue.run({
 claude-code-agent <entity> <action> [options]
 ```
 
-| Entity | Actions |
-|--------|---------|
-| `session` | `list`, `show`, `add`, `watch`, `pause`, `resume` |
-| `group` | `create`, `list`, `show`, `run`, `watch`, `pause`, `resume`, `archive`, `delete` |
-| `queue` | `create`, `list`, `show`, `run`, `pause`, `resume`, `stop`, `delete`, `ui` |
-| `queue command` | `add`, `edit`, `remove`, `move`, `toggle-mode` |
-| `bookmark` | `add`, `list`, `show`, `search`, `delete` |
-| `server` | `start` |
-| `daemon` | `start`, `stop`, `status` |
-| `token` | `create`, `list`, `revoke`, `rotate` |
+| Entity          | Actions                                                                          |
+| --------------- | -------------------------------------------------------------------------------- |
+| `session`       | `list`, `show`, `add`, `watch`, `pause`, `resume`                                |
+| `group`         | `create`, `list`, `show`, `run`, `watch`, `pause`, `resume`, `archive`, `delete` |
+| `queue`         | `create`, `list`, `show`, `run`, `pause`, `resume`, `stop`, `delete`, `ui`       |
+| `queue command` | `add`, `edit`, `remove`, `move`, `toggle-mode`                                   |
+| `bookmark`      | `add`, `list`, `show`, `search`, `delete`                                        |
+| `server`        | `start`                                                                          |
+| `daemon`        | `start`, `stop`, `status`                                                        |
+| `token`         | `create`, `list`, `revoke`, `rotate`                                             |
 
 ## REST API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/sessions` | Create and run session |
-| GET | `/api/sessions` | List sessions |
-| GET | `/api/sessions/:id` | Get session details |
-| GET | `/api/sessions/:id/stream` | SSE stream of session events |
-| POST | `/api/groups` | Create session group |
-| GET | `/api/groups/:id` | Get group details |
-| POST | `/api/groups/:id/run` | Run session group |
-| GET | `/api/groups/:id/stream` | SSE stream of group events |
+| Method | Path                       | Description                  |
+| ------ | -------------------------- | ---------------------------- |
+| POST   | `/api/sessions`            | Create and run session       |
+| GET    | `/api/sessions`            | List sessions                |
+| GET    | `/api/sessions/:id`        | Get session details          |
+| GET    | `/api/sessions/:id/stream` | SSE stream of session events |
+| POST   | `/api/groups`              | Create session group         |
+| GET    | `/api/groups/:id`          | Get group details            |
+| POST   | `/api/groups/:id/run`      | Run session group            |
+| GET    | `/api/groups/:id/stream`   | SSE stream of group events   |
 
 ## Development
 
@@ -273,14 +302,14 @@ src/
 
 ## Technology Stack
 
-| Component | Technology |
-|-----------|------------|
-| Runtime | Bun |
-| Language | TypeScript (strict mode) |
-| HTTP Server | Elysia |
-| Browser Viewer | SvelteKit |
-| Testing | Vitest |
-| Packaging | Nix flakes |
+| Component      | Technology               |
+| -------------- | ------------------------ |
+| Runtime        | Bun                      |
+| Language       | TypeScript (strict mode) |
+| HTTP Server    | Elysia                   |
+| Browser Viewer | SvelteKit                |
+| Testing        | Vitest                   |
+| Packaging      | Nix flakes               |
 
 ---
 
@@ -293,6 +322,7 @@ This section provides structured information optimized for AI agents working wit
 **Purpose**: claude-code-agent is a monitoring and orchestration layer for Claude Code. It does NOT modify Claude Code behavior directly but provides observation, configuration generation, and execution management.
 
 **Key Constraints**:
+
 - Does NOT persist session content to databases (external apps handle this)
 - Does NOT modify `~/.claude` directly
 - Does NOT store auth tokens (only provides override capability)
@@ -312,48 +342,60 @@ This section provides structured information optimized for AI agents working wit
 
 ```typescript
 // Core interfaces for testability
-interface FileSystem { /* file operations */ }
-interface ProcessManager { /* process spawning */ }
-interface Clock { /* time operations */ }
+interface FileSystem {
+  /* file operations */
+}
+interface ProcessManager {
+  /* process spawning */
+}
+interface Clock {
+  /* time operations */
+}
 
 // Main SDK classes
-class ClaudeCodeAgent { /* orchestration entry point */ }
-class SessionGroup { /* multi-session management */ }
-class CommandQueue { /* sequential prompt execution */ }
+class ClaudeCodeAgent {
+  /* orchestration entry point */
+}
+class SessionGroup {
+  /* multi-session management */
+}
+class CommandQueue {
+  /* sequential prompt execution */
+}
 ```
 
 ### Event Types
 
 ```typescript
 type SessionEvent =
-  | { type: 'session_created'; sessionId: string; groupId: string }
-  | { type: 'session_started'; sessionId: string; timestamp: string }
-  | { type: 'session_completed'; sessionId: string; cost: number }
-  | { type: 'message_added'; sessionId: string; message: Message }
-  | { type: 'tool_executed'; sessionId: string; toolName: string }
-  // ... more events
+  | { type: "session_created"; sessionId: string; groupId: string }
+  | { type: "session_started"; sessionId: string; timestamp: string }
+  | { type: "session_completed"; sessionId: string; cost: number }
+  | { type: "message_added"; sessionId: string; message: Message }
+  | { type: "tool_executed"; sessionId: string; toolName: string };
+// ... more events
 ```
 
 ### Directory Conventions
 
-| Path | Purpose |
-|------|---------|
-| `~/.config/claude-code-agent/` | User configuration, templates |
-| `~/.local/claude-code-agent/` | Runtime data, session groups, queues |
-| `~/.claude/projects/` | Claude Code transcript files (read-only) |
+| Path                           | Purpose                                  |
+| ------------------------------ | ---------------------------------------- |
+| `~/.config/claude-code-agent/` | User configuration, templates            |
+| `~/.local/claude-code-agent/`  | Runtime data, session groups, queues     |
+| `~/.claude/projects/`          | Claude Code transcript files (read-only) |
 
 ### Design Documentation
 
 For detailed specifications, see `design-docs/`:
 
-| Document | Description |
-|----------|-------------|
-| `DESIGN.md` | Main architecture overview |
+| Document                 | Description                           |
+| ------------------------ | ------------------------------------- |
+| `DESIGN.md`              | Main architecture overview            |
 | `spec-session-groups.md` | Session Group lifecycle and execution |
-| `spec-command-queue.md` | Command Queue for sequential prompts |
-| `spec-sdk-api.md` | SDK, daemon, REST API, authentication |
-| `spec-viewers.md` | Browser and TUI viewer specifications |
-| `DECISIONS.md` | All design decisions (Q1-Q36) |
+| `spec-command-queue.md`  | Command Queue for sequential prompts  |
+| `spec-sdk-api.md`        | SDK, daemon, REST API, authentication |
+| `spec-viewers.md`        | Browser and TUI viewer specifications |
+| `DECISIONS.md`           | All design decisions (Q1-Q36)         |
 
 ### Implementation Plans
 
