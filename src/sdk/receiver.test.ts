@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { appendFile, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SessionUpdateReceiver, createSessionReceiver } from "./receiver";
@@ -210,9 +210,9 @@ describe("SessionUpdateReceiver", () => {
 
       // Write new content after delay
       setTimeout(async () => {
-        await writeFile(
+        await appendFile(
           transcriptPath,
-          '{"type":"user","content":"Existing"}\n{"type":"assistant","content":"New"}\n',
+          '{"type":"assistant","content":"New"}\n',
           "utf8",
         );
       }, 100);

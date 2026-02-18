@@ -43,6 +43,11 @@ export class SystemClock implements Clock {
    * @returns Promise that resolves after the duration
    */
   async sleep(ms: number): Promise<void> {
-    await Bun.sleep(ms);
+    const bun = globalThis as { Bun?: { sleep: (duration: number) => Promise<void> } };
+    if (bun.Bun !== undefined) {
+      await bun.Bun.sleep(ms);
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
