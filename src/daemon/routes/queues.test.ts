@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import type { TokenManager } from "../auth";
 import type { ApiToken, Permission } from "../types";
 import type {
@@ -74,7 +74,7 @@ function createMockSDK(options: {
   updateCommandResult?: SDKQueueCommand;
   runQueueResult?: QueueResult;
   throwError?: boolean;
-}): ClaudeCodeAgent {
+}): SdkManager {
   return {
     queues: {
       createQueue: async () => {
@@ -114,7 +114,7 @@ function createMockSDK(options: {
         return options.runQueueResult ?? mockQueueResult;
       },
     },
-  } as unknown as ClaudeCodeAgent;
+  } as unknown as SdkManager;
 }
 
 // Create mock TokenManager

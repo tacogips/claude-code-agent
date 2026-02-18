@@ -280,10 +280,10 @@ export { QueueManager, QueueRunner } from "./queue";
 
 // Main SDK Agent
 export {
-  ClaudeCodeAgent,
-  ClaudeCodeToolAgent,
-  ToolAgentSession,
-  type ToolAgentOptions,
+  SdkManager,
+  SessionRunner,
+  RunningSession,
+  type SessionRunnerOptions,
   type SessionConfig as AgentSessionConfig,
   type SessionResult,
   type PermissionMode,

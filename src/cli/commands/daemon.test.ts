@@ -15,12 +15,12 @@ import {
 } from "vitest";
 import { Command } from "commander";
 import { registerDaemonCommands } from "./daemon";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import * as output from "../output";
 
 describe("Daemon Commands", () => {
   let program: Command;
-  let mockAgent: Partial<ClaudeCodeAgent>;
+  let mockAgent: Partial<SdkManager>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let printErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -40,7 +40,7 @@ describe("Daemon Commands", () => {
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
-    registerDaemonCommands(program, async () => mockAgent as ClaudeCodeAgent);
+    registerDaemonCommands(program, async () => mockAgent as SdkManager);
 
     // Clear mock calls from registration
     vi.clearAllMocks();

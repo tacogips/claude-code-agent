@@ -7,7 +7,7 @@
  * @module daemon/routes/bookmarks
  */
 
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import type { TokenManager, AuthenticatedApp } from "../auth";
 
 /**
@@ -43,12 +43,12 @@ interface SearchBookmarksQuery {
  * All routes require authentication and bookmark:* permission.
  *
  * @param app - Authenticated Elysia application instance
- * @param sdk - ClaudeCodeAgent SDK instance
+ * @param sdk - SdkManager SDK instance
  * @param tokenManager - Token manager for permission checks
  */
 export function bookmarkRoutes(
   app: AuthenticatedApp,
-  sdk: ClaudeCodeAgent,
+  sdk: SdkManager,
   tokenManager: TokenManager,
 ): void {
   app.group("/api/bookmarks", (bookmarks) => {

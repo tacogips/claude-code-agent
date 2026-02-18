@@ -15,13 +15,13 @@ import {
 } from "vitest";
 import { Command } from "commander";
 import { registerQueueCommands } from "./queue";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import type { CommandQueue, QueueCommand } from "../../repository";
 import * as output from "../output";
 
 describe("Queue Commands", () => {
   let program: Command;
-  let mockAgent: Partial<ClaudeCodeAgent>;
+  let mockAgent: Partial<SdkManager>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let printSuccessSpy: ReturnType<typeof vi.spyOn>;
@@ -64,7 +64,7 @@ describe("Queue Commands", () => {
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register commands
-    registerQueueCommands(program, async () => mockAgent as ClaudeCodeAgent);
+    registerQueueCommands(program, async () => mockAgent as SdkManager);
 
     // Clear mock calls from registration
     vi.clearAllMocks();

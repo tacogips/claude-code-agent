@@ -118,7 +118,7 @@ interface WSContext {
  * @example
  * ```typescript
  * const app = new Elysia();
- * const sdk = await ClaudeCodeAgent.create(container);
+ * const sdk = await SdkManager.create(container);
  * setupWebSocket(app, sdk.events);
  * ```
  */

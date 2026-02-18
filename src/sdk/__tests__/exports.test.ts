@@ -37,9 +37,9 @@ describe("SDK Exports", () => {
 
   describe("Agents and Clients", () => {
     test("exports agent classes", () => {
-      expect(typeof SDK.ClaudeCodeAgent).toBe("function");
-      expect(typeof SDK.ClaudeCodeToolAgent).toBe("function");
-      expect(typeof SDK.ToolAgentSession).toBe("function");
+      expect(typeof SDK.SdkManager).toBe("function");
+      expect(typeof SDK.SessionRunner).toBe("function");
+      expect(typeof SDK.RunningSession).toBe("function");
       expect(typeof SDK.ClaudeCodeClient).toBe("function");
     });
   });

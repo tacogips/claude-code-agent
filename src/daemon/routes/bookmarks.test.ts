@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import type { TokenManager } from "../auth";
 import type { ApiToken, Permission } from "../types";
 import type { Bookmark, BookmarkType } from "../../sdk/bookmarks/types";
@@ -43,7 +43,7 @@ function createMockSDK(options: {
   } | null;
   deleteBookmarkResult?: boolean;
   throwError?: boolean;
-}): ClaudeCodeAgent {
+}): SdkManager {
   return {
     bookmarks: {
       add: async () => {
@@ -75,7 +75,7 @@ function createMockSDK(options: {
         return options.deleteBookmarkResult ?? true;
       },
     },
-  } as unknown as ClaudeCodeAgent;
+  } as unknown as SdkManager;
 }
 
 // Create mock TokenManager

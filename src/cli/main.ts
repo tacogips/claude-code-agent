@@ -19,7 +19,7 @@ import { registerBookmarkCommands } from "./commands/bookmark";
 import { registerTokenCommands } from "./commands/token";
 import { registerFilesCommands } from "./commands/files";
 import { createActivityCommand } from "./commands/activity";
-import { ClaudeCodeAgent } from "../sdk/agent";
+import { SdkManager } from "../sdk/agent";
 import { createProductionContainer } from "../container";
 
 /**
@@ -91,9 +91,9 @@ export function createCli(): Command {
   });
 
   // Factory function to create agent instance (lazy initialization)
-  const getAgent = async (): Promise<ClaudeCodeAgent> => {
+  const getAgent = async (): Promise<SdkManager> => {
     const container = createProductionContainer();
-    return ClaudeCodeAgent.create(container);
+    return SdkManager.create(container);
   };
 
   // Session commands

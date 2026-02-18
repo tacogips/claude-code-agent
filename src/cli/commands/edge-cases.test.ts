@@ -23,14 +23,14 @@ import { Command } from "commander";
 import { registerBookmarkCommands } from "./bookmark";
 import { registerQueueCommands } from "./queue";
 import { registerGroupCommands } from "./group";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import type { Bookmark } from "../../sdk/bookmarks/types";
 import type { CommandQueue, SessionGroup } from "../../repository";
 import * as output from "../output";
 
 describe("Edge Cases - Special Characters and Paths", () => {
   let program: Command;
-  let mockAgent: Partial<ClaudeCodeAgent>;
+  let mockAgent: Partial<SdkManager>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let printErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -87,9 +87,9 @@ describe("Edge Cases - Special Characters and Paths", () => {
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register all command groups
-    registerBookmarkCommands(program, async () => mockAgent as ClaudeCodeAgent);
-    registerQueueCommands(program, async () => mockAgent as ClaudeCodeAgent);
-    registerGroupCommands(program, async () => mockAgent as ClaudeCodeAgent);
+    registerBookmarkCommands(program, async () => mockAgent as SdkManager);
+    registerQueueCommands(program, async () => mockAgent as SdkManager);
+    registerGroupCommands(program, async () => mockAgent as SdkManager);
 
     // Clear mock calls from registration
     vi.clearAllMocks();

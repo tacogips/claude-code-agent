@@ -8,7 +8,7 @@
  */
 
 import type { Command } from "commander";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import { printError } from "../output";
 
 /**
@@ -18,20 +18,20 @@ import { printError } from "../output";
  * authenticated HTTP API for remote execution.
  *
  * @param program - Commander program instance to attach commands to
- * @param _getAgent - Factory function that creates/returns ClaudeCodeAgent instance (unused in placeholders)
+ * @param _getAgent - Factory function that creates/returns SdkManager instance (unused in placeholders)
  *
  * @example
  * ```typescript
  * const program = new Command();
  * registerDaemonCommands(program, async () => {
  *   const container = createContainer();
- *   return ClaudeCodeAgent.create(container);
+ *   return SdkManager.create(container);
  * });
  * ```
  */
 export function registerDaemonCommands(
   program: Command,
-  _getAgent: () => Promise<ClaudeCodeAgent>,
+  _getAgent: () => Promise<SdkManager>,
 ): void {
   const daemonCmd = program
     .command("daemon")

@@ -2,13 +2,13 @@
  * REST API routes for browser viewer.
  *
  * Provides HTTP endpoints for sessions, tasks, projects, and queues,
- * using the ClaudeCodeAgent SDK to query data.
+ * using the SdkManager SDK to query data.
  *
  * @module viewer/browser/routes/api
  */
 
 import type { Elysia } from "elysia";
-import type { ClaudeCodeAgent } from "../../../sdk";
+import type { SdkManager } from "../../../sdk";
 import type { Session, SessionMetadata } from "../../../types/session";
 import type { Message } from "../../../types/message";
 import type { Task } from "../../../types/task";
@@ -78,7 +78,7 @@ interface ErrorResponse {
  * Setup REST API routes for the browser viewer.
  *
  * Configures HTTP endpoints for sessions, tasks, projects, and queues.
- * All routes use the ClaudeCodeAgent SDK to retrieve data.
+ * All routes use the SdkManager SDK to retrieve data.
  *
  * Routes:
  * - GET /api/sessions - List all sessions
@@ -90,16 +90,16 @@ interface ErrorResponse {
  * - GET /api/queues/:id - Get queue detail
  *
  * @param app - Elysia application instance
- * @param sdk - ClaudeCodeAgent SDK instance
+ * @param sdk - SdkManager SDK instance
  *
  * @example
  * ```typescript
  * const app = new Elysia();
- * const sdk = await ClaudeCodeAgent.create(container);
+ * const sdk = await SdkManager.create(container);
  * setupApiRoutes(app, sdk);
  * ```
  */
-export function setupApiRoutes(app: Elysia, sdk: ClaudeCodeAgent): void {
+export function setupApiRoutes(app: Elysia, sdk: SdkManager): void {
   /**
    * GET /api/sessions - List all sessions
    *

@@ -24,12 +24,12 @@ import { Command } from "commander";
 import { registerBookmarkCommands } from "./bookmark";
 import { registerQueueCommands } from "./queue";
 import { registerGroupCommands } from "./group";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import * as output from "../output";
 
 describe("Error Handling - Invalid Arguments", () => {
   let program: Command;
-  let mockAgent: Partial<ClaudeCodeAgent>;
+  let mockAgent: Partial<SdkManager>;
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let printErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -82,9 +82,9 @@ describe("Error Handling - Invalid Arguments", () => {
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
 
     // Register all commands
-    registerBookmarkCommands(program, async () => mockAgent as ClaudeCodeAgent);
-    registerQueueCommands(program, async () => mockAgent as ClaudeCodeAgent);
-    registerGroupCommands(program, async () => mockAgent as ClaudeCodeAgent);
+    registerBookmarkCommands(program, async () => mockAgent as SdkManager);
+    registerQueueCommands(program, async () => mockAgent as SdkManager);
+    registerGroupCommands(program, async () => mockAgent as SdkManager);
 
     // Clear mock calls from registration
     vi.clearAllMocks();

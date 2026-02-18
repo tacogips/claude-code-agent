@@ -9,19 +9,19 @@
 import { describe, test, expect, beforeEach } from "vitest";
 import { Elysia } from "elysia";
 import { setupApiRoutes } from "./api";
-import { ClaudeCodeAgent } from "../../../sdk";
+import { SdkManager } from "../../../sdk";
 import { createTestContainer } from "../../../container";
 import type { Session } from "../../../types/session";
 import type { CommandQueue } from "../../../repository/queue-repository";
 
 describe("API Routes", () => {
-  let sdk: ClaudeCodeAgent;
+  let sdk: SdkManager;
   let app: Elysia;
 
   beforeEach(async () => {
     // Create test container and SDK
     const container = createTestContainer();
-    sdk = await ClaudeCodeAgent.create(container);
+    sdk = await SdkManager.create(container);
 
     // Create Elysia app and setup API routes
     app = new Elysia();

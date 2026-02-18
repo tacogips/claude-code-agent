@@ -7,7 +7,7 @@
  * @module daemon/routes/queues
  */
 
-import type { ClaudeCodeAgent } from "../../sdk";
+import type { SdkManager } from "../../sdk";
 import type { TokenManager, AuthenticatedApp } from "../auth";
 import type { SessionMode } from "../../sdk/queue/types";
 import type { QueueStatus } from "../../repository/queue-repository";
@@ -52,12 +52,12 @@ interface UpdateCommandRequest {
  * All routes require authentication and queue:* permission.
  *
  * @param app - Authenticated Elysia application instance
- * @param sdk - ClaudeCodeAgent SDK instance
+ * @param sdk - SdkManager SDK instance
  * @param tokenManager - Token manager for permission checks
  */
 export function queueRoutes(
   app: AuthenticatedApp,
-  sdk: ClaudeCodeAgent,
+  sdk: SdkManager,
   tokenManager: TokenManager,
 ): void {
   app.group("/api/queues", (queues) => {

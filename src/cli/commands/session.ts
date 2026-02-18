@@ -8,7 +8,7 @@
  */
 
 import type { Command } from "commander";
-import type { ClaudeCodeAgent } from "../../sdk/agent";
+import type { SdkManager } from "../../sdk/agent";
 import { formatTable, formatJson, printError } from "../output";
 import { calculateTaskProgress } from "../../types/task";
 
@@ -26,20 +26,20 @@ interface GlobalOptions {
  * All commands support global --format option for output formatting.
  *
  * @param program - Commander program instance to attach commands to
- * @param getAgent - Factory function that creates/returns ClaudeCodeAgent instance
+ * @param getAgent - Factory function that creates/returns SdkManager instance
  *
  * @example
  * ```typescript
  * const program = new Command();
  * registerSessionCommands(program, async () => {
  *   const container = createContainer();
- *   return ClaudeCodeAgent.create(container);
+ *   return SdkManager.create(container);
  * });
  * ```
  */
 export function registerSessionCommands(
   program: Command,
-  getAgent: () => Promise<ClaudeCodeAgent>,
+  getAgent: () => Promise<SdkManager>,
 ): void {
   const sessionCmd = program
     .command("session")
