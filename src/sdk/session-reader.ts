@@ -16,6 +16,12 @@ import type {
   SessionIndexEntry,
   SessionListResponse,
   ListSessionsByPathOptions,
+  TranscriptSearchOptions,
+  TranscriptSearchResult,
+  SearchSessionsOptions,
+  SessionSearchResponse,
+  TranscriptSearchRole,
+  SessionSearchSource,
 } from "../types/session-index";
 import { type Result, ok, err } from "../result";
 import { FileNotFoundError, type AgentError } from "../errors";
@@ -872,6 +878,148 @@ export class SessionReader {
   }
 
   /**
+   * Search full transcript content for a single session.
+   *
+   * Scans the entire JSONL transcript line-by-line by default and supports
+   * case sensitivity, role filtering, byte limits, match limits, and timeout.
+   *
+   * @param sessionId - Unique session identifier
+   * @param query - Search text
+   * @param options - Search behavior options
+   * @returns Result containing transcript search summary, or an error
+   */
+  async searchTranscript(
+    sessionId: string,
+    query: string,
+    options: TranscriptSearchOptions = {},
+  ): Promise<Result<TranscriptSearchResult, AgentError>> {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery === "") {
+      return ok({
+        sessionId,
+        matched: false,
+        matchCount: 0,
+        scannedBytes: 0,
+        scannedLines: 0,
+        truncated: false,
+        timedOut: false,
+      });
+    }
+
+    const filePath = await this.findSessionFilePath(sessionId);
+    if (filePath === null) {
+      return err(new FileNotFoundError(`Session not found: ${sessionId}`));
+    }
+
+    let content: string;
+    try {
+      content = await this.fileSystem.readFile(filePath);
+    } catch (error) {
+      if (error instanceof FileNotFoundError) {
+        return err(error);
+      }
+      return err(new FileNotFoundError(filePath));
+    }
+
+    return ok(
+      this.searchTranscriptInContent(sessionId, content, trimmedQuery, options),
+    );
+  }
+
+  /**
+   * Search multiple sessions and return matching session IDs.
+   *
+   * @param query - Search text
+   * @param options - Search and pagination options
+   * @returns Paginated list of matching session IDs and scan metadata
+   */
+  async searchSessions(
+    query: string,
+    options: SearchSessionsOptions = {},
+  ): Promise<SessionSearchResponse> {
+    const trimmedQuery = query.trim();
+    const offset = options.offset ?? 0;
+    const limit = options.limit ?? 50;
+
+    if (trimmedQuery === "") {
+      return {
+        sessionIds: [],
+        total: 0,
+        offset,
+        limit,
+        scannedSessions: 0,
+        truncated: false,
+        timedOut: false,
+      };
+    }
+
+    const searchPath = options.projectPath ?? this.getDefaultClaudeProjectsDir();
+    const allSessionFiles = await this.findSessionFiles(searchPath);
+    const source = options.source ?? "all";
+    const sessionFiles = allSessionFiles.filter((filePath) =>
+      this.matchesSessionSource(filePath, source),
+    );
+
+    const matchedSessionIds: string[] = [];
+    const maxSessions = options.maxSessions;
+    const maxSessionsToScan =
+      maxSessions !== undefined && maxSessions >= 0
+        ? maxSessions
+        : Number.POSITIVE_INFINITY;
+
+    let scannedSessions = 0;
+    let truncated = false;
+    let timedOut = false;
+
+    for (const filePath of sessionFiles) {
+      if (scannedSessions >= maxSessionsToScan) {
+        truncated = true;
+        break;
+      }
+
+      scannedSessions += 1;
+      const sessionId = this.deriveSessionIdFromPath(filePath);
+
+      let content: string;
+      try {
+        content = await this.fileSystem.readFile(filePath);
+      } catch {
+        continue;
+      }
+
+      const searchResult = this.searchTranscriptInContent(
+        sessionId,
+        content,
+        trimmedQuery,
+        options,
+      );
+
+      if (searchResult.timedOut) {
+        timedOut = true;
+      }
+      if (searchResult.truncated) {
+        truncated = true;
+      }
+      if (searchResult.matched) {
+        matchedSessionIds.push(sessionId);
+      }
+    }
+
+    const total = matchedSessionIds.length;
+    const paginatedSessionIds = matchedSessionIds.slice(offset, offset + limit);
+
+    return {
+      sessionIds: paginatedSessionIds,
+      total,
+      offset,
+      limit,
+      scannedSessions,
+      truncated,
+      timedOut,
+    };
+  }
+
+  /**
    * Find the file path for a session by its ID.
    *
    * Searches all session files in the Claude projects directory and
@@ -895,6 +1043,231 @@ export class SessionReader {
     }
 
     return null;
+  }
+
+  /**
+   * Search transcript content without filesystem access.
+   *
+   * @param sessionId - Session identifier to include in result
+   * @param content - JSONL transcript text
+   * @param query - Non-empty query string
+   * @param options - Search options
+   * @returns Search result with scan metadata
+   * @private
+   */
+  private searchTranscriptInContent(
+    sessionId: string,
+    content: string,
+    query: string,
+    options: TranscriptSearchOptions,
+  ): TranscriptSearchResult {
+    const caseSensitive = options.caseSensitive ?? false;
+    const role = options.role ?? "both";
+    const maxMatches = options.maxMatches ?? 1;
+    const maxBytes = options.maxBytes;
+    const timeoutMs = options.timeoutMs;
+    const deadline =
+      timeoutMs !== undefined && timeoutMs >= 0 ? Date.now() + timeoutMs : null;
+
+    const normalizedQuery = caseSensitive ? query : query.toLowerCase();
+    const lines = content.split(/\r?\n/);
+
+    let matchCount = 0;
+    let scannedBytes = 0;
+    let scannedLines = 0;
+    let truncated = false;
+    let timedOut = false;
+
+    for (const line of lines) {
+      if (line.trim() === "") {
+        continue;
+      }
+
+      if (deadline !== null && Date.now() > deadline) {
+        truncated = true;
+        timedOut = true;
+        break;
+      }
+
+      const lineBytes = Buffer.byteLength(line, "utf8") + 1;
+      if (
+        maxBytes !== undefined &&
+        maxBytes >= 0 &&
+        scannedBytes + lineBytes > maxBytes
+      ) {
+        truncated = true;
+        break;
+      }
+
+      scannedBytes += lineBytes;
+      scannedLines += 1;
+
+      const parsed = this.tryParseJsonRecord(line);
+      if (parsed === null) {
+        continue;
+      }
+
+      if (!this.matchesRoleFilter(parsed, role)) {
+        continue;
+      }
+
+      const searchableText = this.extractSearchableText(parsed);
+      if (searchableText === "") {
+        continue;
+      }
+
+      const normalizedText = caseSensitive
+        ? searchableText
+        : searchableText.toLowerCase();
+      if (normalizedText.includes(normalizedQuery)) {
+        matchCount += 1;
+        if (maxMatches >= 0 && matchCount >= maxMatches) {
+          truncated = scannedLines < lines.length;
+          break;
+        }
+      }
+    }
+
+    return {
+      sessionId,
+      matched: matchCount > 0,
+      matchCount,
+      scannedBytes,
+      scannedLines,
+      truncated,
+      timedOut,
+    };
+  }
+
+  /**
+   * Parse a JSONL line into a record.
+   *
+   * @param line - Raw JSON line
+   * @returns Parsed record or null when invalid
+   * @private
+   */
+  private tryParseJsonRecord(line: string): Record<string, unknown> | null {
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      return typeof parsed === "object" && parsed !== null
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check whether a record matches the requested role filter.
+   *
+   * @param record - Parsed transcript record
+   * @param role - Role filter
+   * @returns True when record should be included in scan
+   * @private
+   */
+  private matchesRoleFilter(
+    record: Record<string, unknown>,
+    role: TranscriptSearchRole,
+  ): boolean {
+    if (role === "both") {
+      return true;
+    }
+
+    const type = record["type"];
+    if (type === "user" || type === "assistant") {
+      return type === role;
+    }
+
+    const message = record["message"];
+    if (typeof message !== "object" || message === null) {
+      return false;
+    }
+
+    const messageRole = (message as Record<string, unknown>)["role"];
+    return messageRole === role;
+  }
+
+  /**
+   * Extract searchable text from a transcript record.
+   *
+   * @param record - Parsed transcript record
+   * @returns Concatenated text to scan
+   * @private
+   */
+  private extractSearchableText(record: Record<string, unknown>): string {
+    const collected: string[] = [];
+    this.collectStringValues(record["message"], collected, 0, 6);
+
+    // Fallback for entries that store text outside message object
+    if (collected.length === 0) {
+      this.collectStringValues(record, collected, 0, 4);
+    }
+
+    return collected.join("\n");
+  }
+
+  /**
+   * Recursively collect string values from nested JSON-like data.
+   *
+   * @param value - Value to scan
+   * @param output - Mutable output string array
+   * @param depth - Current recursion depth
+   * @param maxDepth - Maximum recursion depth
+   * @private
+   */
+  private collectStringValues(
+    value: unknown,
+    output: string[],
+    depth: number,
+    maxDepth: number,
+  ): void {
+    if (value === null || value === undefined || depth > maxDepth) {
+      return;
+    }
+
+    if (typeof value === "string") {
+      output.push(value);
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        this.collectStringValues(item, output, depth + 1, maxDepth);
+      }
+      return;
+    }
+
+    if (typeof value !== "object") {
+      return;
+    }
+
+    for (const child of Object.values(value)) {
+      this.collectStringValues(child, output, depth + 1, maxDepth);
+    }
+  }
+
+  /**
+   * Check if a session file path matches source filter.
+   *
+   * @param filePath - Full transcript file path
+   * @param source - Source filter
+   * @returns True when file should be searched
+   * @private
+   */
+  private matchesSessionSource(
+    filePath: string,
+    source: SessionSearchSource,
+  ): boolean {
+    if (source === "all") {
+      return true;
+    }
+
+    const filename = filePath.split("/").pop() ?? "";
+    if (source === "legacy") {
+      return filename === "session.jsonl";
+    }
+
+    return UUID_SESSION_PATTERN.test(filename);
   }
 
   /**

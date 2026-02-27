@@ -4,7 +4,7 @@
  * @module sdk/session-reader.test
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SessionReader } from "./session-reader";
 import { MockFileSystem } from "../test/mocks/filesystem";
 import { createTestContainer } from "../container";
@@ -2220,6 +2220,292 @@ describe("SessionReader", () => {
         const { tokenUsage } = result.value;
         expect(tokenUsage).toBeUndefined();
       }
+    });
+  });
+
+  describe("searchTranscript", () => {
+    beforeEach(() => {
+      process.env["HOME"] = "/home/testuser";
+    });
+
+    it("searches entire transcript content (not only early lines)", async () => {
+      const sessionId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          message: { role: "user", content: "Start of transcript" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "Middle of transcript" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "needle appears at the end" },
+        }),
+      ].join("\n");
+
+      fs.setFile(`/home/testuser/.claude/projects/p1/${sessionId}.jsonl`, sessionContent);
+
+      const result = await reader.searchTranscript(sessionId, "needle");
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.matched).toBe(true);
+        expect(result.value.matchCount).toBe(1);
+        expect(result.value.scannedLines).toBe(3);
+      }
+    });
+
+    it("supports case-insensitive and case-sensitive search", async () => {
+      const sessionId = "11111111-2222-3333-4444-555555555555";
+      const sessionContent = JSON.stringify({
+        type: "assistant",
+        message: { role: "assistant", content: "Authentication Complete" },
+      });
+
+      fs.setFile(`/home/testuser/.claude/projects/p1/${sessionId}.jsonl`, sessionContent);
+
+      const insensitive = await reader.searchTranscript(sessionId, "authentication");
+      const sensitive = await reader.searchTranscript(sessionId, "authentication", {
+        caseSensitive: true,
+      });
+
+      expect(insensitive.isOk()).toBe(true);
+      expect(sensitive.isOk()).toBe(true);
+      if (insensitive.isOk() && sensitive.isOk()) {
+        expect(insensitive.value.matched).toBe(true);
+        expect(sensitive.value.matched).toBe(false);
+      }
+    });
+
+    it("supports role filter", async () => {
+      const sessionId = "66666666-7777-8888-9999-aaaaaaaaaaaa";
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          message: { role: "user", content: "deploy to production now" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "deploy completed" },
+        }),
+      ].join("\n");
+
+      fs.setFile(`/home/testuser/.claude/projects/p2/${sessionId}.jsonl`, sessionContent);
+
+      const userOnly = await reader.searchTranscript(sessionId, "deploy", {
+        role: "user",
+        maxMatches: 10,
+      });
+      const assistantOnly = await reader.searchTranscript(sessionId, "production", {
+        role: "assistant",
+      });
+
+      expect(userOnly.isOk()).toBe(true);
+      expect(assistantOnly.isOk()).toBe(true);
+      if (userOnly.isOk() && assistantOnly.isOk()) {
+        expect(userOnly.value.matched).toBe(true);
+        expect(userOnly.value.matchCount).toBe(1);
+        expect(assistantOnly.value.matched).toBe(false);
+      }
+    });
+
+    it("supports maxBytes and maxMatches limits", async () => {
+      const sessionId = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff";
+      const sessionContent = [
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "target-one" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "target-two" },
+        }),
+      ].join("\n");
+
+      fs.setFile(`/home/testuser/.claude/projects/p3/${sessionId}.jsonl`, sessionContent);
+
+      const limitedBytes = await reader.searchTranscript(sessionId, "target", {
+        maxBytes: 40,
+        maxMatches: 10,
+      });
+      const limitedMatches = await reader.searchTranscript(sessionId, "target", {
+        maxMatches: 1,
+      });
+
+      expect(limitedBytes.isOk()).toBe(true);
+      expect(limitedMatches.isOk()).toBe(true);
+      if (limitedBytes.isOk() && limitedMatches.isOk()) {
+        expect(limitedBytes.value.truncated).toBe(true);
+        expect(limitedMatches.value.matchCount).toBe(1);
+        expect(limitedMatches.value.truncated).toBe(true);
+      }
+    });
+
+    it("supports timeout limits", async () => {
+      const sessionId = "12341234-5678-90ab-cdef-123412341234";
+      const sessionContent = JSON.stringify({
+        type: "assistant",
+        message: { role: "assistant", content: "slow scan text" },
+      });
+
+      fs.setFile(`/home/testuser/.claude/projects/p4/${sessionId}.jsonl`, sessionContent);
+
+      const nowSpy = vi.spyOn(Date, "now");
+      nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1002);
+
+      const result = await reader.searchTranscript(sessionId, "slow", {
+        timeoutMs: 1,
+      });
+
+      nowSpy.mockRestore();
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.matched).toBe(false);
+        expect(result.value.timedOut).toBe(true);
+        expect(result.value.truncated).toBe(true);
+      }
+    });
+
+    it("supports multilingual queries", async () => {
+      const sessionId = "abcd1234-abcd-1234-abcd-1234567890ab";
+      const sessionContent = JSON.stringify({
+        type: "assistant",
+        message: { role: "assistant", content: "了解です。もう一度説明します。" },
+      });
+
+      fs.setFile(`/home/testuser/.claude/projects/p5/${sessionId}.jsonl`, sessionContent);
+
+      const result = await reader.searchTranscript(sessionId, "もう一度");
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.matched).toBe(true);
+        expect(result.value.matchCount).toBe(1);
+      }
+    });
+
+    it("returns FileNotFoundError when session is missing", async () => {
+      const result = await reader.searchTranscript(
+        "ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb",
+        "anything",
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error).toBeInstanceOf(FileNotFoundError);
+      }
+    });
+  });
+
+  describe("searchSessions", () => {
+    beforeEach(() => {
+      process.env["HOME"] = "/home/testuser";
+    });
+
+    it("searches across sessions and paginates session IDs", async () => {
+      fs.setFile(
+        "/home/testuser/.claude/projects/a/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "alpha keyword" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/b/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "beta keyword" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/c/cccccccc-cccc-cccc-cccc-cccccccccccc.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "keyword gamma" },
+        }),
+      );
+
+      const result = await reader.searchSessions("keyword", {
+        offset: 1,
+        limit: 1,
+      });
+
+      expect(result.total).toBe(3);
+      expect(result.sessionIds).toHaveLength(1);
+      expect(result.offset).toBe(1);
+      expect(result.limit).toBe(1);
+    });
+
+    it("supports projectPath and source filters", async () => {
+      fs.setFile(
+        "/home/testuser/.claude/projects/proj-a/session.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "legacy hit" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/proj-a/dddddddd-dddd-dddd-dddd-dddddddddddd.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "uuid hit" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/proj-b/eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "uuid hit outside project" },
+        }),
+      );
+
+      const legacyOnly = await reader.searchSessions("hit", {
+        projectPath: "/home/testuser/.claude/projects/proj-a",
+        source: "legacy",
+      });
+      const uuidOnly = await reader.searchSessions("hit", {
+        projectPath: "/home/testuser/.claude/projects/proj-a",
+        source: "uuid",
+      });
+
+      expect(legacyOnly.total).toBe(1);
+      expect(legacyOnly.sessionIds[0]).toBe("proj-a");
+      expect(uuidOnly.total).toBe(1);
+      expect(uuidOnly.sessionIds[0]).toBe("dddddddd-dddd-dddd-dddd-dddddddddddd");
+    });
+
+    it("supports maxSessions and reports truncation/timedOut", async () => {
+      fs.setFile(
+        "/home/testuser/.claude/projects/lim1/11111111-1111-1111-1111-111111111111.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "needle one" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/lim2/22222222-2222-2222-2222-222222222222.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "needle two" },
+        }),
+      );
+
+      const nowSpy = vi.spyOn(Date, "now");
+      nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1002);
+
+      const timedOut = await reader.searchSessions("needle", {
+        timeoutMs: 1,
+        maxSessions: 1,
+      });
+
+      nowSpy.mockRestore();
+
+      expect(timedOut.scannedSessions).toBe(1);
+      expect(timedOut.truncated).toBe(true);
+      expect(timedOut.timedOut).toBe(true);
     });
   });
 

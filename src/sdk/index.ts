@@ -167,6 +167,12 @@ export type {
   ProjectInfo,
   SessionListResponse,
   ListSessionsByPathOptions,
+  TranscriptSearchRole,
+  SessionSearchSource,
+  TranscriptSearchOptions,
+  TranscriptSearchResult,
+  SearchSessionsOptions,
+  SessionSearchResponse,
 } from "../types/session-index";
 
 // Session Update Receiver

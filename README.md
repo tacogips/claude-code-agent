@@ -227,6 +227,47 @@ for await (const message of session.messages()) {
 }
 ```
 
+### Transcript Search API
+
+`SessionReader` now supports full-text search across transcript content:
+
+```typescript
+import { SessionReader } from "claude-code-agent/sdk";
+
+const reader = new SessionReader(container);
+
+const single = await reader.searchTranscript(
+  "88487b4c-f3f6-4a49-b59b-d1d4a098425f",
+  "もう一度",
+  {
+    role: "assistant",
+    caseSensitive: false,
+    maxMatches: 10,
+    maxBytes: 2_000_000,
+    timeoutMs: 100,
+  },
+);
+
+const many = await reader.searchSessions("authentication", {
+  projectPath: "/home/me/.claude/projects",
+  source: "uuid", // "all" | "uuid" | "legacy"
+  role: "both",
+  offset: 0,
+  limit: 20,
+  maxSessions: 500,
+  timeoutMs: 50,
+});
+```
+
+Performance and truncation behavior:
+
+- Search scans full transcript lines by default (not only first page/chunk).
+- Default `maxMatches` is `1` for early stop and lower latency.
+- `truncated: true` indicates early stop by `maxMatches`, `maxBytes`, `maxSessions`, or timeout.
+- `timedOut: true` indicates timeout-based truncation.
+- `role` filter supports `user`, `assistant`, or `both`.
+- Unicode/multilingual queries (for example, `もう一度`) are supported.
+
 ## CLI Command Reference
 
 ### Entity Commands
