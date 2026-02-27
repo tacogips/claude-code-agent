@@ -250,6 +250,8 @@ const single = await reader.searchTranscript(
 
 const many = await reader.searchSessions("authentication", {
   projectPath: "/home/me/.claude/projects",
+  workingDirectoryPrefix: "/home/me/workspace", // optional pre-scan scope
+  projectPathPrefix: "/home/me/workspace", // alias
   source: "uuid", // "all" | "uuid" | "legacy"
   role: "both",
   offset: 0,

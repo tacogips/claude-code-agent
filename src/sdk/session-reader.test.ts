@@ -2507,6 +2507,65 @@ describe("SessionReader", () => {
       expect(timedOut.truncated).toBe(true);
       expect(timedOut.timedOut).toBe(true);
     });
+
+    it("filters by workingDirectoryPrefix before transcript scanning", async () => {
+      fs.setFile(
+        "/home/testuser/.claude/projects/-home-user-workspace-a/aaaaaaaa-1111-2222-3333-444444444444.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "needle inside a" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/-home-user-workspace-a/bbbbbbbb-1111-2222-3333-444444444444.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "no match here" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/-home-user-workspace-b/cccccccc-1111-2222-3333-444444444444.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "needle inside b" },
+        }),
+      );
+
+      const result = await reader.searchSessions("needle", {
+        workingDirectoryPrefix: "/home/user/workspace/a",
+      });
+
+      expect(result.total).toBe(1);
+      expect(result.sessionIds).toContain(
+        "aaaaaaaa-1111-2222-3333-444444444444",
+      );
+      expect(result.scannedSessions).toBe(2); // only workspace-a files
+    });
+
+    it("supports projectPathPrefix alias", async () => {
+      fs.setFile(
+        "/home/testuser/.claude/projects/-home-user-project-x/dddddddd-1111-2222-3333-444444444444.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "scoped hit" },
+        }),
+      );
+      fs.setFile(
+        "/home/testuser/.claude/projects/-home-user-project-y/eeeeeeee-1111-2222-3333-444444444444.jsonl",
+        JSON.stringify({
+          type: "assistant",
+          message: { role: "assistant", content: "scoped hit" },
+        }),
+      );
+
+      const result = await reader.searchSessions("scoped", {
+        projectPathPrefix: "/home/user/project/x",
+      });
+
+      expect(result.total).toBe(1);
+      expect(result.sessionIds[0]).toBe("dddddddd-1111-2222-3333-444444444444");
+      expect(result.scannedSessions).toBe(1);
+    });
   });
 
   describe("readSessionUsage", () => {

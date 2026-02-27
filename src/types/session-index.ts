@@ -114,6 +114,10 @@ export interface TranscriptSearchResult {
 export interface SearchSessionsOptions extends TranscriptSearchOptions {
   /** Optional project path root (defaults to ~/.claude/projects) */
   readonly projectPath?: string;
+  /** Optional working directory prefix filter (applied before transcript scan) */
+  readonly workingDirectoryPrefix?: string;
+  /** Alias of workingDirectoryPrefix for compatibility */
+  readonly projectPathPrefix?: string;
   /** Source/session format filter (default: "all") */
   readonly source?: SessionSearchSource;
   /** Pagination offset for matched session IDs (default: 0) */

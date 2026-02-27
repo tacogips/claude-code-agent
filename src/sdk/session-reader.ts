@@ -956,9 +956,26 @@ export class SessionReader {
     const searchPath = options.projectPath ?? this.getDefaultClaudeProjectsDir();
     const allSessionFiles = await this.findSessionFiles(searchPath);
     const source = options.source ?? "all";
-    const sessionFiles = allSessionFiles.filter((filePath) =>
-      this.matchesSessionSource(filePath, source),
-    );
+    const workingDirectoryPrefix = options.workingDirectoryPrefix;
+    const projectPathPrefix = options.projectPathPrefix;
+    const sessionFiles = allSessionFiles.filter((filePath) => {
+      if (!this.matchesSessionSource(filePath, source)) {
+        return false;
+      }
+      if (
+        workingDirectoryPrefix !== undefined &&
+        !this.matchesWorkingDirectoryPrefix(filePath, workingDirectoryPrefix)
+      ) {
+        return false;
+      }
+      if (
+        projectPathPrefix !== undefined &&
+        !this.matchesWorkingDirectoryPrefix(filePath, projectPathPrefix)
+      ) {
+        return false;
+      }
+      return true;
+    });
 
     const matchedSessionIds: string[] = [];
     const maxSessions = options.maxSessions;
@@ -1268,6 +1285,30 @@ export class SessionReader {
     }
 
     return UUID_SESSION_PATTERN.test(filename);
+  }
+
+  /**
+   * Check whether a session file belongs to a project path prefix.
+   *
+   * Uses path-derived project metadata, so it can be applied before reading
+   * transcript content.
+   *
+   * @param filePath - Full transcript file path
+   * @param workingDirectoryPrefix - Required project path prefix
+   * @returns True when session's project path starts with the prefix
+   * @private
+   */
+  private matchesWorkingDirectoryPrefix(
+    filePath: string,
+    workingDirectoryPrefix: string,
+  ): boolean {
+    const prefix = workingDirectoryPrefix.trim();
+    if (prefix === "") {
+      return true;
+    }
+
+    const projectPath = this.deriveProjectPath(filePath);
+    return projectPath.startsWith(prefix);
   }
 
   /**
