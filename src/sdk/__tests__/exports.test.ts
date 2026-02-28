@@ -100,6 +100,7 @@ describe("SDK Exports", () => {
     test("exports parser functions", () => {
       expect(typeof SDK.parseJsonl).toBe("function");
       expect(typeof SDK.parseMarkdown).toBe("function");
+      expect(typeof SDK.getToolVersions).toBe("function");
     });
   });
 });

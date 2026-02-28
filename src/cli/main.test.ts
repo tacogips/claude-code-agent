@@ -70,6 +70,13 @@ describe("createCli", () => {
     expect(commands).toContain("activity");
   });
 
+  test("registers version subcommand", () => {
+    const program = createCli();
+    const commands = program.commands.map((cmd) => cmd.name());
+
+    expect(commands).toContain("version");
+  });
+
   test("session command has run, add, show, watch subcommands", () => {
     const program = createCli();
     const sessionCmd = program.commands.find((cmd) => cmd.name() === "session");

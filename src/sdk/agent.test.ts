@@ -17,6 +17,7 @@ import { SessionReader } from "./session-reader";
 import { GroupManager, GroupRunner } from "./group";
 import { QueueManager, QueueRunner } from "./queue";
 import { BookmarkManager } from "./bookmarks";
+import { MockProcessManager } from "../test/mocks/process-manager";
 import { tool, createSdkMcpServer } from "./tool-registry";
 import type { SdkTool } from "./types/tool";
 import { SubprocessTransport } from "./transport/subprocess";
@@ -146,6 +147,38 @@ describe("SdkManager", () => {
       // but we can verify runners were constructed (they'd fail if no container)
       expect(agent.groupRunner).toBeInstanceOf(GroupRunner);
       expect(agent.queueRunner).toBeInstanceOf(QueueRunner);
+    });
+  });
+
+  describe("TEST-003A: Tool Version Introspection", () => {
+    test("getToolVersions returns structured version results", async () => {
+      const processManager = new MockProcessManager();
+      processManager.setProcessConfig("claude", {
+        stdout: ["Claude CLI 1.2.3"],
+        exitCode: 0,
+      });
+      processManager.setProcessConfig("codex", {
+        stdout: ["codex 0.45.1"],
+        exitCode: 0,
+      });
+      processManager.setProcessConfig("git", {
+        stdout: ["git version 2.43.0"],
+        exitCode: 0,
+      });
+
+      const agent = await SdkManager.create(
+        createTestContainer({
+          processManager,
+        }),
+      );
+
+      const versions = await agent.getToolVersions();
+
+      expect(versions).toEqual({
+        claude: { version: "1.2.3", error: null },
+        codex: { version: "0.45.1", error: null },
+        git: { version: "2.43.0", error: null },
+      });
     });
   });
 

@@ -284,6 +284,10 @@ export { ActivityManager } from "./activity/manager";
 // Queue Manager and Runner (re-export from queue module)
 export { QueueManager, QueueRunner } from "./queue";
 
+// Tool Versions
+export type { ToolVersionInfo, AgentToolVersions } from "./tool-versions";
+export { getToolVersions } from "./tool-versions";
+
 // Main SDK Agent
 export {
   SdkManager,

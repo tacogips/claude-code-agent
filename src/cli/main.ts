@@ -9,8 +9,6 @@
  */
 
 import { Command } from "commander";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { printError } from "./output";
 import { registerSessionCommands } from "./commands/session";
 import { registerServerCommands } from "./commands/server";
@@ -19,6 +17,8 @@ import { registerBookmarkCommands } from "./commands/bookmark";
 import { registerTokenCommands } from "./commands/token";
 import { registerFilesCommands } from "./commands/files";
 import { createActivityCommand } from "./commands/activity";
+import { registerVersionCommands } from "./commands/version";
+import { getPackageVersion } from "./version";
 import { SdkManager } from "../sdk/agent";
 import { createProductionContainer } from "../container";
 
@@ -32,25 +32,6 @@ interface GlobalOptions {
    * - json: Machine-readable JSON output
    */
   readonly format: "table" | "json";
-}
-
-/**
- * Read package.json to get version information.
- *
- * @returns Package version string
- */
-function getVersion(): string {
-  try {
-    // Read package.json from project root (two levels up from dist/cli/main.js)
-    const packageJsonPath = join(__dirname, "../../package.json");
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
-      version: string;
-    };
-    return packageJson.version;
-  } catch (error) {
-    // Fallback if package.json cannot be read
-    return "unknown";
-  }
 }
 
 /**
@@ -77,7 +58,7 @@ export function createCli(): Command {
     .description(
       "Monitoring, visualization, and orchestration for Claude Code sessions",
     )
-    .version(getVersion(), "-v, --version", "Display version number")
+    .version(getPackageVersion(), "-v, --version", "Display version number")
     .option("-f, --format <type>", "Output format (table or json)", "table")
     .helpOption("-h, --help", "Display help for command");
 
@@ -116,6 +97,9 @@ export function createCli(): Command {
 
   // Activity commands
   program.addCommand(createActivityCommand());
+
+  // Version command
+  registerVersionCommands(program, getAgent);
 
   // Group commands
   // TODO: Implement in cli-group-commands.md plan

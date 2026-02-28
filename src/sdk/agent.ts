@@ -28,6 +28,10 @@ import { ToolRegistry } from "./tool-registry";
 import type { McpServerConfig } from "./types/mcp";
 import { isSdkServer } from "./types/mcp";
 import type { SessionStateInfo, SessionState } from "./types/state";
+import {
+  getToolVersions as detectToolVersions,
+  type AgentToolVersions,
+} from "./tool-versions";
 
 /**
  * Main SDK agent providing unified access to all claude-code-agent functionality.
@@ -165,6 +169,16 @@ export class SdkManager {
    */
   parseMarkdown(content: string) {
     return parseMarkdown(content);
+  }
+
+  /**
+   * Retrieve installed CLI tool versions used by the agent runtime.
+   *
+   * Returns structured success/error results for each tool so host
+   * applications can display health and availability without shelling out.
+   */
+  async getToolVersions(): Promise<AgentToolVersions> {
+    return detectToolVersions(this.container.processManager);
   }
 }
 

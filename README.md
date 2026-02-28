@@ -227,6 +227,28 @@ for await (const message of session.messages()) {
 }
 ```
 
+### Tool Version Introspection
+
+Use SDK API to retrieve structured runtime tool versions:
+
+```typescript
+import { SdkManager } from "claude-code-agent/sdk";
+import { createProductionContainer } from "claude-code-agent/container";
+
+const agent = await SdkManager.create(createProductionContainer());
+const versions = await agent.getToolVersions();
+
+console.log(versions.claude.version); // e.g. "1.2.3"
+console.log(versions.claude.error); // null if available
+```
+
+CLI also supports version introspection:
+
+```bash
+claude-code-agent version
+claude-code-agent version --json
+```
+
 ### Transcript Search API
 
 `SessionReader` now supports full-text search across transcript content:
