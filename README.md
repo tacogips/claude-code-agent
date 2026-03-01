@@ -76,6 +76,19 @@ claude-code-agent session list --all
 claude-code-agent session show <session-id>
 ```
 
+### Run One Prompt With Streaming
+
+```bash
+# Claude Code-like terminal output (default: char stream)
+claude-code-agent session run --prompt "say hello"
+
+# Explicit char stream with per-character pacing
+claude-code-agent session run --prompt "say hello" --stream-granularity char --char-delay-ms 30
+
+# Raw event stream (JSON lines)
+claude-code-agent session run --prompt "say hello" --stream-granularity event
+```
+
 ### Session Groups (Multi-Project Orchestration)
 
 ```bash

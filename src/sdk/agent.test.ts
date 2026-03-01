@@ -819,6 +819,7 @@ describe("SessionRunner", () => {
 
       expect(capturedOptions).toBeDefined();
       expect(capturedOptions?.["prompt"]).toBeUndefined();
+      expect(capturedOptions?.["mcpConfig"]).toBeUndefined();
     });
 
     test("sends initial prompt via stdin after initialize", async () => {

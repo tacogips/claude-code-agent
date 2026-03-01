@@ -850,9 +850,11 @@ export class SessionRunner {
   private buildTransportOptions(): TransportOptions {
     const systemPrompt = this.resolveSystemPrompt(this.options.systemPrompt);
 
-    const options: TransportOptions = {
-      mcpConfig: this.buildMcpConfig(),
-    };
+    const options: TransportOptions = {};
+
+    if (this.options.mcpServers !== undefined) {
+      options.mcpConfig = this.buildMcpConfig();
+    }
 
     if (this.options.cliPath !== undefined)
       options.cliPath = this.options.cliPath;

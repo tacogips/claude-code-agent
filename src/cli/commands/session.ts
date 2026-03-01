@@ -8,7 +8,13 @@
  */
 
 import type { Command } from "commander";
-import type { SdkManager } from "../../sdk/agent";
+import { LogLevels } from "consola";
+import {
+  type SdkManager,
+  type SessionRunner,
+  type SessionRunnerOptions,
+} from "../../sdk/agent";
+import { logger } from "../../logger";
 import { formatTable, formatJson, printError } from "../output";
 import { calculateTaskProgress } from "../../types/task";
 
@@ -18,6 +24,18 @@ import { calculateTaskProgress } from "../../types/task";
 interface GlobalOptions {
   readonly format: "table" | "json";
 }
+
+type StreamGranularity = "event" | "char";
+
+interface SessionRunOptions {
+  project?: string;
+  prompt?: string;
+  template?: string;
+  streamGranularity?: string;
+  charDelayMs?: string;
+}
+
+type SessionRunnerFactory = (options?: SessionRunnerOptions) => SessionRunner;
 
 /**
  * Register all session-related subcommands on the program.
@@ -40,6 +58,7 @@ interface GlobalOptions {
 export function registerSessionCommands(
   program: Command,
   getAgent: () => Promise<SdkManager>,
+  createSessionRunner?: SessionRunnerFactory,
 ): void {
   const sessionCmd = program
     .command("session")
@@ -52,19 +71,101 @@ export function registerSessionCommands(
     .option("--project <path>", "Project directory (default: cwd)")
     .option("--prompt <text>", "Prompt text")
     .option("--template <name>", "Template name")
+    .option(
+      "--stream-granularity <mode>",
+      "Streaming output mode (char or event, default: char)",
+      "char",
+    )
+    .option(
+      "--char-delay-ms <n>",
+      "Delay per rendered character in ms for char mode (default: 8)",
+      "8",
+    )
     .action(
-      async (options: {
-        project?: string;
-        prompt?: string;
-        template?: string;
-      }) => {
+      async (options: SessionRunOptions) => {
         try {
-          printError("session run: Not yet implemented");
-          printError(
-            "Placeholder for running a standalone Claude Code session",
+          const prompt = options.prompt?.trim();
+          if (prompt === undefined || prompt.length === 0) {
+            printError("Usage: claude-code-agent session run --prompt <text>");
+            process.exit(1);
+          }
+          if (options.template !== undefined) {
+            printError("session run: --template is not supported yet");
+            process.exit(1);
+          }
+
+          const streamGranularity = parseStreamGranularity(
+            options.streamGranularity,
           );
-          printError(`Options: ${JSON.stringify(options)}`);
-          process.exit(1);
+          if (streamGranularity === null) {
+            printError(
+              `Invalid --stream-granularity: ${options.streamGranularity ?? ""} (expected: char or event)`,
+            );
+            process.exit(1);
+          }
+
+          const charDelayMs = parseCharDelayMs(options.charDelayMs);
+          if (charDelayMs === null) {
+            printError(
+              `Invalid --char-delay-ms: ${options.charDelayMs ?? ""} (expected: non-negative integer)`,
+            );
+            process.exit(1);
+          }
+
+          if (logger.level > LogLevels.warn) {
+            logger.level = LogLevels.warn;
+          }
+
+          const runnerOptions: SessionRunnerOptions = {};
+          if (options.project !== undefined) {
+            runnerOptions.cwd = options.project;
+          }
+          const runner =
+            createSessionRunner !== undefined
+              ? createSessionRunner(runnerOptions)
+              : await createDefaultSessionRunner(runnerOptions);
+
+          const sessionConfig: Parameters<SessionRunner["startSession"]>[0] = {
+            prompt,
+          };
+          if (options.project !== undefined) {
+            sessionConfig.projectPath = options.project;
+          }
+          const session = await runner.startSession(sessionConfig);
+
+          if (streamGranularity === "event") {
+            for await (const message of session.messages()) {
+              console.log(JSON.stringify(message));
+            }
+          } else {
+            const renderedByMessageId = new Map<string, string>();
+            for await (const message of session.messages()) {
+              const extracted = extractAssistantText(message);
+              if (extracted === null) {
+                continue;
+              }
+
+              const previous = renderedByMessageId.get(extracted.messageId) ?? "";
+              const nextText = extracted.text;
+              const delta = nextText.startsWith(previous)
+                ? nextText.slice(previous.length)
+                : nextText;
+              renderedByMessageId.set(extracted.messageId, nextText);
+
+              for (const char of Array.from(delta)) {
+                process.stdout.write(char);
+                if (charDelayMs > 0) {
+                  await sleep(charDelayMs);
+                }
+              }
+            }
+            process.stdout.write("\n");
+          }
+
+          const result = await session.waitForCompletion();
+          if (!result.success) {
+            process.exitCode = 1;
+          }
         } catch (error) {
           if (error instanceof Error) {
             printError(error);
@@ -480,4 +581,140 @@ export function registerSessionCommands(
         process.exit(1);
       }
     });
+}
+
+function parseStreamGranularity(
+  value: string | undefined,
+): StreamGranularity | null {
+  if (value === "char" || value === "event") {
+    return value;
+  }
+  return null;
+}
+
+function parseCharDelayMs(value: string | undefined): number | null {
+  if (value === undefined) {
+    return 8;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return parsed;
+}
+
+function extractAssistantText(
+  message: object,
+): { messageId: string; text: string } | null {
+  const root = toRecord(message);
+  if (root === null) {
+    return null;
+  }
+
+  const topLevelType = typeof root["type"] === "string" ? root["type"] : null;
+  const roleFromRoot = typeof root["role"] === "string" ? root["role"] : null;
+  const messageRecord = toRecord(root["message"]);
+  const roleFromMessage =
+    messageRecord !== null && typeof messageRecord["role"] === "string"
+      ? messageRecord["role"]
+      : null;
+  const isAssistant =
+    topLevelType === "assistant" ||
+    roleFromRoot === "assistant" ||
+    roleFromMessage === "assistant";
+
+  if (!isAssistant) {
+    return null;
+  }
+
+  const contentSource =
+    messageRecord?.["content"] ?? root["content"] ?? messageRecord;
+  const text = extractTextFromContent(contentSource);
+  if (text.length === 0) {
+    return null;
+  }
+
+  const explicitId = selectMessageId(root, messageRecord);
+  return {
+    messageId: explicitId,
+    text,
+  };
+}
+
+function selectMessageId(
+  root: Record<string, unknown>,
+  messageRecord: Record<string, unknown> | null,
+): string {
+  if (typeof root["uuid"] === "string" && root["uuid"] !== "") {
+    return root["uuid"];
+  }
+  if (typeof root["id"] === "string" && root["id"] !== "") {
+    return root["id"];
+  }
+  if (
+    messageRecord !== null &&
+    typeof messageRecord["id"] === "string" &&
+    messageRecord["id"] !== ""
+  ) {
+    return messageRecord["id"];
+  }
+  return "assistant-default";
+}
+
+function extractTextFromContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  const parts: string[] = [];
+  for (const block of content) {
+    if (typeof block === "string") {
+      parts.push(block);
+      continue;
+    }
+
+    const record = toRecord(block);
+    if (record === null) {
+      continue;
+    }
+
+    const textValue = record["text"];
+    if (
+      typeof textValue === "string" &&
+      textValue.length > 0 &&
+      (record["type"] === "text" ||
+        record["type"] === "output_text" ||
+        record["type"] === "input_text")
+    ) {
+      parts.push(textValue);
+    }
+  }
+
+  return parts.join("");
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function createDefaultSessionRunner(
+  options?: SessionRunnerOptions,
+): Promise<SessionRunner> {
+  if (process.env["LOG_LEVEL"] === undefined) {
+    process.env["LOG_LEVEL"] = "warn";
+  }
+  const sdkModule = await import("../../sdk/agent");
+  return new sdkModule.SessionRunner(options);
 }

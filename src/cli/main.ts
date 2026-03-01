@@ -19,7 +19,7 @@ import { registerFilesCommands } from "./commands/files";
 import { createActivityCommand } from "./commands/activity";
 import { registerVersionCommands } from "./commands/version";
 import { getPackageVersion } from "./version";
-import { SdkManager } from "../sdk/agent";
+import type { SdkManager } from "../sdk/agent";
 import { createProductionContainer } from "../container";
 
 /**
@@ -73,6 +73,7 @@ export function createCli(): Command {
 
   // Factory function to create agent instance (lazy initialization)
   const getAgent = async (): Promise<SdkManager> => {
+    const { SdkManager } = await import("../sdk/agent");
     const container = createProductionContainer();
     return SdkManager.create(container);
   };

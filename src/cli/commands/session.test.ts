@@ -16,6 +16,7 @@ import {
 import { Command } from "commander";
 import { registerSessionCommands } from "./session";
 import type { SdkManager } from "../../sdk/agent";
+import type { SessionRunnerOptions } from "../../sdk/agent";
 import type { Session } from "../../types/session";
 import type { Task } from "../../types/task";
 import * as output from "../output";
@@ -23,8 +24,13 @@ import * as output from "../output";
 describe("Session Commands", () => {
   let program: Command;
   let mockAgent: Partial<SdkManager>;
+  let mockSessionRunner: {
+    startSession: ReturnType<typeof vi.fn>;
+  };
+  let mockCreateSessionRunner: ReturnType<typeof vi.fn>;
   let consoleLogSpy: MockInstance;
   let printErrorSpy: MockInstance;
+  let stdoutWriteSpy: MockInstance;
 
   const mockTasks: readonly Task[] = [
     {
@@ -96,15 +102,31 @@ describe("Session Commands", () => {
       parseMarkdown: vi.fn().mockReturnValue({ sections: [] }),
     };
 
+    mockSessionRunner = {
+      startSession: vi.fn(),
+    };
+    mockCreateSessionRunner = vi
+      .fn<(options?: SessionRunnerOptions) => unknown>()
+      .mockReturnValue(mockSessionRunner);
+
     // Spy on process.exit, console.log, and output functions
     vi.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("process.exit called");
     }) as any);
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     printErrorSpy = vi.spyOn(output, "printError").mockImplementation(() => {});
+    stdoutWriteSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
 
     // Register commands
-    registerSessionCommands(program, async () => mockAgent as SdkManager);
+    registerSessionCommands(
+      program,
+      async () => mockAgent as SdkManager,
+      mockCreateSessionRunner as unknown as (
+        options?: SessionRunnerOptions,
+      ) => any,
+    );
 
     // Clear mock calls from registration
     vi.clearAllMocks();
@@ -360,6 +382,97 @@ describe("Session Commands", () => {
         inProgress: 0,
         pending: 0,
       });
+    });
+  });
+
+  describe("session run", () => {
+    test("streams assistant text in char mode with incremental dedup", async () => {
+      const messages = async function* () {
+        yield {
+          type: "assistant",
+          message: {
+            id: "msg-1",
+            role: "assistant",
+            content: [{ type: "text", text: "Hel" }],
+          },
+        };
+        yield {
+          type: "assistant",
+          message: {
+            id: "msg-1",
+            role: "assistant",
+            content: [{ type: "text", text: "Hello" }],
+          },
+        };
+      };
+
+      mockSessionRunner.startSession.mockResolvedValue({
+        messages,
+        waitForCompletion: vi.fn().mockResolvedValue({ success: true }),
+      });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "session",
+        "run",
+        "--prompt",
+        "say hello",
+        "--stream-granularity",
+        "char",
+        "--char-delay-ms",
+        "0",
+      ]);
+
+      expect(mockCreateSessionRunner).toHaveBeenCalledWith({});
+      expect(mockSessionRunner.startSession).toHaveBeenCalledWith({
+        prompt: "say hello",
+      });
+
+      const rendered = stdoutWriteSpy.mock.calls
+        .map((call) => call[0] as string)
+        .join("");
+      expect(rendered).toBe("Hello\n");
+    });
+
+    test("prints JSON events in event mode", async () => {
+      const messages = async function* () {
+        yield { type: "assistant", content: "hello" };
+        yield { type: "result", subtype: "success" };
+      };
+
+      mockSessionRunner.startSession.mockResolvedValue({
+        messages,
+        waitForCompletion: vi.fn().mockResolvedValue({ success: true }),
+      });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "session",
+        "run",
+        "--prompt",
+        "say hello",
+        "--stream-granularity",
+        "event",
+      ]);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        JSON.stringify({ type: "assistant", content: "hello" }),
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        JSON.stringify({ type: "result", subtype: "success" }),
+      );
+    });
+
+    test("fails when prompt is missing", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "session", "run"]),
+      ).rejects.toThrow("process.exit called");
+
+      expect(printErrorSpy).toHaveBeenCalledWith(
+        "Usage: claude-code-agent session run --prompt <text>",
+      );
     });
   });
 });
