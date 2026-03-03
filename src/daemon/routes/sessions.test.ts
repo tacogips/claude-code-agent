@@ -4,7 +4,7 @@
  * Tests the session routes including SSE streaming endpoint.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { sessionRoutes } from "./sessions";
 import {
@@ -15,10 +15,12 @@ import {
 } from "../auth";
 import { SdkManager } from "../../sdk";
 import { createTestContainer } from "../../container";
+import { MockFileSystem } from "../../test/mocks/filesystem";
 import type { DaemonConfig } from "../types";
 
 describe("Session Routes - SSE Stream", () => {
   let container: ReturnType<typeof createTestContainer>;
+  let fs: MockFileSystem;
   let sdk: SdkManager;
   let tokenManager: TokenManager;
   let app: Elysia;
@@ -27,6 +29,7 @@ describe("Session Routes - SSE Stream", () => {
 
   beforeEach(async () => {
     container = createTestContainer();
+    fs = container.fileSystem as MockFileSystem;
 
     // Initialize SDK and token manager
     sdk = await SdkManager.create(container);
@@ -238,6 +241,143 @@ describe("Session Routes - SSE Stream", () => {
 
       // Clean up
       await reader.cancel();
+    });
+  });
+
+  describe("GET /api/sessions/:id/messages", () => {
+    it("passes excludeToolMessages=true to SDK getMessages", async () => {
+      const getMessagesSpy = vi
+        .spyOn(sdk.sessions, "getMessages")
+        .mockResolvedValueOnce([]);
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/api/sessions/test-session/messages?excludeToolMessages=true",
+          {
+            headers: {
+              Authorization: `Bearer ${testToken}`,
+            },
+          },
+        ),
+      );
+
+      expect(response.status).toBe(200);
+      expect(getMessagesSpy).toHaveBeenCalledWith("test-session", {
+        excludeToolMessages: true,
+      });
+    });
+
+    it("returns only non-tool messages when excludeToolMessages=true", async () => {
+      const home = process.env["HOME"] ?? "";
+      const sessionPath = `${home}/.claude/projects/test-session/session.jsonl`;
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-1",
+          sessionId: "test-session",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: { role: "user", content: "start" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "test-session",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "tool_use", id: "tool-1", name: "Read", input: {} },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-3",
+          sessionId: "test-session",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: { role: "assistant", content: "done" },
+        }),
+      ].join("\n");
+      fs.setFile(sessionPath, sessionContent);
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/api/sessions/test-session/messages?excludeToolMessages=true",
+          {
+            headers: {
+              Authorization: `Bearer ${testToken}`,
+            },
+          },
+        ),
+      );
+
+      expect(response.status).toBe(200);
+      const messages = (await response.json()) as Array<{ id: string }>;
+      expect(messages.map((message) => message.id)).toEqual(["msg-1", "msg-3"]);
+    });
+
+    it("filters tool_result and malformed tool blocks with parseMarkdown=true", async () => {
+      const home = process.env["HOME"] ?? "";
+      const sessionPath = `${home}/.claude/projects/test-session/session.jsonl`;
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-1",
+          sessionId: "test-session",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: { role: "user", content: "## start" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "test-session",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: [{ type: "tool_use", name: "Read" }],
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-3",
+          sessionId: "test-session",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: {
+            role: "user",
+            content: [
+              { type: "tool_result", tool_use_id: "tool-1", content: "OK" },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-4",
+          sessionId: "test-session",
+          timestamp: "2026-01-01T00:00:03Z",
+          message: { role: "assistant", content: "done" },
+        }),
+      ].join("\n");
+      fs.setFile(sessionPath, sessionContent);
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/api/sessions/test-session/messages?excludeToolMessages=true&parseMarkdown=true",
+          {
+            headers: {
+              Authorization: `Bearer ${testToken}`,
+            },
+          },
+        ),
+      );
+
+      expect(response.status).toBe(200);
+      const messages = (await response.json()) as Array<{
+        id: string;
+        content: unknown;
+      }>;
+      expect(messages.map((message) => message.id)).toEqual(["msg-1", "msg-4"]);
+      expect(typeof messages[0]?.content).toBe("object");
+      expect(typeof messages[1]?.content).toBe("object");
     });
   });
 });

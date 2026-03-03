@@ -9,6 +9,10 @@ import {
   canResume,
   hasToolCalls,
   hasToolResults,
+  isAssistantToolUseMessage,
+  isUserToolResultMessage,
+  getMessageKind,
+  isToolRelatedMessage,
   calculateTaskProgress,
   getDefaultConfig,
   mergeConfig,
@@ -149,6 +153,102 @@ describe("Message types", () => {
       };
 
       expect(hasToolResults(message)).toBe(false);
+    });
+  });
+
+  describe("tool-related classification", () => {
+    it("classifies assistant tool_use messages", () => {
+      const message: Message = {
+        id: "msg-1",
+        role: "assistant",
+        content: "Reading file",
+        timestamp: "2026-01-05T00:00:00.000Z",
+        toolCalls: [{ id: "tool-1", name: "Read", input: {} }],
+      };
+
+      expect(isAssistantToolUseMessage(message)).toBe(true);
+      expect(isUserToolResultMessage(message)).toBe(false);
+      expect(getMessageKind(message)).toBe("assistant_tool_use");
+      expect(isToolRelatedMessage(message)).toBe(true);
+    });
+
+    it("classifies user tool_result messages", () => {
+      const message: Message = {
+        id: "msg-2",
+        role: "user",
+        content: "",
+        timestamp: "2026-01-05T00:00:01.000Z",
+        toolResults: [{ id: "tool-1", output: "result", isError: false }],
+      };
+
+      expect(isAssistantToolUseMessage(message)).toBe(false);
+      expect(isUserToolResultMessage(message)).toBe(true);
+      expect(getMessageKind(message)).toBe("user_tool_result");
+      expect(isToolRelatedMessage(message)).toBe(true);
+    });
+
+    it("classifies normal messages as other", () => {
+      const message: Message = {
+        id: "msg-3",
+        role: "assistant",
+        content: "Done",
+        timestamp: "2026-01-05T00:00:02.000Z",
+      };
+
+      expect(isAssistantToolUseMessage(message)).toBe(false);
+      expect(isUserToolResultMessage(message)).toBe(false);
+      expect(getMessageKind(message)).toBe("other");
+      expect(isToolRelatedMessage(message)).toBe(false);
+    });
+
+    it("classifies toolCalls payload even with non-assistant role", () => {
+      const message: Message = {
+        id: "msg-4",
+        role: "user",
+        content: "",
+        timestamp: "2026-01-05T00:00:03.000Z",
+        toolCalls: [{ id: "tool-1", name: "Read", input: {} }],
+      };
+
+      expect(isAssistantToolUseMessage(message)).toBe(false);
+      expect(getMessageKind(message)).toBe("assistant_tool_use");
+      expect(isToolRelatedMessage(message)).toBe(true);
+    });
+
+    it("classifies toolResults payload even with non-user role", () => {
+      const message: Message = {
+        id: "msg-5",
+        role: "system",
+        content: "",
+        timestamp: "2026-01-05T00:00:04.000Z",
+        toolResults: [{ id: "tool-1", output: "result", isError: false }],
+      };
+
+      expect(isUserToolResultMessage(message)).toBe(false);
+      expect(getMessageKind(message)).toBe("user_tool_result");
+      expect(isToolRelatedMessage(message)).toBe(true);
+    });
+
+    it("classifies malformed tool blocks as tool-related via block flags", () => {
+      const malformedToolUse: Message = {
+        id: "msg-6",
+        role: "assistant",
+        content: "",
+        timestamp: "2026-01-05T00:00:05.000Z",
+        hasToolUseBlocks: true,
+      };
+      const malformedToolResult: Message = {
+        id: "msg-7",
+        role: "user",
+        content: "",
+        timestamp: "2026-01-05T00:00:06.000Z",
+        hasToolResultBlocks: true,
+      };
+
+      expect(getMessageKind(malformedToolUse)).toBe("assistant_tool_use");
+      expect(isToolRelatedMessage(malformedToolUse)).toBe(true);
+      expect(getMessageKind(malformedToolResult)).toBe("user_tool_result");
+      expect(isToolRelatedMessage(malformedToolResult)).toBe(true);
     });
   });
 });

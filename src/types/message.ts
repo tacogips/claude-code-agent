@@ -148,8 +148,25 @@ export interface Message {
   readonly timestamp: string;
   /** Tool invocations in this message (assistant only) */
   readonly toolCalls?: readonly ToolCall[] | undefined;
-  /** Results from tool executions (system only) */
+  /** Results from tool executions (typically user tool_result messages) */
   readonly toolResults?: readonly ToolResult[] | undefined;
+  /** True when transcript content included at least one tool_use block */
+  readonly hasToolUseBlocks?: boolean | undefined;
+  /** True when transcript content included at least one tool_result block */
+  readonly hasToolResultBlocks?: boolean | undefined;
+}
+
+/**
+ * Message classification for tool-related transcript entries.
+ */
+export type MessageKind = "assistant_tool_use" | "user_tool_result" | "other";
+
+function hasToolUsePayload(message: Message): boolean {
+  return hasToolCalls(message) || message.hasToolUseBlocks === true;
+}
+
+function hasToolResultPayload(message: Message): boolean {
+  return hasToolResults(message) || message.hasToolResultBlocks === true;
 }
 
 /**
@@ -182,4 +199,63 @@ export function hasToolResults(
     Array.isArray(message.toolResults) &&
     message.toolResults.length > 0
   );
+}
+
+/**
+ * Type guard for assistant messages that contain tool calls.
+ *
+ * @param message - Message to check
+ * @returns True if assistant message contains tool calls
+ */
+export function isAssistantToolUseMessage(
+  message: Message,
+): message is Message & {
+  readonly role: "assistant";
+  readonly toolCalls: readonly ToolCall[];
+} {
+  return message.role === "assistant" && hasToolCalls(message);
+}
+
+/**
+ * Type guard for user messages that contain tool results.
+ *
+ * @param message - Message to check
+ * @returns True if user message contains tool results
+ */
+export function isUserToolResultMessage(
+  message: Message,
+): message is Message & {
+  readonly role: "user";
+  readonly toolResults: readonly ToolResult[];
+} {
+  return message.role === "user" && hasToolResults(message);
+}
+
+/**
+ * Classify message by tool-related role.
+ *
+ * @param message - Message to classify
+ * @returns Message kind
+ */
+export function getMessageKind(message: Message): MessageKind {
+  if (hasToolUsePayload(message)) {
+    return "assistant_tool_use";
+  }
+  if (hasToolResultPayload(message)) {
+    return "user_tool_result";
+  }
+  return "other";
+}
+
+/**
+ * Check whether message is tool-related (tool_use/tool_result).
+ *
+ * This check is intentionally payload-based to ensure tool messages are
+ * excluded even when role metadata is inconsistent.
+ *
+ * @param message - Message to check
+ * @returns True if message is tool-related
+ */
+export function isToolRelatedMessage(message: Message): boolean {
+  return hasToolUsePayload(message) || hasToolResultPayload(message);
 }

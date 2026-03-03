@@ -6,21 +6,24 @@
  * @module viewer/browser/routes/api.test
  */
 
-import { describe, test, expect, beforeEach } from "vitest";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { Elysia } from "elysia";
 import { setupApiRoutes } from "./api";
 import { SdkManager } from "../../../sdk";
 import { createTestContainer } from "../../../container";
+import { MockFileSystem } from "../../../test/mocks/filesystem";
 import type { Session } from "../../../types/session";
 import type { CommandQueue } from "../../../repository/queue-repository";
 
 describe("API Routes", () => {
+  let fs: MockFileSystem;
   let sdk: SdkManager;
   let app: Elysia;
 
   beforeEach(async () => {
     // Create test container and SDK
     const container = createTestContainer();
+    fs = container.fileSystem as MockFileSystem;
     sdk = await SdkManager.create(container);
 
     // Create Elysia app and setup API routes
@@ -177,6 +180,139 @@ describe("API Routes", () => {
 
       // Should return 404 if session doesn't exist
       expect([200, 404]).toContain(response.status);
+    });
+
+    test("propagates excludeToolMessages=true to SDK getMessages", async () => {
+      const getMessagesSpy = vi
+        .spyOn(sdk.sessions, "getMessages")
+        .mockResolvedValueOnce([]);
+      const getSessionSpy = vi
+        .spyOn(sdk.sessions, "getSession")
+        .mockResolvedValueOnce({
+          id: "session-1",
+          projectPath: "/tmp/project",
+          status: "active",
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+          messages: [],
+          tasks: [],
+        });
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/api/sessions/session-1/messages?excludeToolMessages=true",
+        ),
+      );
+
+      expect(response.status).toBe(200);
+      expect(getMessagesSpy).toHaveBeenCalledWith("session-1", {
+        excludeToolMessages: true,
+      });
+      expect(getSessionSpy).toHaveBeenCalledWith("session-1");
+    });
+
+    test("returns filtered messages when excludeToolMessages=true", async () => {
+      const home = process.env["HOME"] ?? "";
+      const sessionPath = `${home}/.claude/projects/session-1/session.jsonl`;
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-1",
+          sessionId: "session-1",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: { role: "user", content: "hello" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "session-1",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "tool_use", id: "tool-1", name: "Read", input: {} },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-3",
+          sessionId: "session-1",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: { role: "assistant", content: "done" },
+        }),
+      ].join("\n");
+      fs.setFile(sessionPath, sessionContent);
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/api/sessions/session-1/messages?excludeToolMessages=true",
+        ),
+      );
+
+      expect(response.status).toBe(200);
+      const data = (await response.json()) as { messages: Array<{ id: string }> };
+      expect(data.messages.map((message) => message.id)).toEqual([
+        "msg-1",
+        "msg-3",
+      ]);
+    });
+
+    test("filters tool_result and malformed tool blocks when excludeToolMessages=true", async () => {
+      const home = process.env["HOME"] ?? "";
+      const sessionPath = `${home}/.claude/projects/session-1/session.jsonl`;
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-1",
+          sessionId: "session-1",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: { role: "user", content: "hello" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-2",
+          sessionId: "session-1",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: [{ type: "tool_use", name: "Read" }],
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-3",
+          sessionId: "session-1",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: {
+            role: "user",
+            content: [
+              { type: "tool_result", tool_use_id: "tool-1", content: "OK" },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-4",
+          sessionId: "session-1",
+          timestamp: "2026-01-01T00:00:03Z",
+          message: { role: "assistant", content: "done" },
+        }),
+      ].join("\n");
+      fs.setFile(sessionPath, sessionContent);
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/api/sessions/session-1/messages?excludeToolMessages=true",
+        ),
+      );
+
+      expect(response.status).toBe(200);
+      const data = (await response.json()) as { messages: Array<{ id: string }> };
+      expect(data.messages.map((message) => message.id)).toEqual([
+        "msg-1",
+        "msg-4",
+      ]);
     });
   });
 
