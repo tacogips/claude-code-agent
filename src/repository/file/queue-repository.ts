@@ -12,6 +12,8 @@
 import * as path from "node:path";
 import { nanoid } from "nanoid";
 import type { Container } from "../../container";
+import { FileLockServiceImpl } from "../../services/file-lock";
+import { AtomicWriter } from "../../services/atomic-writer";
 import type {
   CommandQueue,
   QueueCommand,
@@ -21,8 +23,8 @@ import type {
   QueueStatus,
   UpdateCommandOptions,
 } from "../queue-repository";
-import { FileLockServiceImpl } from "../../services/file-lock";
-import { AtomicWriter } from "../../services/atomic-writer";
+import { BaseFileRepository } from "./base-repository";
+import { resolveAgentDataPathFromXdg } from "./path-utils";
 
 /**
  * File-based implementation of QueueRepository.
@@ -31,11 +33,11 @@ import { AtomicWriter } from "../../services/atomic-writer";
  * Provides persistent storage for command queues across process restarts.
  * Uses file locking to ensure safe concurrent access.
  */
-export class FileQueueRepository implements QueueRepository {
-  private readonly container: Container;
+export class FileQueueRepository
+  extends BaseFileRepository<CommandQueue>
+  implements QueueRepository
+{
   private readonly baseDir: string;
-  private readonly lockService: FileLockServiceImpl;
-  private readonly atomicWriter: AtomicWriter;
 
   /**
    * Create a new FileQueueRepository.
@@ -44,18 +46,14 @@ export class FileQueueRepository implements QueueRepository {
    * @param dataDir - Base data directory (default: ~/.local/claude-code-agent)
    */
   constructor(container: Container, dataDir?: string) {
-    this.container = container;
-    const home = process.env["HOME"] ?? "/tmp";
-    const xdgDataHome = process.env["XDG_DATA_HOME"];
-    const defaultDataDir = xdgDataHome
-      ? path.join(xdgDataHome, "claude-code-agent")
-      : path.join(home, ".local", "claude-code-agent");
-    this.baseDir = path.join(dataDir ?? defaultDataDir, "metadata", "queues");
-    this.lockService = new FileLockServiceImpl(
+    const lockService = new FileLockServiceImpl(
       container.fileSystem,
       container.clock,
     );
-    this.atomicWriter = new AtomicWriter(container.fileSystem);
+    const atomicWriter = new AtomicWriter(container.fileSystem);
+    super(container.fileSystem, lockService, atomicWriter);
+
+    this.baseDir = resolveAgentDataPathFromXdg(dataDir, "metadata", "queues");
   }
 
   /**
@@ -69,34 +67,38 @@ export class FileQueueRepository implements QueueRepository {
   }
 
   /**
-   * Ensure the queues directory exists.
-   */
-  private async ensureDirectory(): Promise<void> {
-    const exists = await this.container.fileSystem.exists(this.baseDir);
-    if (!exists) {
-      await this.container.fileSystem.mkdir(this.baseDir, { recursive: true });
-    }
-  }
-
-  /**
    * Read a queue from its JSON file.
    *
    * @param id - Queue ID
    * @returns Queue if file exists, null otherwise
    */
   private async readQueue(id: string): Promise<CommandQueue | null> {
-    const queuePath = this.getQueuePath(id);
-    const exists = await this.container.fileSystem.exists(queuePath);
-    if (!exists) {
-      return null;
-    }
-
     try {
-      const content = await this.container.fileSystem.readFile(queuePath);
-      return JSON.parse(content) as CommandQueue;
+      return await this.readWithLock(this.getQueuePath(id));
     } catch {
       return null;
     }
+  }
+
+  private async updateQueue(
+    queueId: string,
+    update: (queue: CommandQueue) => CommandQueue | null,
+  ): Promise<boolean> {
+    const queuePath = this.getQueuePath(queueId);
+    return this.lockService.withLock(queuePath, async () => {
+      const queue = await this.readQueue(queueId);
+      if (queue === null) {
+        return false;
+      }
+
+      const updatedQueue = update(queue);
+      if (updatedQueue === null) {
+        return false;
+      }
+
+      await this.atomicWriter.writeJson(queuePath, updatedQueue);
+      return true;
+    });
   }
 
   /**
@@ -105,12 +107,12 @@ export class FileQueueRepository implements QueueRepository {
    * @returns Array of queue IDs
    */
   private async listQueueIds(): Promise<readonly string[]> {
-    const exists = await this.container.fileSystem.exists(this.baseDir);
+    const exists = await this.fs.exists(this.baseDir);
     if (!exists) {
       return [];
     }
 
-    const entries = await this.container.fileSystem.readDir(this.baseDir);
+    const entries = await this.fs.readDir(this.baseDir);
     return entries
       .filter((name) => name.endsWith(".json"))
       .map((name) => name.slice(0, -5)); // Remove .json extension
@@ -202,11 +204,7 @@ export class FileQueueRepository implements QueueRepository {
    * @param queue - Queue to save
    */
   async save(queue: CommandQueue): Promise<void> {
-    const queuePath = this.getQueuePath(queue.id);
-    await this.lockService.withLock(queuePath, async () => {
-      await this.ensureDirectory();
-      await this.atomicWriter.writeJson(queuePath, queue);
-    });
+    await this.writeWithLock(this.getQueuePath(queue.id), queue);
   }
 
   /**
@@ -218,16 +216,7 @@ export class FileQueueRepository implements QueueRepository {
    * @returns True if queue was deleted, false if not found
    */
   async delete(id: string): Promise<boolean> {
-    const queuePath = this.getQueuePath(id);
-    return this.lockService.withLock(queuePath, async () => {
-      const exists = await this.container.fileSystem.exists(queuePath);
-      if (!exists) {
-        return false;
-      }
-
-      await this.container.fileSystem.rm(queuePath);
-      return true;
-    });
+    return this.deleteWithLock(this.getQueuePath(id));
   }
 
   /**
@@ -245,13 +234,7 @@ export class FileQueueRepository implements QueueRepository {
     command: Omit<QueueCommand, "id" | "status">,
     position?: number,
   ): Promise<boolean> {
-    const queuePath = this.getQueuePath(queueId);
-    return this.lockService.withLock(queuePath, async () => {
-      const queue = await this.readQueue(queueId);
-      if (queue === null) {
-        return false;
-      }
-
+    return this.updateQueue(queueId, (queue) => {
       // Generate command ID
       const commandId = `cmd-${nanoid(12)}`;
 
@@ -271,8 +254,7 @@ export class FileQueueRepository implements QueueRepository {
         updatedAt: new Date().toISOString(),
       };
 
-      await this.atomicWriter.writeJson(queuePath, updatedQueue);
-      return true;
+      return updatedQueue;
     });
   }
 
@@ -291,20 +273,14 @@ export class FileQueueRepository implements QueueRepository {
     commandIndex: number,
     updates: UpdateCommandOptions,
   ): Promise<boolean> {
-    const queuePath = this.getQueuePath(queueId);
-    return this.lockService.withLock(queuePath, async () => {
-      const queue = await this.readQueue(queueId);
-      if (queue === null) {
-        return false;
-      }
-
+    return this.updateQueue(queueId, (queue) => {
       if (commandIndex < 0 || commandIndex >= queue.commands.length) {
-        return false;
+        return null;
       }
 
       const currentCommand = queue.commands[commandIndex];
       if (currentCommand === undefined) {
-        return false;
+        return null;
       }
 
       const updatedCommand: QueueCommand = {
@@ -324,8 +300,7 @@ export class FileQueueRepository implements QueueRepository {
         updatedAt: new Date().toISOString(),
       };
 
-      await this.atomicWriter.writeJson(queuePath, updatedQueue);
-      return true;
+      return updatedQueue;
     });
   }
 
@@ -339,15 +314,9 @@ export class FileQueueRepository implements QueueRepository {
    * @returns True if command was removed, false if not found
    */
   async removeCommand(queueId: string, commandIndex: number): Promise<boolean> {
-    const queuePath = this.getQueuePath(queueId);
-    return this.lockService.withLock(queuePath, async () => {
-      const queue = await this.readQueue(queueId);
-      if (queue === null) {
-        return false;
-      }
-
+    return this.updateQueue(queueId, (queue) => {
       if (commandIndex < 0 || commandIndex >= queue.commands.length) {
-        return false;
+        return null;
       }
 
       const commands = [...queue.commands];
@@ -359,8 +328,7 @@ export class FileQueueRepository implements QueueRepository {
         updatedAt: new Date().toISOString(),
       };
 
-      await this.atomicWriter.writeJson(queuePath, updatedQueue);
-      return true;
+      return updatedQueue;
     });
   }
 
@@ -379,26 +347,20 @@ export class FileQueueRepository implements QueueRepository {
     fromIndex: number,
     toIndex: number,
   ): Promise<boolean> {
-    const queuePath = this.getQueuePath(queueId);
-    return this.lockService.withLock(queuePath, async () => {
-      const queue = await this.readQueue(queueId);
-      if (queue === null) {
-        return false;
-      }
-
+    return this.updateQueue(queueId, (queue) => {
       if (
         fromIndex < 0 ||
         fromIndex >= queue.commands.length ||
         toIndex < 0 ||
         toIndex >= queue.commands.length
       ) {
-        return false;
+        return null;
       }
 
       const commands = [...queue.commands];
       const [movedCommand] = commands.splice(fromIndex, 1);
       if (movedCommand === undefined) {
-        return false;
+        return null;
       }
       commands.splice(toIndex, 0, movedCommand);
 
@@ -408,8 +370,7 @@ export class FileQueueRepository implements QueueRepository {
         updatedAt: new Date().toISOString(),
       };
 
-      await this.atomicWriter.writeJson(queuePath, updatedQueue);
-      return true;
+      return updatedQueue;
     });
   }
 
