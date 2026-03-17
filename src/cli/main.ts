@@ -11,13 +11,13 @@
 import { Command } from "commander";
 import { printError } from "./output";
 import { registerSessionCommands } from "./commands/session";
-import { registerServerCommands } from "./commands/server";
 import { registerDaemonCommands } from "./commands/daemon";
 import { registerBookmarkCommands } from "./commands/bookmark";
 import { registerTokenCommands } from "./commands/token";
 import { registerFilesCommands } from "./commands/files";
 import { createActivityCommand } from "./commands/activity";
 import { registerVersionCommands } from "./commands/version";
+import { runGraphqlCli } from "./graphql";
 import { getPackageVersion } from "./version";
 import type { SdkManager } from "../sdk/agent";
 import { createProductionContainer } from "../container";
@@ -81,9 +81,6 @@ export function createCli(): Command {
   // Session commands
   registerSessionCommands(program, getAgent);
 
-  // Server commands
-  registerServerCommands(program, getAgent);
-
   // Daemon commands
   registerDaemonCommands(program, getAgent);
 
@@ -98,6 +95,29 @@ export function createCli(): Command {
 
   // Activity commands
   program.addCommand(createActivityCommand());
+
+  program
+    .command("gql")
+    .description("Execute a GraphQL query or shorthand command")
+    .argument("<document>", "GraphQL document or shorthand command")
+    .option("--param <json>", "JSON value bound to $param")
+    .option("--variables <json>", "GraphQL variables JSON object")
+    .action(
+      async (
+        document: string,
+        options: { param?: string; variables?: string },
+      ) => {
+        const agent = await getAgent();
+        const args = [document];
+        if (options.param !== undefined) {
+          args.push("--param", options.param);
+        }
+        if (options.variables !== undefined) {
+          args.push("--variables", options.variables);
+        }
+        await runGraphqlCli(args, { sdk: agent });
+      },
+    );
 
   // Version command
   registerVersionCommands(program, getAgent);

@@ -42,11 +42,11 @@ describe("createCli", () => {
     expect(commands).toContain("bookmark");
   });
 
-  test("registers server subcommand", () => {
+  test("registers gql subcommand", () => {
     const program = createCli();
     const commands = program.commands.map((cmd) => cmd.name());
 
-    expect(commands).toContain("server");
+    expect(commands).toContain("gql");
   });
 
   test("registers daemon subcommand", () => {

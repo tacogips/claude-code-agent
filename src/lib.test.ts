@@ -1,26 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { add, greet } from "./lib";
 
 describe("greet", () => {
-  it("returns greeting with name", () => {
+  test("returns greeting with name", () => {
     expect(greet("World")).toBe("Hello, World!");
   });
 
-  it("returns greeting with different name", () => {
+  test("returns greeting with different name", () => {
     expect(greet("Bun")).toBe("Hello, Bun!");
   });
 });
 
 describe("add", () => {
-  it("adds two positive numbers", () => {
+  test("adds two positive numbers", () => {
     expect(add(2, 3)).toBe(5);
   });
 
-  it("adds negative numbers", () => {
+  test("adds negative numbers", () => {
     expect(add(-1, -2)).toBe(-3);
   });
 
-  it("adds zero", () => {
+  test("adds zero", () => {
     expect(add(5, 0)).toBe(5);
   });
 });

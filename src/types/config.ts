@@ -65,20 +65,6 @@ export interface DaemonConfig {
   readonly tlsCert?: string | undefined;
   /** Path to TLS private key file */
   readonly tlsKey?: string | undefined;
-  /** Whether to include the browser viewer */
-  readonly withViewer?: boolean | undefined;
-}
-
-/**
- * Configuration for the browser viewer.
- */
-export interface ViewerConfig {
-  /** Port to listen on (default: 3000) */
-  readonly port?: number | undefined;
-  /** Host to bind to (default: 127.0.0.1) */
-  readonly host?: string | undefined;
-  /** Whether to auto-open browser */
-  readonly openBrowser?: boolean | undefined;
 }
 
 /**

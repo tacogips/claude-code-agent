@@ -24,13 +24,13 @@ External App  <-->  claude-code-agent  <-->  Claude Code
 
 | Feature                  | Description                                                   | Status         |
 | ------------------------ | ------------------------------------------------------------- | -------------- |
-| **Session Viewer**       | Browser-based session transcript viewing                      | In Development |
+| **GraphQL API**          | Command-style GraphQL surface for user-facing daemon access   | In Development |
 | **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files        | In Development |
 | **Session Groups**       | Orchestrate multi-project concurrent execution                | Planned        |
-| **Command Queue**        | Queue prompts for sequential execution with Web UI management | Planned        |
+| **Command Queue**        | Queue prompts for sequential execution                        | Planned        |
 | **Markdown Parsing**     | Parse message content into structured JSON                    | Planned        |
 | **SDK**                  | TypeScript API for programmatic integration                   | In Development |
-| **Daemon Mode**          | HTTP API for remote execution with authentication             | Planned        |
+| **Daemon Mode**          | GraphQL API for remote execution with authentication          | Planned        |
 | **Bookmarks**            | Mark and retrieve important sessions/messages                 | Planned        |
 
 ## Installation
@@ -63,9 +63,6 @@ bun run build
 ### View Sessions
 
 ```bash
-# Start the browser viewer
-claude-code-agent server start --port 3000
-
 # List sessions for current project
 claude-code-agent session list
 
@@ -74,6 +71,9 @@ claude-code-agent session list --all
 
 # Show session details
 claude-code-agent session show <session-id>
+
+# Query the local GraphQL command surface
+claude-code-agent gql 'query { command(name: "session.list") }'
 ```
 
 ### Run One Prompt With Streaming
@@ -156,10 +156,10 @@ claude-code-agent token create \
   --permissions session:create,session:read
 
 # Use the API
-curl -X POST https://localhost:8443/api/sessions \
+curl -X POST https://localhost:8443/graphql \
   -H "Authorization: Bearer cca_abc123xyz" \
   -H "Content-Type: application/json" \
-  -d '{"projectPath": "/path/to/project", "prompt": "Implement feature"}'
+  -d '{"query":"query ($param: JSON) { command(name: \"session.list\", params: $param) }","variables":{"param":{"projectPath":"/path/to/project"}}}'
 ```
 
 ## SDK Usage
@@ -317,25 +317,22 @@ claude-code-agent <entity> <action> [options]
 | --------------- | -------------------------------------------------------------------------------- |
 | `session`       | `list`, `show`, `add`, `watch`, `pause`, `resume`                                |
 | `group`         | `create`, `list`, `show`, `run`, `watch`, `pause`, `resume`, `archive`, `delete` |
-| `queue`         | `create`, `list`, `show`, `run`, `pause`, `resume`, `stop`, `delete`, `ui`       |
+| `queue`         | `create`, `list`, `show`, `run`, `pause`, `resume`, `stop`, `delete`             |
 | `queue command` | `add`, `edit`, `remove`, `move`, `toggle-mode`                                   |
 | `bookmark`      | `add`, `list`, `show`, `search`, `delete`                                        |
-| `server`        | `start`                                                                          |
 | `daemon`        | `start`, `stop`, `status`                                                        |
+| `gql`           | Execute GraphQL documents or shorthand commands                                  |
 | `token`         | `create`, `list`, `revoke`, `rotate`                                             |
 
-## REST API Endpoints
+## GraphQL API
 
-| Method | Path                       | Description                  |
-| ------ | -------------------------- | ---------------------------- |
-| POST   | `/api/sessions`            | Create and run session       |
-| GET    | `/api/sessions`            | List sessions                |
-| GET    | `/api/sessions/:id`        | Get session details          |
-| GET    | `/api/sessions/:id/stream` | SSE stream of session events |
-| POST   | `/api/groups`              | Create session group         |
-| GET    | `/api/groups/:id`          | Get group details            |
-| POST   | `/api/groups/:id/run`      | Run session group            |
-| GET    | `/api/groups/:id/stream`   | SSE stream of group events   |
+User-facing daemon traffic is exposed through `/graphql` using a command-style schema.
+
+```graphql
+query ($param: JSON) {
+  command(name: "session.list", params: $param)
+}
+```
 
 ## Development
 
@@ -371,10 +368,9 @@ bun run format       # Format code
 src/
 +-- cli/                # CLI entry point (thin wrapper around SDK)
 +-- sdk/                # Core SDK (TypeScript API)
-+-- viewer/             # UI layer (browser viewer)
 +-- polling/            # Real-time monitoring (file watcher)
 +-- repository/         # Data access layer
-+-- daemon/             # HTTP daemon for remote execution
++-- daemon/             # GraphQL daemon for remote execution
 +-- interfaces/         # Abstractions for testability
 ```
 
@@ -385,7 +381,7 @@ src/
 | Runtime        | Bun                      |
 | Language       | TypeScript (strict mode) |
 | HTTP Server    | Elysia                   |
-| Browser Viewer | SvelteKit                |
+| GraphQL API    | graphql-yoga             |
 | Testing        | Vitest                   |
 | Packaging      | Nix flakes               |
 

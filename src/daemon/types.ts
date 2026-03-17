@@ -58,12 +58,6 @@ export interface DaemonConfig {
    */
   readonly tlsKey?: string;
 
-  /**
-   * Whether to include browser viewer routes
-   *
-   * When true, serves the web UI for viewing sessions.
-   */
-  readonly withViewer: boolean;
 }
 
 /**

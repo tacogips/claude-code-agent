@@ -10,25 +10,16 @@
 
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { createYoga } from "graphql-yoga";
 import type { Container } from "../container";
 import type { DaemonConfig, DaemonStatus } from "./types";
-import {
-  TokenManager,
-  authMiddleware,
-  AuthError,
-  type AuthenticatedApp,
-} from "./auth";
+import { TokenManager, AuthError } from "./auth";
 import { SdkManager } from "../sdk";
-import {
-  sessionRoutes,
-  groupRoutes,
-  queueRoutes,
-  bookmarkRoutes,
-  activityRoutes,
-} from "./routes";
+import { validateAuth } from "./routes/auth-helper";
+import { getGraphqlSchema } from "../graphql";
 
 /**
- * HTTP daemon server with REST API.
+ * HTTP daemon server with GraphQL API.
  *
  * The DaemonServer class provides the core HTTP server infrastructure
  * with support for TLS, authentication, and extensible route registration.
@@ -49,7 +40,6 @@ import {
  *   authTokenFile: "~/.config/tokens.json",
  *   tlsCert: "/path/to/cert.pem",
  *   tlsKey: "/path/to/key.pem",
- *   withViewer: false,
  * };
  * const server = new DaemonServer(config, container);
  * await server.start();
@@ -159,17 +149,10 @@ export class DaemonServer {
 
     // Status endpoint (no auth required)
     this.app.get("/status", () => this.getStatus());
-
-    // Browser viewer routes (if enabled)
-    if (this.config.withViewer) {
-      this.app.get("/", () => ({
-        message: "Browser viewer not implemented yet",
-      }));
-    }
   }
 
   /**
-   * Setup API routes after SDK initialization.
+   * Setup GraphQL endpoint after SDK initialization.
    *
    * This is called from start() after SDK is initialized.
    *
@@ -180,29 +163,53 @@ export class DaemonServer {
       throw new Error("Cannot setup API routes: SDK not initialized");
     }
 
-    // API routes with authentication
-    // Use derive to attach validated token to context
-    // authMiddleware returns { token: ApiToken } or throws AuthError
-    // Type assertion needed due to Elysia's complex type inference
-    const authenticatedApp = this.app.derive(
-      authMiddleware(this.tokenManager),
-    ) as unknown as AuthenticatedApp;
+    const yoga = createYoga({
+      schema: getGraphqlSchema(),
+      graphqlEndpoint: "/graphql",
+      landingPage: false,
+      graphiql: false,
+      maskedErrors: false,
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true,
+      },
+    });
 
-    // Register API routes with authentication
-    // Session routes
-    sessionRoutes(authenticatedApp, this.sdk, this.tokenManager);
+    const handler = async (request: Request): Promise<Response> => {
+      if (request.method !== "OPTIONS") {
+        const auth = await validateAuth(
+          request.headers.get("Authorization"),
+          this.tokenManager,
+        );
+        if (!auth.success) {
+          return Response.json(
+            {
+              error: auth.error,
+              message: auth.message,
+            },
+            { status: auth.status },
+          );
+        }
 
-    // Group routes
-    groupRoutes(authenticatedApp, this.sdk, this.tokenManager);
+        return yoga.fetch(request, {
+          sdk: this.sdk,
+          tokenManager: this.tokenManager,
+          token: auth.token,
+          daemonStatus: () => this.getStatus(),
+        });
+      }
 
-    // Queue routes
-    queueRoutes(authenticatedApp, this.sdk, this.tokenManager);
+      return yoga.fetch(request, {
+        sdk: this.sdk,
+        daemonStatus: () => this.getStatus(),
+      });
+    };
 
-    // Bookmark routes
-    bookmarkRoutes(authenticatedApp, this.sdk, this.tokenManager);
-
-    // Activity routes
-    activityRoutes(authenticatedApp, this.sdk.activity, this.tokenManager);
+    this.app.get("/graphql", ({ request }) => handler(request));
+    this.app.post("/graphql", ({ request }) => handler(request));
+    this.app.options("/graphql", ({ request }) => handler(request));
   }
 
   /**

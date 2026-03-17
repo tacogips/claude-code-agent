@@ -74,6 +74,7 @@ export class TokenManager {
   private readonly container: Container;
   private readonly lockService: FileLockServiceImpl;
   private readonly atomicWriter: AtomicWriter;
+  private operationChain: Promise<void> = Promise.resolve();
 
   /**
    * Create a new TokenManager.
@@ -198,46 +199,48 @@ export class TokenManager {
    * @returns Full token string (cca_...)
    */
   async createToken(options: CreateTokenOptions): Promise<string> {
-    return this.lockService.withLock(this.tokenFilePath, async () => {
-      // Reload tokens from file to ensure we have latest
-      await this.loadTokens();
+    return this.runSerialized(async () =>
+      this.lockService.withLock(this.tokenFilePath, async () => {
+        // Reload tokens from file to ensure we have latest
+        await this.loadTokens();
 
-      const fullToken = this.generateToken();
-      const hash = await this.hashToken(fullToken);
+        const fullToken = this.generateToken();
+        const hash = await this.hashToken(fullToken);
 
-      // Extract short ID from token (first 8 chars after cca_ prefix)
-      // Format: cca_<base64> -> ID is first 8 chars of base64
-      const tokenId = fullToken.slice(4, 12); // Skip "cca_" and take 8 chars
+        // Extract short ID from token (first 8 chars after cca_ prefix)
+        // Format: cca_<base64> -> ID is first 8 chars of base64
+        const tokenId = fullToken.slice(4, 12); // Skip "cca_" and take 8 chars
 
-      const now = new Date().toISOString();
+        const now = new Date().toISOString();
 
-      let token: ApiToken;
-      if (options.expiresIn !== undefined) {
-        const durationMs = parseDuration(options.expiresIn);
-        const expiresAt = new Date(Date.now() + durationMs).toISOString();
-        token = {
-          id: tokenId,
-          name: options.name,
-          hash,
-          permissions: options.permissions,
-          createdAt: now,
-          expiresAt,
-        };
-      } else {
-        token = {
-          id: tokenId,
-          name: options.name,
-          hash,
-          permissions: options.permissions,
-          createdAt: now,
-        };
-      }
+        let token: ApiToken;
+        if (options.expiresIn !== undefined) {
+          const durationMs = parseDuration(options.expiresIn);
+          const expiresAt = new Date(Date.now() + durationMs).toISOString();
+          token = {
+            id: tokenId,
+            name: options.name,
+            hash,
+            permissions: options.permissions,
+            createdAt: now,
+            expiresAt,
+          };
+        } else {
+          token = {
+            id: tokenId,
+            name: options.name,
+            hash,
+            permissions: options.permissions,
+            createdAt: now,
+          };
+        }
 
-      this.tokens.push(token);
-      await this.saveTokens();
+        this.tokens.push(token);
+        await this.saveTokens();
 
-      return fullToken;
-    });
+        return fullToken;
+      }),
+    );
   }
 
   /**
@@ -254,43 +257,45 @@ export class TokenManager {
    * @returns Token metadata if valid, null otherwise
    */
   async validateToken(token: string): Promise<ApiToken | null> {
-    return this.lockService.withLock(this.tokenFilePath, async () => {
-      // Reload tokens from file to ensure we have latest
-      await this.loadTokens();
+    return this.runSerialized(async () =>
+      this.lockService.withLock(this.tokenFilePath, async () => {
+        // Reload tokens from file to ensure we have latest
+        await this.loadTokens();
 
-      const hash = await this.hashToken(token);
+        const hash = await this.hashToken(token);
 
-      // Find token by hash
-      const tokenIndex = this.tokens.findIndex((t) => t.hash === hash);
-      if (tokenIndex === -1) {
-        return null;
-      }
-
-      const storedToken = this.tokens[tokenIndex];
-      if (storedToken === undefined) {
-        return null;
-      }
-
-      // Check expiration
-      if (storedToken.expiresAt !== undefined) {
-        const now = new Date();
-        const expiresAt = new Date(storedToken.expiresAt);
-        if (now > expiresAt) {
+        // Find token by hash
+        const tokenIndex = this.tokens.findIndex((t) => t.hash === hash);
+        if (tokenIndex === -1) {
           return null; // Token expired
         }
-      }
 
-      // Update lastUsedAt
-      const updatedToken: ApiToken = {
-        ...storedToken,
-        lastUsedAt: new Date().toISOString(),
-      };
+        const storedToken = this.tokens[tokenIndex];
+        if (storedToken === undefined) {
+          return null;
+        }
 
-      this.tokens[tokenIndex] = updatedToken;
-      await this.saveTokens();
+        // Check expiration
+        if (storedToken.expiresAt !== undefined) {
+          const now = new Date();
+          const expiresAt = new Date(storedToken.expiresAt);
+          if (now > expiresAt) {
+            return null;
+          }
+        }
 
-      return updatedToken;
-    });
+        // Update lastUsedAt
+        const updatedToken: ApiToken = {
+          ...storedToken,
+          lastUsedAt: new Date().toISOString(),
+        };
+
+        this.tokens[tokenIndex] = updatedToken;
+        await this.saveTokens();
+
+        return updatedToken;
+      }),
+    );
   }
 
   /**
@@ -314,19 +319,21 @@ export class TokenManager {
    * @throws Error if token not found
    */
   async revokeToken(tokenId: string): Promise<void> {
-    await this.lockService.withLock(this.tokenFilePath, async () => {
-      // Reload tokens from file to ensure we have latest
-      await this.loadTokens();
+    await this.runSerialized(async () =>
+      this.lockService.withLock(this.tokenFilePath, async () => {
+        // Reload tokens from file to ensure we have latest
+        await this.loadTokens();
 
-      const initialLength = this.tokens.length;
-      this.tokens = this.tokens.filter((t) => t.id !== tokenId);
+        const initialLength = this.tokens.length;
+        this.tokens = this.tokens.filter((t) => t.id !== tokenId);
 
-      if (this.tokens.length === initialLength) {
-        throw new Error(`Token not found: ${tokenId}`);
-      }
+        if (this.tokens.length === initialLength) {
+          throw new Error(`Token not found: ${tokenId}`);
+        }
 
-      await this.saveTokens();
-    });
+        await this.saveTokens();
+      }),
+    );
   }
 
   /**
@@ -341,36 +348,55 @@ export class TokenManager {
    * @throws Error if token not found
    */
   async rotateToken(tokenId: string): Promise<string> {
-    return this.lockService.withLock(this.tokenFilePath, async () => {
-      // Reload tokens from file to ensure we have latest
-      await this.loadTokens();
+    return this.runSerialized(async () =>
+      this.lockService.withLock(this.tokenFilePath, async () => {
+        // Reload tokens from file to ensure we have latest
+        await this.loadTokens();
 
-      const oldToken = this.tokens.find((t) => t.id === tokenId);
-      if (oldToken === undefined) {
-        throw new Error(`Token not found: ${tokenId}`);
-      }
+        const oldToken = this.tokens.find((t) => t.id === tokenId);
+        if (oldToken === undefined) {
+          throw new Error(`Token not found: ${tokenId}`);
+        }
 
-      // Generate new token
-      const fullToken = this.generateToken();
-      const hash = await this.hashToken(fullToken);
-      const newTokenId = fullToken.slice(4, 12);
-      const now = new Date().toISOString();
+        // Generate new token
+        const fullToken = this.generateToken();
+        const hash = await this.hashToken(fullToken);
+        const newTokenId = fullToken.slice(4, 12);
+        const now = new Date().toISOString();
 
-      const newToken: ApiToken = {
-        id: newTokenId,
-        name: oldToken.name,
-        hash,
-        permissions: oldToken.permissions,
-        createdAt: now,
-      };
+        const newToken: ApiToken = {
+          id: newTokenId,
+          name: oldToken.name,
+          hash,
+          permissions: oldToken.permissions,
+          createdAt: now,
+        };
 
-      // Remove old token and add new token
-      this.tokens = this.tokens.filter((t) => t.id !== oldToken.id);
-      this.tokens.push(newToken);
-      await this.saveTokens();
+        // Remove old token and add new token
+        this.tokens = this.tokens.filter((t) => t.id !== oldToken.id);
+        this.tokens.push(newToken);
+        await this.saveTokens();
 
-      return fullToken;
+        return fullToken;
+      }),
+    );
+  }
+
+  private async runSerialized<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.operationChain;
+    let release: (() => void) | undefined;
+
+    this.operationChain = new Promise<void>((resolve) => {
+      release = resolve;
     });
+
+    await previous;
+
+    try {
+      return await operation();
+    } finally {
+      release?.();
+    }
   }
 
   /**
