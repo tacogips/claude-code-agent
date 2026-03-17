@@ -34,11 +34,6 @@ tasks:
     cmds:
       - bun run test
 
-  test-unit:
-    desc: Run unit tests with Vitest
-    cmds:
-      - bun run test:unit
-
   test-watch:
     desc: Run tests in watch mode with Vitest
     cmds:
@@ -85,5 +80,5 @@ tasks:
     cmds:
       - task: fmt-check
       - task: typecheck
-      - task: test-unit
+      - task: test
       - task: build
