@@ -1,14 +1,7 @@
 /**
- * claude-code-peeper - Main entry point
+ * Package entrypoint.
  *
- * peeper
+ * Re-exports the library surface so the package can be imported directly.
  */
 
-import { greet } from "./lib";
-
-function main(): void {
-  const message = greet("World");
-  console.log(message);
-}
-
-main();
+export * from "./lib";

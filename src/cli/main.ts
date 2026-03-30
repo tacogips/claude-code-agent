@@ -19,6 +19,7 @@ import { createActivityCommand } from "./commands/activity";
 import { registerVersionCommands } from "./commands/version";
 import { runGraphqlCli } from "./graphql";
 import { getPackageVersion } from "./version";
+import { createAuthCommand } from "./commands/auth";
 import type { SdkManager } from "../sdk/agent";
 import { createProductionContainer } from "../container";
 
@@ -92,6 +93,9 @@ export function createCli(): Command {
 
   // Files commands
   registerFilesCommands(program, getAgent);
+
+  // Auth commands
+  program.addCommand(createAuthCommand());
 
   // Activity commands
   program.addCommand(createActivityCommand());
