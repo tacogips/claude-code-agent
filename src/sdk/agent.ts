@@ -43,9 +43,9 @@ import {
  * @example Basic usage
  * ```typescript
  * import { SdkManager } from "claude-code-agent/sdk";
- * import { createContainer } from "claude-code-agent/container";
+ * import { createProductionContainer } from "claude-code-agent/container";
  *
- * const container = createContainer();
+ * const container = createProductionContainer();
  * const agent = await SdkManager.create(container);
  *
  * // Use session reader

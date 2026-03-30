@@ -6,6 +6,14 @@ import type {
   SpawnOptions,
 } from "../interfaces/process-manager";
 
+function getExpectedClaudeFallbackShell(): string {
+  if (process.platform === "win32") {
+    return process.env["ComSpec"]?.trim() || "cmd.exe";
+  }
+
+  return process.env["SHELL"]?.trim() || "sh";
+}
+
 describe("getToolVersions", () => {
   test("returns parsed versions for all tools on success", async () => {
     const processManager = new MockProcessManager();
@@ -101,5 +109,69 @@ describe("getToolVersions", () => {
 
     expect(versions.claude.version).toBeNull();
     expect(versions.claude.error).toContain("malformed");
+  });
+
+  test("falls back to a shell-wrapped Claude probe when direct output is empty", async () => {
+    const processManager = new MockProcessManager();
+    const fallbackShell = getExpectedClaudeFallbackShell();
+
+    processManager.setProcessConfig("claude", {
+      stdout: [],
+      stderr: [],
+      exitCode: 0,
+    });
+    processManager.setProcessConfig(fallbackShell, {
+      stdout: ["2.1.86 (Claude Code)"],
+      exitCode: 0,
+    });
+    processManager.setProcessConfig("codex", {
+      stdout: ["codex 0.45.1"],
+      exitCode: 0,
+    });
+    processManager.setProcessConfig("git", {
+      stdout: ["git version 2.43.0"],
+      exitCode: 0,
+    });
+
+    const versions = await getToolVersions(processManager);
+
+    expect(versions.claude).toEqual({ version: "2.1.86", error: null });
+
+    const fallbackRecord = processManager
+      .getSpawnHistory()
+      .find((record) => record.command === fallbackShell);
+
+    expect(fallbackRecord).toBeDefined();
+    expect(fallbackRecord?.args.at(-1)).toContain("claude --version");
+  });
+
+  test("returns a fallback error when shell-wrapped Claude probe also fails", async () => {
+    const processManager = new MockProcessManager();
+    const fallbackShell = getExpectedClaudeFallbackShell();
+
+    processManager.setProcessConfig("claude", {
+      stdout: [],
+      stderr: [],
+      exitCode: 0,
+    });
+    processManager.setProcessConfig(fallbackShell, {
+      stderr: ["shell probe failed"],
+      exitCode: 127,
+    });
+    processManager.setProcessConfig("codex", {
+      stdout: ["codex 0.45.1"],
+      exitCode: 0,
+    });
+    processManager.setProcessConfig("git", {
+      stdout: ["git version 2.43.0"],
+      exitCode: 0,
+    });
+
+    const versions = await getToolVersions(processManager);
+
+    expect(versions.claude.version).toBeNull();
+    expect(versions.claude.error).toBe(
+      "claude produced empty output; shell fallback failed: shell probe failed",
+    );
   });
 });

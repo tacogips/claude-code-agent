@@ -33,7 +33,7 @@ interface GlobalOptions {
  * ```typescript
  * const program = new Command();
  * registerBookmarkCommands(program, async () => {
- *   const container = createContainer();
+ *   const container = createProductionContainer();
  *   return SdkManager.create(container);
  * });
  * ```

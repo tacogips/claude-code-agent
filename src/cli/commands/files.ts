@@ -274,7 +274,7 @@ function outputIndexStats(stats: IndexStats, format: "table" | "json"): void {
  * ```typescript
  * const program = new Command();
  * registerFilesCommands(program, async () => {
- *   const container = createContainer();
+ *   const container = createProductionContainer();
  *   return SdkManager.create(container);
  * });
  * ```

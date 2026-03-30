@@ -50,7 +50,7 @@ type SessionRunnerFactory = (options?: SessionRunnerOptions) => SessionRunner;
  * ```typescript
  * const program = new Command();
  * registerSessionCommands(program, async () => {
- *   const container = createContainer();
+ *   const container = createProductionContainer();
  *   return SdkManager.create(container);
  * });
  * ```

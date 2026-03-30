@@ -20,12 +20,12 @@ import {
   type SessionUpdate,
   type TranscriptEvent,
 } from "claude-code-agent/sdk";
-import { createContainer } from "claude-code-agent/container";
+import { createProductionContainer } from "claude-code-agent/container";
 
 // --- Setup ---
 
 const app = new Hono();
-const container = createContainer();
+const container = createProductionContainer();
 const reader = new SessionReader(container);
 
 // --- Routes ---
@@ -131,9 +131,7 @@ app.get("/sessions/:id/stream", async (c) => {
 
             for (const event of update.events) {
               const data = JSON.stringify(event);
-              controller.enqueue(
-                encoder.encode(`data: ${data}\n\n`),
-              );
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }
           }
         } finally {

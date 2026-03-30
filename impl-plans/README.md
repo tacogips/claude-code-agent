@@ -85,7 +85,7 @@ Large features are split into multiple related plans with cross-references.
 
 | Plan | Completed | Design Reference |
 |------|-----------|------------------|
-| (No completed plans yet) | - | - |
+| `package-surface-and-tool-version-fallback.md` | 2026-03-30 | GitHub issues `#44`, `#45` |
 
 ## Phase Dependencies (for impl-exec-auto)
 

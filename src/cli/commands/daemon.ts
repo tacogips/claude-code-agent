@@ -24,7 +24,7 @@ import { printError } from "../output";
  * ```typescript
  * const program = new Command();
  * registerDaemonCommands(program, async () => {
- *   const container = createContainer();
+ *   const container = createProductionContainer();
  *   return SdkManager.create(container);
  * });
  * ```
