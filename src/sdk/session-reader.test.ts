@@ -614,6 +614,154 @@ describe("SessionReader", () => {
         expect(result.value).toHaveLength(0);
       }
     });
+
+    it("should exclude tool-related messages when requested", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-user-normal",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: { role: "user", content: "Please read file" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-assistant-tool",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "tool_use", id: "tool-1", name: "Read", input: {} },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-user-tool-result",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: {
+            role: "user",
+            content: [
+              { type: "tool_result", tool_use_id: "tool-1", content: "OK" },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-assistant-normal",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:03Z",
+          message: { role: "assistant", content: "Done" },
+        }),
+      ].join("\n");
+
+      fs.setFile("/test/session.jsonl", sessionContent);
+
+      const result = await reader.readMessages("/test/session.jsonl", {
+        excludeToolMessages: true,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0]?.id).toBe("msg-user-normal");
+        expect(result.value[1]?.id).toBe("msg-assistant-normal");
+      }
+    });
+
+    it("should exclude tool payload messages even when role is inconsistent", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-tool-calls-with-user-role",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "user",
+            content: [
+              { type: "tool_use", id: "tool-1", name: "Read", input: {} },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-tool-results-with-system-role",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: {
+            role: "system",
+            content: [
+              { type: "tool_result", tool_use_id: "tool-1", content: "OK" },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-normal",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:03Z",
+          message: { role: "assistant", content: "Done" },
+        }),
+      ].join("\n");
+
+      fs.setFile("/test/session.jsonl", sessionContent);
+
+      const result = await reader.readMessages("/test/session.jsonl", {
+        excludeToolMessages: true,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0]?.id).toBe("msg-normal");
+      }
+    });
+
+    it("should exclude malformed tool blocks without required fields", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-malformed-tool-use",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: [{ type: "tool_use", name: "Read" }],
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-malformed-tool-result",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: {
+            role: "user",
+            content: [{ type: "tool_result", content: "partial output" }],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-normal",
+          sessionId: "session-123",
+          timestamp: "2026-01-01T00:00:03Z",
+          message: { role: "assistant", content: "Done" },
+        }),
+      ].join("\n");
+
+      fs.setFile("/test/session.jsonl", sessionContent);
+
+      const result = await reader.readMessages("/test/session.jsonl", {
+        excludeToolMessages: true,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0]?.id).toBe("msg-normal");
+      }
+    });
   });
 
   describe("findSessionFiles", () => {
@@ -1725,6 +1873,62 @@ describe("SessionReader", () => {
 
       expect(messages).toHaveLength(0);
     });
+
+    it("should exclude tool-related messages when requested", async () => {
+      const sessionContent = [
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-user-normal",
+          sessionId: "target-session",
+          timestamp: "2026-01-01T00:00:00Z",
+          message: { role: "user", content: "Please read file" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-assistant-tool",
+          sessionId: "target-session",
+          timestamp: "2026-01-01T00:00:01Z",
+          message: {
+            role: "assistant",
+            content: [
+              { type: "tool_use", id: "tool-1", name: "Read", input: {} },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "user",
+          uuid: "msg-user-tool-result",
+          sessionId: "target-session",
+          timestamp: "2026-01-01T00:00:02Z",
+          message: {
+            role: "user",
+            content: [
+              { type: "tool_result", tool_use_id: "tool-1", content: "OK" },
+            ],
+          },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "msg-assistant-normal",
+          sessionId: "target-session",
+          timestamp: "2026-01-01T00:00:03Z",
+          message: { role: "assistant", content: "Done" },
+        }),
+      ].join("\n");
+
+      fs.setFile(
+        "/home/testuser/.claude/projects/target/88487b4c-f3f6-4a49-b59b-d1d4a098425f.jsonl",
+        sessionContent,
+      );
+
+      const messages = await reader.getMessages("target-session", {
+        excludeToolMessages: true,
+      });
+
+      expect(messages).toHaveLength(2);
+      expect(messages[0]?.id).toBe("msg-user-normal");
+      expect(messages[1]?.id).toBe("msg-assistant-normal");
+    });
   });
 
   describe("token usage extraction", () => {
@@ -2245,7 +2449,10 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile(`/home/testuser/.claude/projects/p1/${sessionId}.jsonl`, sessionContent);
+      fs.setFile(
+        `/home/testuser/.claude/projects/p1/${sessionId}.jsonl`,
+        sessionContent,
+      );
 
       const result = await reader.searchTranscript(sessionId, "needle");
 
@@ -2264,12 +2471,22 @@ describe("SessionReader", () => {
         message: { role: "assistant", content: "Authentication Complete" },
       });
 
-      fs.setFile(`/home/testuser/.claude/projects/p1/${sessionId}.jsonl`, sessionContent);
+      fs.setFile(
+        `/home/testuser/.claude/projects/p1/${sessionId}.jsonl`,
+        sessionContent,
+      );
 
-      const insensitive = await reader.searchTranscript(sessionId, "authentication");
-      const sensitive = await reader.searchTranscript(sessionId, "authentication", {
-        caseSensitive: true,
-      });
+      const insensitive = await reader.searchTranscript(
+        sessionId,
+        "authentication",
+      );
+      const sensitive = await reader.searchTranscript(
+        sessionId,
+        "authentication",
+        {
+          caseSensitive: true,
+        },
+      );
 
       expect(insensitive.isOk()).toBe(true);
       expect(sensitive.isOk()).toBe(true);
@@ -2292,15 +2509,22 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile(`/home/testuser/.claude/projects/p2/${sessionId}.jsonl`, sessionContent);
+      fs.setFile(
+        `/home/testuser/.claude/projects/p2/${sessionId}.jsonl`,
+        sessionContent,
+      );
 
       const userOnly = await reader.searchTranscript(sessionId, "deploy", {
         role: "user",
         maxMatches: 10,
       });
-      const assistantOnly = await reader.searchTranscript(sessionId, "production", {
-        role: "assistant",
-      });
+      const assistantOnly = await reader.searchTranscript(
+        sessionId,
+        "production",
+        {
+          role: "assistant",
+        },
+      );
 
       expect(userOnly.isOk()).toBe(true);
       expect(assistantOnly.isOk()).toBe(true);
@@ -2324,15 +2548,22 @@ describe("SessionReader", () => {
         }),
       ].join("\n");
 
-      fs.setFile(`/home/testuser/.claude/projects/p3/${sessionId}.jsonl`, sessionContent);
+      fs.setFile(
+        `/home/testuser/.claude/projects/p3/${sessionId}.jsonl`,
+        sessionContent,
+      );
 
       const limitedBytes = await reader.searchTranscript(sessionId, "target", {
         maxBytes: 40,
         maxMatches: 10,
       });
-      const limitedMatches = await reader.searchTranscript(sessionId, "target", {
-        maxMatches: 1,
-      });
+      const limitedMatches = await reader.searchTranscript(
+        sessionId,
+        "target",
+        {
+          maxMatches: 1,
+        },
+      );
 
       expect(limitedBytes.isOk()).toBe(true);
       expect(limitedMatches.isOk()).toBe(true);
@@ -2350,7 +2581,10 @@ describe("SessionReader", () => {
         message: { role: "assistant", content: "slow scan text" },
       });
 
-      fs.setFile(`/home/testuser/.claude/projects/p4/${sessionId}.jsonl`, sessionContent);
+      fs.setFile(
+        `/home/testuser/.claude/projects/p4/${sessionId}.jsonl`,
+        sessionContent,
+      );
 
       const nowSpy = vi.spyOn(Date, "now");
       nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1002);
@@ -2373,10 +2607,16 @@ describe("SessionReader", () => {
       const sessionId = "abcd1234-abcd-1234-abcd-1234567890ab";
       const sessionContent = JSON.stringify({
         type: "assistant",
-        message: { role: "assistant", content: "了解です。もう一度説明します。" },
+        message: {
+          role: "assistant",
+          content: "了解です。もう一度説明します。",
+        },
       });
 
-      fs.setFile(`/home/testuser/.claude/projects/p5/${sessionId}.jsonl`, sessionContent);
+      fs.setFile(
+        `/home/testuser/.claude/projects/p5/${sessionId}.jsonl`,
+        sessionContent,
+      );
 
       const result = await reader.searchTranscript(sessionId, "もう一度");
 
@@ -2474,7 +2714,9 @@ describe("SessionReader", () => {
       expect(legacyOnly.total).toBe(1);
       expect(legacyOnly.sessionIds[0]).toBe("proj-a");
       expect(uuidOnly.total).toBe(1);
-      expect(uuidOnly.sessionIds[0]).toBe("dddddddd-dddd-dddd-dddd-dddddddddddd");
+      expect(uuidOnly.sessionIds[0]).toBe(
+        "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      );
     });
 
     it("supports maxSessions and reports truncation/timedOut", async () => {

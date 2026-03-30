@@ -23,11 +23,7 @@ import type {
  * Suitable for testing and development.
  */
 export class InMemoryGroupRepository implements GroupRepository {
-  private groups: Map<string, SessionGroup>;
-
-  constructor() {
-    this.groups = new Map();
-  }
+  private readonly groups = new Map<string, SessionGroup>();
 
   /**
    * Find a group by its ID.

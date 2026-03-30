@@ -36,6 +36,7 @@ interface ListSessionsQuery {
  */
 interface GetMessagesQuery {
   readonly parseMarkdown?: string;
+  readonly excludeToolMessages?: string;
 }
 
 /**
@@ -190,9 +191,12 @@ export function sessionRoutes(
         const sessionId = params.id;
         const queryParams = query as GetMessagesQuery;
         const parseMarkdown = queryParams.parseMarkdown === "true";
+        const excludeToolMessages = queryParams.excludeToolMessages === "true";
 
         // Get session messages
-        const messages = await sdk.sessions.getMessages(sessionId);
+        const messages = await sdk.sessions.getMessages(sessionId, {
+          excludeToolMessages,
+        });
 
         // Parse markdown if requested
         if (parseMarkdown) {

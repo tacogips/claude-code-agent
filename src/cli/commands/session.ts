@@ -81,101 +81,99 @@ export function registerSessionCommands(
       "Delay per rendered character in ms for char mode (default: 8)",
       "8",
     )
-    .action(
-      async (options: SessionRunOptions) => {
-        try {
-          const prompt = options.prompt?.trim();
-          if (prompt === undefined || prompt.length === 0) {
-            printError("Usage: claude-code-agent session run --prompt <text>");
-            process.exit(1);
-          }
-          if (options.template !== undefined) {
-            printError("session run: --template is not supported yet");
-            process.exit(1);
-          }
-
-          const streamGranularity = parseStreamGranularity(
-            options.streamGranularity,
-          );
-          if (streamGranularity === null) {
-            printError(
-              `Invalid --stream-granularity: ${options.streamGranularity ?? ""} (expected: char or event)`,
-            );
-            process.exit(1);
-          }
-
-          const charDelayMs = parseCharDelayMs(options.charDelayMs);
-          if (charDelayMs === null) {
-            printError(
-              `Invalid --char-delay-ms: ${options.charDelayMs ?? ""} (expected: non-negative integer)`,
-            );
-            process.exit(1);
-          }
-
-          if (logger.level > LogLevels.warn) {
-            logger.level = LogLevels.warn;
-          }
-
-          const runnerOptions: SessionRunnerOptions = {};
-          if (options.project !== undefined) {
-            runnerOptions.cwd = options.project;
-          }
-          const runner =
-            createSessionRunner !== undefined
-              ? createSessionRunner(runnerOptions)
-              : await createDefaultSessionRunner(runnerOptions);
-
-          const sessionConfig: Parameters<SessionRunner["startSession"]>[0] = {
-            prompt,
-          };
-          if (options.project !== undefined) {
-            sessionConfig.projectPath = options.project;
-          }
-          const session = await runner.startSession(sessionConfig);
-
-          if (streamGranularity === "event") {
-            for await (const message of session.messages()) {
-              console.log(JSON.stringify(message));
-            }
-          } else {
-            const renderedByMessageId = new Map<string, string>();
-            for await (const message of session.messages()) {
-              const extracted = extractAssistantText(message);
-              if (extracted === null) {
-                continue;
-              }
-
-              const previous = renderedByMessageId.get(extracted.messageId) ?? "";
-              const nextText = extracted.text;
-              const delta = nextText.startsWith(previous)
-                ? nextText.slice(previous.length)
-                : nextText;
-              renderedByMessageId.set(extracted.messageId, nextText);
-
-              for (const char of Array.from(delta)) {
-                process.stdout.write(char);
-                if (charDelayMs > 0) {
-                  await sleep(charDelayMs);
-                }
-              }
-            }
-            process.stdout.write("\n");
-          }
-
-          const result = await session.waitForCompletion();
-          if (!result.success) {
-            process.exitCode = 1;
-          }
-        } catch (error) {
-          if (error instanceof Error) {
-            printError(error);
-          } else {
-            printError(String(error));
-          }
+    .action(async (options: SessionRunOptions) => {
+      try {
+        const prompt = options.prompt?.trim();
+        if (prompt === undefined || prompt.length === 0) {
+          printError("Usage: claude-code-agent session run --prompt <text>");
           process.exit(1);
         }
-      },
-    );
+        if (options.template !== undefined) {
+          printError("session run: --template is not supported yet");
+          process.exit(1);
+        }
+
+        const streamGranularity = parseStreamGranularity(
+          options.streamGranularity,
+        );
+        if (streamGranularity === null) {
+          printError(
+            `Invalid --stream-granularity: ${options.streamGranularity ?? ""} (expected: char or event)`,
+          );
+          process.exit(1);
+        }
+
+        const charDelayMs = parseCharDelayMs(options.charDelayMs);
+        if (charDelayMs === null) {
+          printError(
+            `Invalid --char-delay-ms: ${options.charDelayMs ?? ""} (expected: non-negative integer)`,
+          );
+          process.exit(1);
+        }
+
+        if (logger.level > LogLevels.warn) {
+          logger.level = LogLevels.warn;
+        }
+
+        const runnerOptions: SessionRunnerOptions = {};
+        if (options.project !== undefined) {
+          runnerOptions.cwd = options.project;
+        }
+        const runner =
+          createSessionRunner !== undefined
+            ? createSessionRunner(runnerOptions)
+            : await createDefaultSessionRunner(runnerOptions);
+
+        const sessionConfig: Parameters<SessionRunner["startSession"]>[0] = {
+          prompt,
+        };
+        if (options.project !== undefined) {
+          sessionConfig.projectPath = options.project;
+        }
+        const session = await runner.startSession(sessionConfig);
+
+        if (streamGranularity === "event") {
+          for await (const message of session.messages()) {
+            console.log(JSON.stringify(message));
+          }
+        } else {
+          const renderedByMessageId = new Map<string, string>();
+          for await (const message of session.messages()) {
+            const extracted = extractAssistantText(message);
+            if (extracted === null) {
+              continue;
+            }
+
+            const previous = renderedByMessageId.get(extracted.messageId) ?? "";
+            const nextText = extracted.text;
+            const delta = nextText.startsWith(previous)
+              ? nextText.slice(previous.length)
+              : nextText;
+            renderedByMessageId.set(extracted.messageId, nextText);
+
+            for (const char of Array.from(delta)) {
+              process.stdout.write(char);
+              if (charDelayMs > 0) {
+                await sleep(charDelayMs);
+              }
+            }
+          }
+          process.stdout.write("\n");
+        }
+
+        const result = await session.waitForCompletion();
+        if (!result.success) {
+          process.exitCode = 1;
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          printError(error);
+        } else {
+          printError(String(error));
+        }
+        process.exit(1);
+      }
+    });
 
   // session add
   sessionCmd

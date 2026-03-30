@@ -49,5 +49,5 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/viewer/browser/static"]
+  "exclude": ["node_modules", "dist"]
 }

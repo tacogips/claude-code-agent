@@ -64,9 +64,11 @@ describe("Daemon Commands", () => {
       expect(printErrorSpy).toHaveBeenCalledWith(
         "Placeholder for starting the daemon server",
       );
+      expect(printErrorSpy).toHaveBeenCalledWith(
+        "User-facing endpoint: /graphql",
+      );
       expect(printErrorSpy).toHaveBeenCalledWith("Host: 0.0.0.0");
       expect(printErrorSpy).toHaveBeenCalledWith("Port: 8443");
-      expect(printErrorSpy).toHaveBeenCalledWith("With viewer: undefined");
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -129,23 +131,6 @@ describe("Daemon Commands", () => {
 
       expect(printErrorSpy).toHaveBeenCalledWith("TLS cert: /path/to/cert.pem");
       expect(printErrorSpy).toHaveBeenCalledWith("TLS key: /path/to/key.pem");
-      expect(exitSpy).toHaveBeenCalledWith(1);
-    });
-
-    test("starts daemon with --with-viewer", async () => {
-      try {
-        await program.parseAsync([
-          "node",
-          "test",
-          "daemon",
-          "start",
-          "--with-viewer",
-        ]);
-      } catch (error) {
-        // Expected to throw
-      }
-
-      expect(printErrorSpy).toHaveBeenCalledWith("With viewer: true");
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -217,7 +202,6 @@ describe("Daemon Commands", () => {
           "/cert.pem",
           "--tls-key",
           "/key.pem",
-          "--with-viewer",
         ]);
       } catch (error) {
         // Expected to throw
@@ -230,7 +214,6 @@ describe("Daemon Commands", () => {
       );
       expect(printErrorSpy).toHaveBeenCalledWith("TLS cert: /cert.pem");
       expect(printErrorSpy).toHaveBeenCalledWith("TLS key: /key.pem");
-      expect(printErrorSpy).toHaveBeenCalledWith("With viewer: true");
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });

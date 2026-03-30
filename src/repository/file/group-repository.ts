@@ -8,7 +8,6 @@
  */
 
 import * as path from "node:path";
-import * as os from "node:os";
 import type { FileSystem } from "../../interfaces/filesystem";
 import type { Clock } from "../../interfaces/clock";
 import type {
@@ -20,6 +19,8 @@ import type {
 } from "../group-repository";
 import { FileLockServiceImpl } from "../../services/file-lock";
 import { AtomicWriter } from "../../services/atomic-writer";
+import { BaseFileRepository } from "./base-repository";
+import { resolveAgentDataPath } from "./path-utils";
 
 /**
  * File-based implementation of GroupRepository.
@@ -31,21 +32,18 @@ import { AtomicWriter } from "../../services/atomic-writer";
  *     meta.json
  *     sessions/
  */
-export class FileGroupRepository implements GroupRepository {
+export class FileGroupRepository
+  extends BaseFileRepository<SessionGroup>
+  implements GroupRepository
+{
   private readonly baseDir: string;
-  private readonly lockService: FileLockServiceImpl;
-  private readonly atomicWriter: AtomicWriter;
 
-  constructor(
-    private readonly fs: FileSystem,
-    clock: Clock,
-    baseDir?: string,
-  ) {
-    this.baseDir =
-      baseDir ??
-      path.join(os.homedir(), ".local", "claude-code-agent", "session-groups");
-    this.lockService = new FileLockServiceImpl(fs, clock);
-    this.atomicWriter = new AtomicWriter(fs);
+  constructor(fs: FileSystem, clock: Clock, baseDir?: string) {
+    const lockService = new FileLockServiceImpl(fs, clock);
+    const atomicWriter = new AtomicWriter(fs);
+    super(fs, lockService, atomicWriter);
+
+    this.baseDir = baseDir ?? resolveAgentDataPath(undefined, "session-groups");
   }
 
   /**
@@ -55,16 +53,8 @@ export class FileGroupRepository implements GroupRepository {
    * @returns Group if found, null otherwise
    */
   async findById(id: string): Promise<SessionGroup | null> {
-    const metaPath = this.getMetaPath(id);
-
     try {
-      const exists = await this.fs.exists(metaPath);
-      if (!exists) {
-        return null;
-      }
-
-      const content = await this.fs.readFile(metaPath);
-      return JSON.parse(content) as SessionGroup;
+      return await this.readWithLock(this.getMetaPath(id));
     } catch (error: unknown) {
       // If file doesn't exist or is invalid JSON, return null
       return null;
@@ -105,16 +95,11 @@ export class FileGroupRepository implements GroupRepository {
     const groups: SessionGroup[] = [];
 
     for (const entry of entries) {
-      const metaPath = this.getMetaPath(entry);
       try {
-        const exists = await this.fs.exists(metaPath);
-        if (!exists) {
-          continue;
+        const group = await this.readWithLock(this.getMetaPath(entry));
+        if (group !== null) {
+          groups.push(group);
         }
-
-        const content = await this.fs.readFile(metaPath);
-        const group = JSON.parse(content) as SessionGroup;
-        groups.push(group);
       } catch {
         // Skip invalid or unreadable groups
         continue;
@@ -143,12 +128,7 @@ export class FileGroupRepository implements GroupRepository {
    * @param group - Group to save
    */
   async save(group: SessionGroup): Promise<void> {
-    const metaPath = this.getMetaPath(group.id);
-    await this.lockService.withLock(metaPath, async () => {
-      const groupDir = this.getGroupDir(group.id);
-      await this.fs.mkdir(groupDir, { recursive: true });
-      await this.atomicWriter.writeJson(metaPath, group);
-    });
+    await this.writeWithLock(this.getMetaPath(group.id), group);
   }
 
   /**

@@ -10,6 +10,7 @@
 import type { Container } from "../container";
 import type { Session, SessionMetadata, TokenUsage } from "../types/session";
 import type { Message, ToolCall, ToolResult } from "../types/message";
+import { isToolRelatedMessage } from "../types/message";
 import type { Task } from "../types/task";
 import type {
   SessionIndex,
@@ -163,6 +164,8 @@ export class SessionReader {
     let textContent: string;
     let toolCalls: readonly ToolCall[] | undefined;
     let toolResults: readonly ToolResult[] | undefined;
+    let hasToolUseBlocks: boolean | undefined;
+    let hasToolResultBlocks: boolean | undefined;
 
     if (typeof content === "string") {
       textContent = content;
@@ -171,6 +174,8 @@ export class SessionReader {
       textContent = extracted.textContent;
       toolCalls = extracted.toolCalls;
       toolResults = extracted.toolResults;
+      hasToolUseBlocks = extracted.hasToolUseBlocks;
+      hasToolResultBlocks = extracted.hasToolResultBlocks;
     } else {
       textContent = "";
     }
@@ -182,6 +187,8 @@ export class SessionReader {
       timestamp,
       toolCalls,
       toolResults,
+      hasToolUseBlocks,
+      hasToolResultBlocks,
     };
   }
 
@@ -198,10 +205,14 @@ export class SessionReader {
     textContent: string;
     toolCalls: readonly ToolCall[] | undefined;
     toolResults: readonly ToolResult[] | undefined;
+    hasToolUseBlocks: boolean | undefined;
+    hasToolResultBlocks: boolean | undefined;
   } {
     const textParts: string[] = [];
     const toolCalls: ToolCall[] = [];
     const toolResults: ToolResult[] = [];
+    let hasToolUseBlocks = false;
+    let hasToolResultBlocks = false;
 
     for (const block of content) {
       switch (block.type) {
@@ -211,6 +222,7 @@ export class SessionReader {
           }
           break;
         case "tool_use":
+          hasToolUseBlocks = true;
           if (block.id && block.name) {
             toolCalls.push({
               id: block.id,
@@ -220,6 +232,7 @@ export class SessionReader {
           }
           break;
         case "tool_result":
+          hasToolResultBlocks = true;
           if (block.tool_use_id) {
             const output =
               typeof block.content === "string"
@@ -239,6 +252,8 @@ export class SessionReader {
       textContent: textParts.join("\n"),
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       toolResults: toolResults.length > 0 ? toolResults : undefined,
+      hasToolUseBlocks: hasToolUseBlocks ? true : undefined,
+      hasToolResultBlocks: hasToolResultBlocks ? true : undefined,
     };
   }
 
@@ -522,10 +537,19 @@ export class SessionReader {
    */
   async readMessages(
     path: string,
+    options?: { excludeToolMessages?: boolean },
   ): Promise<Result<readonly Message[], AgentError>> {
     const sessionResult = await this.readSession(path);
     if (sessionResult.isErr()) {
       return err(sessionResult.error);
+    }
+
+    if (options?.excludeToolMessages) {
+      return ok(
+        sessionResult.value.messages.filter(
+          (message) => !isToolRelatedMessage(message),
+        ),
+      );
     }
 
     return ok(sessionResult.value.messages);
@@ -661,9 +685,22 @@ export class SessionReader {
    * @param sessionId - Unique session identifier
    * @returns Array of messages if session found, empty array otherwise
    */
-  async getMessages(sessionId: string): Promise<readonly Message[]> {
+  async getMessages(
+    sessionId: string,
+    options?: { excludeToolMessages?: boolean },
+  ): Promise<readonly Message[]> {
     const session = await this.getSession(sessionId);
-    return session?.messages ?? [];
+    if (!session) {
+      return [];
+    }
+
+    if (options?.excludeToolMessages) {
+      return session.messages.filter(
+        (message) => !isToolRelatedMessage(message),
+      );
+    }
+
+    return session.messages;
   }
 
   /**
@@ -953,7 +990,8 @@ export class SessionReader {
       };
     }
 
-    const searchPath = options.projectPath ?? this.getDefaultClaudeProjectsDir();
+    const searchPath =
+      options.projectPath ?? this.getDefaultClaudeProjectsDir();
     const allSessionFiles = await this.findSessionFiles(searchPath);
     const source = options.source ?? "all";
     const workingDirectoryPrefix = options.workingDirectoryPrefix;

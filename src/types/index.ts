@@ -14,8 +14,21 @@ export type {
 export { toSessionMetadata, isTerminalStatus, canResume } from "./session";
 
 // Message types
-export type { Message, MessageRole, ToolCall, ToolResult } from "./message";
-export { hasToolCalls, hasToolResults } from "./message";
+export type {
+  Message,
+  MessageRole,
+  ToolCall,
+  ToolResult,
+  MessageKind,
+} from "./message";
+export {
+  hasToolCalls,
+  hasToolResults,
+  isAssistantToolUseMessage,
+  isUserToolResultMessage,
+  getMessageKind,
+  isToolRelatedMessage,
+} from "./message";
 
 // Task types
 export type { Task, TaskStatus, TaskProgress } from "./task";
@@ -27,7 +40,6 @@ export type {
   LoggingConfig,
   SessionExecutionConfig,
   DaemonConfig,
-  ViewerConfig,
 } from "./config";
 export { getDefaultConfig, mergeConfig } from "./config";
 

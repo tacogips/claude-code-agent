@@ -34,7 +34,6 @@ describe("Group Routes - SSE Stream", () => {
       host: "127.0.0.1",
       port: 8080,
       authTokenFile: "/tmp/test-tokens.json",
-      withViewer: false,
     };
     tokenManager = new TokenManager(container, config.authTokenFile);
     await tokenManager.initialize();

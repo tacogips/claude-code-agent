@@ -288,6 +288,17 @@ export { QueueManager, QueueRunner } from "./queue";
 export type { ToolVersionInfo, AgentToolVersions } from "./tool-versions";
 export { getToolVersions } from "./tool-versions";
 
+// Claude readiness
+export type {
+  ClaudeReadinessCredentialSource,
+  VerifyClaudeReadinessOptions,
+  ClaudeReadinessResult,
+  ClaudeAuthReadiness,
+  ClaudeCliReadiness,
+  ClaudeModelReadiness,
+} from "./readiness";
+export { verifyClaudeReadiness } from "./readiness";
+
 // Main SDK Agent
 export {
   SdkManager,

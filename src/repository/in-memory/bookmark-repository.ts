@@ -22,7 +22,7 @@ import type {
  * All data is lost when the instance is destroyed.
  */
 export class InMemoryBookmarkRepository implements BookmarkRepository {
-  private bookmarks = new Map<string, Bookmark>();
+  private readonly bookmarks = new Map<string, Bookmark>();
 
   /**
    * Find a bookmark by its ID.
@@ -35,28 +35,18 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
    * Find bookmarks by session ID.
    */
   async findBySession(sessionId: string): Promise<readonly Bookmark[]> {
-    const results: Bookmark[] = [];
-    const bookmarks = Array.from(this.bookmarks.values());
-    for (const bookmark of bookmarks) {
-      if (bookmark.sessionId === sessionId) {
-        results.push(bookmark);
-      }
-    }
-    return results;
+    return Array.from(this.bookmarks.values()).filter(
+      (bookmark) => bookmark.sessionId === sessionId,
+    );
   }
 
   /**
    * Find bookmarks by tag.
    */
   async findByTag(tag: string): Promise<readonly Bookmark[]> {
-    const results: Bookmark[] = [];
-    const bookmarks = Array.from(this.bookmarks.values());
-    for (const bookmark of bookmarks) {
-      if (bookmark.tags.includes(tag)) {
-        results.push(bookmark);
-      }
-    }
-    return results;
+    return Array.from(this.bookmarks.values()).filter((bookmark) =>
+      bookmark.tags.includes(tag),
+    );
   }
 
   /**
@@ -262,8 +252,7 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
    * Count bookmarks matching the filter.
    */
   async count(filter?: BookmarkFilter): Promise<number> {
-    const results = await this.list(filter);
-    return results.length;
+    return (await this.list(filter)).length;
   }
 
   /**

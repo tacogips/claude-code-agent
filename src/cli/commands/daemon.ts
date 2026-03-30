@@ -2,7 +2,7 @@
  * Daemon subcommands for the CLI.
  *
  * Provides commands for managing the daemon server, which offers authenticated
- * HTTP API for remote Claude Code session management and execution.
+ * GraphQL API for remote Claude Code session management and execution.
  *
  * @module cli/commands/daemon
  */
@@ -15,7 +15,7 @@ import { printError } from "../output";
  * Register all daemon-related subcommands on the program.
  *
  * Attaches daemon start, stop, and status commands to the CLI. Daemon provides
- * authenticated HTTP API for remote execution.
+ * authenticated GraphQL API for remote execution.
  *
  * @param program - Commander program instance to attach commands to
  * @param _getAgent - Factory function that creates/returns SdkManager instance (unused in placeholders)
@@ -46,7 +46,6 @@ export function registerDaemonCommands(
     .option("--auth-token-file <path>", "Path to tokens.json")
     .option("--tls-cert <path>", "TLS certificate path")
     .option("--tls-key <path>", "TLS private key path")
-    .option("--with-viewer", "Include browser viewer")
     .action(
       async (options: {
         host: string;
@@ -54,11 +53,11 @@ export function registerDaemonCommands(
         authTokenFile?: string;
         tlsCert?: string;
         tlsKey?: string;
-        withViewer: boolean;
       }) => {
         try {
           printError("daemon start: Not yet implemented");
           printError("Placeholder for starting the daemon server");
+          printError("User-facing endpoint: /graphql");
           printError(`Host: ${options.host}`);
           printError(`Port: ${options.port}`);
           if (options.authTokenFile !== undefined) {
@@ -70,7 +69,6 @@ export function registerDaemonCommands(
           if (options.tlsKey !== undefined) {
             printError(`TLS key: ${options.tlsKey}`);
           }
-          printError(`With viewer: ${options.withViewer}`);
           process.exit(1);
         } catch (error) {
           if (error instanceof Error) {

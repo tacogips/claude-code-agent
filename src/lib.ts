@@ -1,24 +1,7 @@
 /**
- * Library module for claude-code-peeper
+ * Public library entrypoint for claude-code-agent.
  */
 
-/**
- * Returns a greeting message for the given name.
- *
- * @param name - The name to greet
- * @returns A greeting string
- */
-export function greet(name: string): string {
-  return `Hello, ${name}!`;
-}
-
-/**
- * Adds two numbers together.
- *
- * @param a - First number
- * @param b - Second number
- * @returns The sum of a and b
- */
-export function add(a: number, b: number): number {
-  return a + b;
-}
+export * from "./sdk";
+export { createProductionContainer, createTestContainer } from "./container";
+export type { Container } from "./container";

@@ -42,11 +42,11 @@ describe("createCli", () => {
     expect(commands).toContain("bookmark");
   });
 
-  test("registers server subcommand", () => {
+  test("registers gql subcommand", () => {
     const program = createCli();
     const commands = program.commands.map((cmd) => cmd.name());
 
-    expect(commands).toContain("server");
+    expect(commands).toContain("gql");
   });
 
   test("registers daemon subcommand", () => {
@@ -61,6 +61,13 @@ describe("createCli", () => {
     const commands = program.commands.map((cmd) => cmd.name());
 
     expect(commands).toContain("token");
+  });
+
+  test("registers auth subcommand", () => {
+    const program = createCli();
+    const commands = program.commands.map((cmd) => cmd.name());
+
+    expect(commands).toContain("auth");
   });
 
   test("registers activity subcommand", () => {
@@ -136,6 +143,17 @@ describe("createCli", () => {
     expect(subcommands).toContain("list");
     expect(subcommands).toContain("revoke");
     expect(subcommands).toContain("rotate");
+  });
+
+  test("auth command has verify subcommand", () => {
+    const program = createCli();
+    const authCmd = program.commands.find((cmd) => cmd.name() === "auth");
+
+    expect(authCmd).toBeDefined();
+    if (authCmd === undefined) return;
+
+    const subcommands = authCmd.commands.map((cmd) => cmd.name());
+    expect(subcommands).toContain("verify");
   });
 
   test("activity command has update, status, list, cleanup, setup subcommands", () => {

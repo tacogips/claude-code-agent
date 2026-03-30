@@ -25,11 +25,7 @@ import type {
  * Suitable for testing and development.
  */
 export class InMemoryQueueRepository implements QueueRepository {
-  private queues: Map<string, CommandQueue>;
-
-  constructor() {
-    this.queues = new Map();
-  }
+  private readonly queues = new Map<string, CommandQueue>();
 
   /**
    * Find a queue by its ID.
@@ -112,6 +108,24 @@ export class InMemoryQueueRepository implements QueueRepository {
     return this.queues.delete(id);
   }
 
+  private updateQueue(
+    queueId: string,
+    update: (queue: CommandQueue) => CommandQueue | null,
+  ): boolean {
+    const queue = this.queues.get(queueId);
+    if (!queue) {
+      return false;
+    }
+
+    const updatedQueue = update(queue);
+    if (updatedQueue === null) {
+      return false;
+    }
+
+    this.queues.set(queueId, updatedQueue);
+    return true;
+  }
+
   /**
    * Add a command to a queue.
    *
@@ -125,32 +139,23 @@ export class InMemoryQueueRepository implements QueueRepository {
     command: Omit<QueueCommand, "id" | "status">,
     position?: number,
   ): Promise<boolean> {
-    const queue = this.queues.get(queueId);
-    if (!queue) {
-      return false;
-    }
+    return this.updateQueue(queueId, (queue) => {
+      const newCommand: QueueCommand = {
+        id: `cmd-${nanoid(12)}`,
+        status: "pending",
+        ...command,
+      };
 
-    // Generate command ID
-    const commandId = `cmd-${nanoid(12)}`;
+      const commands = [...queue.commands];
+      const insertPos = position ?? commands.length;
+      commands.splice(insertPos, 0, newCommand);
 
-    const newCommand: QueueCommand = {
-      id: commandId,
-      status: "pending",
-      ...command,
-    };
-
-    const commands = [...queue.commands];
-    const insertPos = position ?? commands.length;
-    commands.splice(insertPos, 0, newCommand);
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.queues.set(queueId, updatedQueue);
-    return true;
+      return {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }
 
   /**
@@ -166,39 +171,33 @@ export class InMemoryQueueRepository implements QueueRepository {
     commandIndex: number,
     updates: UpdateCommandOptions,
   ): Promise<boolean> {
-    const queue = this.queues.get(queueId);
-    if (!queue) {
-      return false;
-    }
+    return this.updateQueue(queueId, (queue) => {
+      if (commandIndex < 0 || commandIndex >= queue.commands.length) {
+        return null;
+      }
 
-    if (commandIndex < 0 || commandIndex >= queue.commands.length) {
-      return false;
-    }
+      const currentCommand = queue.commands[commandIndex];
+      if (!currentCommand) {
+        return null;
+      }
 
-    const currentCommand = queue.commands[commandIndex];
-    if (!currentCommand) {
-      return false;
-    }
+      const updatedCommand: QueueCommand = {
+        ...currentCommand,
+        ...(updates.prompt !== undefined && { prompt: updates.prompt }),
+        ...(updates.sessionMode !== undefined && {
+          sessionMode: updates.sessionMode,
+        }),
+      };
 
-    const updatedCommand: QueueCommand = {
-      ...currentCommand,
-      ...(updates.prompt !== undefined && { prompt: updates.prompt }),
-      ...(updates.sessionMode !== undefined && {
-        sessionMode: updates.sessionMode,
-      }),
-    };
+      const commands = [...queue.commands];
+      commands[commandIndex] = updatedCommand;
 
-    const commands = [...queue.commands];
-    commands[commandIndex] = updatedCommand;
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.queues.set(queueId, updatedQueue);
-    return true;
+      return {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }
 
   /**
@@ -209,26 +208,20 @@ export class InMemoryQueueRepository implements QueueRepository {
    * @returns True if command was removed, false if not found
    */
   async removeCommand(queueId: string, commandIndex: number): Promise<boolean> {
-    const queue = this.queues.get(queueId);
-    if (!queue) {
-      return false;
-    }
+    return this.updateQueue(queueId, (queue) => {
+      if (commandIndex < 0 || commandIndex >= queue.commands.length) {
+        return null;
+      }
 
-    if (commandIndex < 0 || commandIndex >= queue.commands.length) {
-      return false;
-    }
+      const commands = [...queue.commands];
+      commands.splice(commandIndex, 1);
 
-    const commands = [...queue.commands];
-    commands.splice(commandIndex, 1);
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.queues.set(queueId, updatedQueue);
-    return true;
+      return {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }
 
   /**
@@ -244,35 +237,29 @@ export class InMemoryQueueRepository implements QueueRepository {
     fromIndex: number,
     toIndex: number,
   ): Promise<boolean> {
-    const queue = this.queues.get(queueId);
-    if (!queue) {
-      return false;
-    }
+    return this.updateQueue(queueId, (queue) => {
+      if (
+        fromIndex < 0 ||
+        fromIndex >= queue.commands.length ||
+        toIndex < 0 ||
+        toIndex >= queue.commands.length
+      ) {
+        return null;
+      }
 
-    if (
-      fromIndex < 0 ||
-      fromIndex >= queue.commands.length ||
-      toIndex < 0 ||
-      toIndex >= queue.commands.length
-    ) {
-      return false;
-    }
+      const commands = [...queue.commands];
+      const [movedCommand] = commands.splice(fromIndex, 1);
+      if (!movedCommand) {
+        return null;
+      }
+      commands.splice(toIndex, 0, movedCommand);
 
-    const commands = [...queue.commands];
-    const [movedCommand] = commands.splice(fromIndex, 1);
-    if (!movedCommand) {
-      return false;
-    }
-    commands.splice(toIndex, 0, movedCommand);
-
-    const updatedQueue: CommandQueue = {
-      ...queue,
-      commands,
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.queues.set(queueId, updatedQueue);
-    return true;
+      return {
+        ...queue,
+        commands,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }
 
   /**

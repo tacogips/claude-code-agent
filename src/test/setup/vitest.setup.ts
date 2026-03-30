@@ -80,7 +80,7 @@ function toRequest(req: IncomingMessage): Request {
     headers,
     body: method === "GET" || method === "HEAD" ? undefined : req,
     duplex: "half",
-  } as RequestInit);
+  } as unknown as RequestInit);
 }
 
 async function sendResponse(

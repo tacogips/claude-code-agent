@@ -8,11 +8,12 @@
  */
 
 import * as path from "node:path";
-import * as os from "node:os";
 import type { FileSystem } from "../../interfaces/filesystem";
 import type { Clock } from "../../interfaces/clock";
 import { FileLockServiceImpl } from "../../services/file-lock";
 import { AtomicWriter } from "../../services/atomic-writer";
+import { BaseFileRepository } from "./base-repository";
+import { resolveAgentDataPath } from "./path-utils";
 import type {
   Bookmark,
   BookmarkFilter,
@@ -29,27 +30,19 @@ import type {
  * ~/.local/claude-code-agent/metadata/bookmarks/
  *   {bookmark-id}.json
  */
-export class FileBookmarkRepository implements BookmarkRepository {
+export class FileBookmarkRepository
+  extends BaseFileRepository<Bookmark>
+  implements BookmarkRepository
+{
   private readonly baseDir: string;
-  private readonly lockService: FileLockServiceImpl;
-  private readonly atomicWriter: AtomicWriter;
 
-  constructor(
-    private readonly fs: FileSystem,
-    clock: Clock,
-    baseDir?: string,
-  ) {
+  constructor(fs: FileSystem, clock: Clock, baseDir?: string) {
+    const lockService = new FileLockServiceImpl(fs, clock);
+    const atomicWriter = new AtomicWriter(fs);
+    super(fs, lockService, atomicWriter);
+
     this.baseDir =
-      baseDir ??
-      path.join(
-        os.homedir(),
-        ".local",
-        "claude-code-agent",
-        "metadata",
-        "bookmarks",
-      );
-    this.lockService = new FileLockServiceImpl(fs, clock);
-    this.atomicWriter = new AtomicWriter(fs);
+      baseDir ?? resolveAgentDataPath(undefined, "metadata", "bookmarks");
   }
 
   /**
@@ -59,16 +52,8 @@ export class FileBookmarkRepository implements BookmarkRepository {
    * @returns Bookmark if found, null otherwise
    */
   async findById(id: string): Promise<Bookmark | null> {
-    const filePath = this.getBookmarkPath(id);
-
     try {
-      const exists = await this.fs.exists(filePath);
-      if (!exists) {
-        return null;
-      }
-
-      const content = await this.fs.readFile(filePath);
-      return JSON.parse(content) as Bookmark;
+      return await this.readWithLock(this.getBookmarkPath(id));
     } catch (error: unknown) {
       // If file doesn't exist or is invalid JSON, return null
       return null;
@@ -174,11 +159,7 @@ export class FileBookmarkRepository implements BookmarkRepository {
    * @param bookmark - Bookmark to save
    */
   async save(bookmark: Bookmark): Promise<void> {
-    const filePath = this.getBookmarkPath(bookmark.id);
-    await this.lockService.withLock(filePath, async () => {
-      await this.fs.mkdir(path.dirname(filePath), { recursive: true });
-      await this.atomicWriter.writeJson(filePath, bookmark);
-    });
+    await this.writeWithLock(this.getBookmarkPath(bookmark.id), bookmark);
   }
 
   /**
@@ -193,22 +174,17 @@ export class FileBookmarkRepository implements BookmarkRepository {
     id: string,
     updates: Partial<Omit<Bookmark, "id">>,
   ): Promise<void> {
-    const filePath = this.getBookmarkPath(id);
-    await this.lockService.withLock(filePath, async () => {
-      const existing = await this.findById(id);
+    await this.modifyWithLock(this.getBookmarkPath(id), (existing) => {
       if (!existing) {
         throw new Error(`Bookmark not found: ${id}`);
       }
 
-      const updated: Bookmark = {
+      return {
         ...existing,
         ...updates,
         id: existing.id, // Ensure ID cannot be changed
         updatedAt: new Date().toISOString(),
       };
-
-      await this.fs.mkdir(path.dirname(filePath), { recursive: true });
-      await this.atomicWriter.writeJson(filePath, updated);
     });
   }
 
@@ -221,15 +197,7 @@ export class FileBookmarkRepository implements BookmarkRepository {
    * @returns True if bookmark was deleted, false if not found
    */
   async delete(id: string): Promise<boolean> {
-    const filePath = this.getBookmarkPath(id);
-    return this.lockService.withLock(filePath, async () => {
-      const exists = await this.fs.exists(filePath);
-      if (!exists) {
-        return false;
-      }
-      await this.fs.rm(filePath);
-      return true;
-    });
+    return this.deleteWithLock(this.getBookmarkPath(id));
   }
 
   /**
@@ -290,11 +258,11 @@ export class FileBookmarkRepository implements BookmarkRepository {
         continue;
       }
 
-      const filePath = path.join(this.baseDir, file);
       try {
-        const content = await this.fs.readFile(filePath);
-        const bookmark = JSON.parse(content) as Bookmark;
-        bookmarks.push(bookmark);
+        const bookmark = await this.readWithLock(path.join(this.baseDir, file));
+        if (bookmark !== null) {
+          bookmarks.push(bookmark);
+        }
       } catch {
         // Skip invalid or unreadable bookmarks
         continue;
