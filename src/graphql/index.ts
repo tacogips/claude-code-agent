@@ -231,7 +231,9 @@ async function executeSessionGet(
 ): Promise<unknown> {
   requirePermission(context, "session:read");
 
-  const session = await context.sdk.sessions.getSession(readString(params, "id"));
+  const session = await context.sdk.sessions.getSession(
+    readString(params, "id"),
+  );
   if (session === null) {
     throw notFoundError("Session");
   }
@@ -544,7 +546,10 @@ async function executeBookmarkAdd(
   requirePermission(context, "bookmark:*");
 
   return context.sdk.bookmarks.add({
-    type: readOptionalString(params, "messageId") === undefined ? "session" : "message",
+    type:
+      readOptionalString(params, "messageId") === undefined
+        ? "session"
+        : "message",
     sessionId: readString(params, "sessionId"),
     messageId: readOptionalString(params, "messageId"),
     name: readString(params, "name"),
@@ -603,7 +608,9 @@ async function executeBookmarkContent(
 ): Promise<unknown> {
   requirePermission(context, "bookmark:*");
 
-  const result = await context.sdk.bookmarks.getWithContent(readString(params, "id"));
+  const result = await context.sdk.bookmarks.getWithContent(
+    readString(params, "id"),
+  );
   if (result === null) {
     throw notFoundError("Bookmark");
   }
@@ -639,7 +646,9 @@ async function executeActivityGet(
 ): Promise<unknown> {
   requirePermission(context, "session:read");
 
-  const entry = await context.sdk.activity.getStatus(readString(params, "sessionId"));
+  const entry = await context.sdk.activity.getStatus(
+    readString(params, "sessionId"),
+  );
   if (entry === null) {
     throw notFoundError("Activity entry");
   }
@@ -711,7 +720,9 @@ function readOptionalNumber(
   key: string,
 ): number | undefined {
   const value = record[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function readOptionalBoolean(
@@ -731,7 +742,9 @@ function readOptionalStringArray(
     return undefined;
   }
 
-  const strings = value.filter((entry): entry is string => typeof entry === "string");
+  const strings = value.filter(
+    (entry): entry is string => typeof entry === "string",
+  );
   return strings.length === value.length ? strings : undefined;
 }
 

@@ -1,8 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import {
-  executeGraphqlDocument,
-  type GraphqlContext,
-} from "./index";
+import { executeGraphqlDocument, type GraphqlContext } from "./index";
 
 describe("executeGraphqlDocument", () => {
   test("executes session.list via GraphQL command wrapper", async () => {

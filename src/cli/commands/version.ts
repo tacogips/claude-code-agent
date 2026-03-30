@@ -34,7 +34,8 @@ export function registerVersionCommands(
         };
 
         const globalOpts = program.opts() as GlobalOptions;
-        const shouldJson = options.json === true || globalOpts.format === "json";
+        const shouldJson =
+          options.json === true || globalOpts.format === "json";
 
         if (shouldJson) {
           console.log(formatJson(output));

@@ -1,7 +1,10 @@
 import { describe, test, expect } from "vitest";
 import { getToolVersions } from "./tool-versions";
 import { MockManagedProcess, MockProcessManager } from "../test/mocks";
-import type { ProcessManager, SpawnOptions } from "../interfaces/process-manager";
+import type {
+  ProcessManager,
+  SpawnOptions,
+} from "../interfaces/process-manager";
 
 describe("getToolVersions", () => {
   test("returns parsed versions for all tools on success", async () => {
