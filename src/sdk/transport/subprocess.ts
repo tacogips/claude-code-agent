@@ -10,6 +10,7 @@
 import type { Subprocess, FileSink } from "bun";
 import { dirname, resolve } from "node:path";
 import { CLINotFoundError, CLIConnectionError } from "../errors";
+import type { ClaudeEnvironmentShape } from "../environment";
 import type { Transport } from "./transport";
 
 /**
@@ -32,7 +33,7 @@ export interface TransportOptions {
    * Environment variables for CLI subprocess.
    * Merged with current process.env.
    */
-  env?: Record<string, string>;
+  env?: ClaudeEnvironmentShape;
 
   /**
    * MCP server configuration to pass to CLI.
