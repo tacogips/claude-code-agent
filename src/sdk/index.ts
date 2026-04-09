@@ -299,6 +299,17 @@ export type {
 } from "./readiness";
 export { verifyClaudeReadiness } from "./readiness";
 
+// Claude environment variables
+export type {
+  ClaudeEnvironmentInput,
+  ClaudeEnvironmentShape,
+} from "./environment";
+export {
+  ClaudeEnvironment,
+  defineClaudeEnvironment,
+  toClaudeEnvironmentRecord,
+} from "./environment";
+
 // Main SDK Agent
 export {
   SdkManager,

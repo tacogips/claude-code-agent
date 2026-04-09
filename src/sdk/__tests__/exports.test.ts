@@ -41,6 +41,9 @@ describe("SDK Exports", () => {
       expect(typeof SDK.SessionRunner).toBe("function");
       expect(typeof SDK.RunningSession).toBe("function");
       expect(typeof SDK.ClaudeCodeClient).toBe("function");
+      expect(typeof SDK.ClaudeEnvironment).toBe("function");
+      expect(typeof SDK.defineClaudeEnvironment).toBe("function");
+      expect(typeof SDK.toClaudeEnvironmentRecord).toBe("function");
     });
   });
 

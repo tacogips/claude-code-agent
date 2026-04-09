@@ -19,6 +19,8 @@ import { QueueManager, QueueRunner } from "./queue";
 import { BookmarkManager } from "./bookmarks";
 import { ActivityManager } from "./activity/manager";
 import { parseMarkdown } from "./markdown-parser";
+import type { ClaudeEnvironmentInput } from "./environment";
+import { toClaudeEnvironmentRecord } from "./environment";
 import type { Transport } from "./transport/transport";
 import { SubprocessTransport } from "./transport/subprocess";
 import type { TransportOptions } from "./transport/subprocess";
@@ -214,7 +216,7 @@ export interface SessionRunnerOptions {
   /** Maximum turns */
   maxTurns?: number;
   /** Environment variables for Claude Code subprocess */
-  env?: Record<string, string>;
+  env?: ClaudeEnvironmentInput;
   /** Custom CLI path (default: bundled or system claude) */
   cliPath?: string;
   /** Default timeout for operations in ms */
@@ -859,7 +861,8 @@ export class SessionRunner {
     if (this.options.cliPath !== undefined)
       options.cliPath = this.options.cliPath;
     if (this.options.cwd !== undefined) options.cwd = this.options.cwd;
-    if (this.options.env !== undefined) options.env = this.options.env;
+    const environment = toClaudeEnvironmentRecord(this.options.env);
+    if (environment !== undefined) options.env = environment;
     if (this.options.permissionMode !== undefined)
       options.permissionMode = this.options.permissionMode;
     if (this.options.model !== undefined) options.model = this.options.model;

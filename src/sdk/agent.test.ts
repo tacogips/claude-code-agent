@@ -22,6 +22,7 @@ import { tool, createSdkMcpServer } from "./tool-registry";
 import type { SdkTool } from "./types/tool";
 import { SubprocessTransport } from "./transport/subprocess";
 import { ControlProtocolHandler } from "./control-protocol";
+import { defineClaudeEnvironment } from "./environment";
 
 describe("SdkManager", () => {
   let container: Container;
@@ -1058,6 +1059,19 @@ describe("SessionRunner", () => {
         env: { TEST: "value" },
         cliPath: "/usr/local/bin/claude",
         defaultTimeout: 60000,
+      });
+
+      expect(agent).toBeDefined();
+    });
+
+    test("accepts typed Claude environment variables", () => {
+      const env = defineClaudeEnvironment({
+        ANTHROPIC_API_KEY: "test-key",
+        WORKSPACE_ID: "workspace-123",
+      });
+
+      const agent = new SessionRunner({
+        env,
       });
 
       expect(agent).toBeDefined();

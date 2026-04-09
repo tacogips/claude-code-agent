@@ -240,6 +240,31 @@ for await (const message of session.messages()) {
 }
 ```
 
+### SDK Typed Claude Environment Variables
+
+Use a typed value object when you want to pass Claude subprocess environment
+variables as a named variable instead of an inline record:
+
+```typescript
+import {
+  SessionRunner,
+  defineClaudeEnvironment,
+} from "claude-code-agent/sdk";
+
+const claudeEnv = defineClaudeEnvironment({
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+  CLAUDE_CODE_USE_BEDROCK: "1",
+});
+
+const runner = new SessionRunner({
+  cwd: process.cwd(),
+  env: claudeEnv,
+});
+```
+
+You can still pass a plain object to `env`, but `ClaudeEnvironment` gives you a
+dedicated typed variable and merge helper for application code.
+
 ### Tool Version Introspection
 
 Use SDK API to retrieve structured runtime tool versions:
