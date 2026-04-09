@@ -40,8 +40,45 @@ describe("runGraphqlCli", () => {
       sdk: {} as never,
     });
 
-    expect(JSON.parse(logSpy.mock.calls[0]?.[0] as string)).toEqual({
+    expect(JSON.parse(logSpy.mock.calls.at(-1)?.[0] as string)).toEqual({
       data: { ping: true },
+    });
+  });
+
+  test("executes typed session graphql queries", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    await runGraphqlCli(
+      ["query { sessions { nodes { id messageCount } total } }"],
+      {
+        sdk: {
+          sessions: {
+            listSessions: vi.fn().mockResolvedValue([
+              {
+                id: "session-1",
+                projectPath: "/tmp/project",
+                status: "completed",
+                createdAt: "2026-04-09T00:00:00.000Z",
+                updatedAt: "2026-04-09T00:01:00.000Z",
+                messageCount: 4,
+              },
+            ]),
+          },
+        } as never,
+      },
+    );
+
+    expect(JSON.parse(logSpy.mock.calls.at(-1)?.[0] as string)).toEqual({
+      data: {
+        sessions: {
+          nodes: [
+            {
+              id: "session-1",
+              messageCount: 4,
+            },
+          ],
+          total: 1,
+        },
+      },
     });
   });
 });

@@ -1,6 +1,10 @@
 import {
   GraphQLError,
   GraphQLBoolean,
+  GraphQLEnumType,
+  GraphQLFloat,
+  GraphQLInt,
+  GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
   GraphQLScalarType,
@@ -16,10 +20,19 @@ import {
 import type { SdkManager } from "../sdk";
 import type { TokenManager } from "../daemon/auth";
 import type { ApiToken, DaemonStatus, Permission } from "../daemon/types";
+import type { TranscriptEvent } from "../polling/parser";
 import type { GroupSession, GroupStatus } from "../sdk/group/types";
 import type { SessionMode } from "../sdk/queue/types";
 import type { ActivityStatus } from "../types/activity";
 import type { QueueStatus } from "../repository/queue-repository";
+import type { Message, ToolCall, ToolResult } from "../types/message";
+import type { Session, SessionMetadata, TokenUsage } from "../types/session";
+import type {
+  SearchSessionsOptions,
+  SessionSearchResponse,
+  TranscriptSearchOptions,
+  TranscriptSearchResult,
+} from "../types/session-index";
 
 interface RecordLike {
   readonly [key: string]: unknown;
@@ -38,6 +51,25 @@ export interface GraphqlExecutionRequest {
   readonly context: GraphqlContext;
 }
 
+interface SessionConnectionSource {
+  readonly nodes: readonly SessionMetadata[];
+  readonly total: number;
+  readonly offset: number;
+  readonly limit: number;
+}
+
+interface SessionHistorySource {
+  readonly sessionId: string;
+  readonly events: readonly TranscriptEvent[];
+  readonly total: number;
+  readonly offset: number;
+  readonly limit: number;
+  readonly tokenUsage?: TokenUsage | undefined;
+}
+
+type SessionGraphqlSource = Session | SessionMetadata;
+type GraphqlMessage = Omit<Message, "content"> & { readonly content: unknown };
+
 const JSON_SCALAR = new GraphQLScalarType({
   name: "JSON",
   serialize(value: unknown): unknown {
@@ -51,7 +83,262 @@ const JSON_SCALAR = new GraphQLScalarType({
   },
 });
 
-const QUERY_TYPE = new GraphQLObjectType<GraphqlContext>({
+const TRANSCRIPT_SEARCH_ROLE_ENUM = new GraphQLEnumType({
+  name: "TranscriptSearchRole",
+  values: {
+    USER: { value: "user" },
+    ASSISTANT: { value: "assistant" },
+    BOTH: { value: "both" },
+  },
+});
+
+const SESSION_SEARCH_SOURCE_ENUM = new GraphQLEnumType({
+  name: "SessionSearchSource",
+  values: {
+    ALL: { value: "all" },
+    UUID: { value: "uuid" },
+    LEGACY: { value: "legacy" },
+  },
+});
+
+const TOKEN_USAGE_TYPE = new GraphQLObjectType<{
+  readonly tokenUsage?: TokenUsage | undefined;
+}>({
+  name: "TokenUsage",
+  fields: {
+    input: {
+      type: new GraphQLNonNull(GraphQLInt),
+      resolve(source) {
+        return source.tokenUsage?.input ?? 0;
+      },
+    },
+    output: {
+      type: new GraphQLNonNull(GraphQLInt),
+      resolve(source) {
+        return source.tokenUsage?.output ?? 0;
+      },
+    },
+    cacheRead: {
+      type: GraphQLInt,
+      resolve(source) {
+        return source.tokenUsage?.cacheRead;
+      },
+    },
+    cacheWrite: {
+      type: GraphQLInt,
+      resolve(source) {
+        return source.tokenUsage?.cacheWrite;
+      },
+    },
+  },
+});
+
+const TOOL_CALL_TYPE = new GraphQLObjectType<ToolCall>({
+  name: "SessionToolCall",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLString) },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    input: { type: new GraphQLNonNull(JSON_SCALAR) },
+  },
+});
+
+const TOOL_RESULT_TYPE = new GraphQLObjectType<ToolResult>({
+  name: "SessionToolResult",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLString) },
+    output: { type: new GraphQLNonNull(GraphQLString) },
+    isError: { type: new GraphQLNonNull(GraphQLBoolean) },
+  },
+});
+
+const MESSAGE_TYPE = new GraphQLObjectType<GraphqlMessage>({
+  name: "SessionMessage",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLString) },
+    role: { type: new GraphQLNonNull(GraphQLString) },
+    content: { type: new GraphQLNonNull(JSON_SCALAR) },
+    timestamp: { type: new GraphQLNonNull(GraphQLString) },
+    toolCalls: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(TOOL_CALL_TYPE)),
+      ),
+      resolve(source) {
+        return source.toolCalls ?? [];
+      },
+    },
+    toolResults: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(TOOL_RESULT_TYPE)),
+      ),
+      resolve(source) {
+        return source.toolResults ?? [];
+      },
+    },
+    hasToolUseBlocks: { type: GraphQLBoolean },
+    hasToolResultBlocks: { type: GraphQLBoolean },
+  },
+});
+
+const TRANSCRIPT_EVENT_TYPE = new GraphQLObjectType<TranscriptEvent>({
+  name: "TranscriptEvent",
+  fields: {
+    type: { type: new GraphQLNonNull(GraphQLString) },
+    uuid: { type: GraphQLString },
+    timestamp: { type: GraphQLString },
+    content: { type: JSON_SCALAR },
+    raw: { type: new GraphQLNonNull(JSON_SCALAR) },
+  },
+});
+
+const SESSION_HISTORY_TYPE = new GraphQLObjectType<SessionHistorySource>({
+  name: "SessionHistory",
+  fields: {
+    sessionId: { type: new GraphQLNonNull(GraphQLString) },
+    events: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(TRANSCRIPT_EVENT_TYPE)),
+      ),
+    },
+    total: { type: new GraphQLNonNull(GraphQLInt) },
+    offset: { type: new GraphQLNonNull(GraphQLInt) },
+    limit: { type: new GraphQLNonNull(GraphQLInt) },
+    tokenUsage: {
+      type: TOKEN_USAGE_TYPE,
+      resolve(source) {
+        return source.tokenUsage === undefined ? null : source;
+      },
+    },
+  },
+});
+
+const TRANSCRIPT_SEARCH_RESULT_TYPE =
+  new GraphQLObjectType<TranscriptSearchResult>({
+    name: "TranscriptSearchResult",
+    fields: {
+      sessionId: { type: new GraphQLNonNull(GraphQLString) },
+      matched: { type: new GraphQLNonNull(GraphQLBoolean) },
+      matchCount: { type: new GraphQLNonNull(GraphQLInt) },
+      scannedBytes: { type: new GraphQLNonNull(GraphQLInt) },
+      scannedLines: { type: new GraphQLNonNull(GraphQLInt) },
+      truncated: { type: new GraphQLNonNull(GraphQLBoolean) },
+      timedOut: { type: new GraphQLNonNull(GraphQLBoolean) },
+    },
+  });
+
+const SESSION_SEARCH_RESULT_TYPE = new GraphQLObjectType<SessionSearchResponse>(
+  {
+    name: "SessionSearchResult",
+    fields: {
+      sessionIds: {
+        type: new GraphQLNonNull(
+          new GraphQLList(new GraphQLNonNull(GraphQLString)),
+        ),
+      },
+      total: { type: new GraphQLNonNull(GraphQLInt) },
+      offset: { type: new GraphQLNonNull(GraphQLInt) },
+      limit: { type: new GraphQLNonNull(GraphQLInt) },
+      scannedSessions: { type: new GraphQLNonNull(GraphQLInt) },
+      truncated: { type: new GraphQLNonNull(GraphQLBoolean) },
+      timedOut: { type: new GraphQLNonNull(GraphQLBoolean) },
+    },
+  },
+);
+
+const SESSION_TYPE = new GraphQLObjectType<
+  SessionGraphqlSource,
+  GraphqlContext
+>({
+  name: "Session",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLString) },
+    projectPath: { type: new GraphQLNonNull(GraphQLString) },
+    status: { type: new GraphQLNonNull(GraphQLString) },
+    createdAt: { type: new GraphQLNonNull(GraphQLString) },
+    updatedAt: { type: new GraphQLNonNull(GraphQLString) },
+    messageCount: {
+      type: new GraphQLNonNull(GraphQLInt),
+      resolve(source) {
+        return isFullSession(source)
+          ? source.messages.length
+          : source.messageCount;
+      },
+    },
+    costUsd: { type: GraphQLFloat },
+    tokenUsage: {
+      type: TOKEN_USAGE_TYPE,
+      resolve(source) {
+        return source.tokenUsage === undefined ? null : source;
+      },
+    },
+    messages: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(MESSAGE_TYPE)),
+      ),
+      args: {
+        parseMarkdown: { type: GraphQLBoolean },
+        excludeToolMessages: { type: GraphQLBoolean },
+      },
+      async resolve(source, args, context) {
+        requirePermission(context, "session:read");
+        return resolveSessionMessages(readSessionId(source), context, {
+          parseMarkdown: args.parseMarkdown ?? false,
+          excludeToolMessages: args.excludeToolMessages ?? false,
+        });
+      },
+    },
+    history: {
+      type: new GraphQLNonNull(SESSION_HISTORY_TYPE),
+      args: {
+        offset: { type: GraphQLInt },
+        limit: { type: GraphQLInt },
+      },
+      async resolve(source, args, context) {
+        requirePermission(context, "session:read");
+        return resolveSessionHistory(readSessionId(source), context, {
+          offset: args.offset,
+          limit: args.limit,
+        });
+      },
+    },
+    grep: {
+      type: new GraphQLNonNull(TRANSCRIPT_SEARCH_RESULT_TYPE),
+      args: {
+        query: { type: new GraphQLNonNull(GraphQLString) },
+        caseSensitive: { type: GraphQLBoolean },
+        role: { type: TRANSCRIPT_SEARCH_ROLE_ENUM },
+        maxMatches: { type: GraphQLInt },
+        maxBytes: { type: GraphQLInt },
+        timeoutMs: { type: GraphQLInt },
+      },
+      async resolve(source, args, context) {
+        requirePermission(context, "session:read");
+        return resolveSessionGrep(readSessionId(source), args.query, context, {
+          caseSensitive: args.caseSensitive,
+          role: args.role,
+          maxMatches: args.maxMatches,
+          maxBytes: args.maxBytes,
+          timeoutMs: args.timeoutMs,
+        });
+      },
+    },
+  },
+});
+
+const SESSION_CONNECTION_TYPE = new GraphQLObjectType<SessionConnectionSource>({
+  name: "SessionConnection",
+  fields: {
+    nodes: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(SESSION_TYPE)),
+      ),
+    },
+    total: { type: new GraphQLNonNull(GraphQLInt) },
+    offset: { type: new GraphQLNonNull(GraphQLInt) },
+    limit: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const QUERY_TYPE = new GraphQLObjectType<unknown, GraphqlContext>({
   name: "Query",
   fields: {
     command: {
@@ -70,10 +357,93 @@ const QUERY_TYPE = new GraphQLObjectType<GraphqlContext>({
         return true;
       },
     },
+    sessions: {
+      type: new GraphQLNonNull(SESSION_CONNECTION_TYPE),
+      args: {
+        projectPath: { type: GraphQLString },
+        status: { type: GraphQLString },
+        limit: { type: GraphQLInt },
+        offset: { type: GraphQLInt },
+      },
+      async resolve(_source, args, context) {
+        requirePermission(context, "session:read");
+
+        let sessions = [
+          ...(await context.sdk.sessions.listSessions(args.projectPath)),
+        ];
+        if (typeof args.status === "string" && args.status.length > 0) {
+          sessions = sessions.filter(
+            (session) => session.status === args.status,
+          );
+        }
+
+        const offset = Math.max(0, args.offset ?? 0);
+        const total = sessions.length;
+        const paginated =
+          args.limit === undefined
+            ? sessions.slice(offset)
+            : sessions.slice(offset, offset + Math.max(0, args.limit));
+
+        return {
+          nodes: paginated,
+          total,
+          offset,
+          limit:
+            args.limit === undefined
+              ? paginated.length
+              : Math.max(0, args.limit),
+        };
+      },
+    },
+    session: {
+      type: SESSION_TYPE,
+      args: {
+        id: { type: new GraphQLNonNull(GraphQLString) },
+      },
+      async resolve(_source, args, context) {
+        requirePermission(context, "session:read");
+        return context.sdk.sessions.getSession(args.id);
+      },
+    },
+    searchSessions: {
+      type: new GraphQLNonNull(SESSION_SEARCH_RESULT_TYPE),
+      args: {
+        query: { type: new GraphQLNonNull(GraphQLString) },
+        projectPath: { type: GraphQLString },
+        workingDirectoryPrefix: { type: GraphQLString },
+        projectPathPrefix: { type: GraphQLString },
+        source: { type: SESSION_SEARCH_SOURCE_ENUM },
+        offset: { type: GraphQLInt },
+        limit: { type: GraphQLInt },
+        maxSessions: { type: GraphQLInt },
+        caseSensitive: { type: GraphQLBoolean },
+        role: { type: TRANSCRIPT_SEARCH_ROLE_ENUM },
+        maxMatches: { type: GraphQLInt },
+        maxBytes: { type: GraphQLInt },
+        timeoutMs: { type: GraphQLInt },
+      },
+      async resolve(_source, args, context) {
+        requirePermission(context, "session:read");
+        return resolveSessionSearch(args.query, context, {
+          projectPath: args.projectPath,
+          workingDirectoryPrefix: args.workingDirectoryPrefix,
+          projectPathPrefix: args.projectPathPrefix,
+          source: args.source,
+          offset: args.offset,
+          limit: args.limit,
+          maxSessions: args.maxSessions,
+          caseSensitive: args.caseSensitive,
+          role: args.role,
+          maxMatches: args.maxMatches,
+          maxBytes: args.maxBytes,
+          timeoutMs: args.timeoutMs,
+        });
+      },
+    },
   },
 });
 
-const MUTATION_TYPE = new GraphQLObjectType<GraphqlContext>({
+const MUTATION_TYPE = new GraphQLObjectType<unknown, GraphqlContext>({
   name: "Mutation",
   fields: {
     command: {
@@ -246,12 +616,31 @@ async function executeSessionMessages(
 ): Promise<unknown> {
   requirePermission(context, "session:read");
 
-  const sessionId = readString(params, "id");
-  const parseMarkdown = readOptionalBoolean(params, "parseMarkdown") ?? false;
-  const excludeToolMessages =
-    readOptionalBoolean(params, "excludeToolMessages") ?? false;
+  return resolveSessionMessages(readString(params, "id"), context, {
+    parseMarkdown: readOptionalBoolean(params, "parseMarkdown") ?? false,
+    excludeToolMessages:
+      readOptionalBoolean(params, "excludeToolMessages") ?? false,
+  });
+}
+
+function isFullSession(source: SessionGraphqlSource): source is Session {
+  return "messages" in source;
+}
+
+function readSessionId(source: SessionGraphqlSource): string {
+  return source.id;
+}
+
+async function resolveSessionMessages(
+  sessionId: string,
+  context: GraphqlContext,
+  options: {
+    readonly parseMarkdown: boolean;
+    readonly excludeToolMessages: boolean;
+  },
+): Promise<readonly GraphqlMessage[]> {
   const messages = await context.sdk.sessions.getMessages(sessionId, {
-    excludeToolMessages,
+    excludeToolMessages: options.excludeToolMessages,
   });
 
   if (messages.length === 0) {
@@ -261,17 +650,59 @@ async function executeSessionMessages(
     }
   }
 
-  if (!parseMarkdown) {
+  if (!options.parseMarkdown) {
     return messages;
   }
 
   return messages.map((message) => ({
     ...message,
-    content:
-      typeof message.content === "string"
-        ? context.sdk.parseMarkdown(message.content)
-        : message.content,
+    content: context.sdk.parseMarkdown(message.content),
   }));
+}
+
+async function resolveSessionHistory(
+  sessionId: string,
+  context: GraphqlContext,
+  options: { readonly offset?: number; readonly limit?: number },
+): Promise<SessionHistorySource> {
+  const result = await context.sdk.sessions.readTranscript(sessionId, options);
+  if (result.isErr()) {
+    throw asGraphqlError(result.error);
+  }
+
+  return {
+    sessionId,
+    events: result.value.events,
+    total: result.value.total,
+    offset: Math.max(0, options.offset ?? 0),
+    limit: options.limit ?? result.value.events.length,
+    tokenUsage: result.value.tokenUsage,
+  };
+}
+
+async function resolveSessionGrep(
+  sessionId: string,
+  query: string,
+  context: GraphqlContext,
+  options: TranscriptSearchOptions,
+): Promise<TranscriptSearchResult> {
+  const result = await context.sdk.sessions.searchTranscript(
+    sessionId,
+    query,
+    options,
+  );
+  if (result.isErr()) {
+    throw asGraphqlError(result.error);
+  }
+  return result.value;
+}
+
+async function resolveSessionSearch(
+  query: string,
+  context: GraphqlContext,
+  options: SearchSessionsOptions,
+) {
+  return context.sdk.sessions.searchSessions(query, options);
 }
 
 async function executeGroupCreate(
