@@ -72,7 +72,7 @@ claude-code-agent session list --all
 claude-code-agent session show <session-id>
 
 # Query the local GraphQL command surface
-claude-code-agent gql 'query { command(name: "session.list") }'
+claude-code-agent graphql 'query { command(name: "session.list") }'
 ```
 
 ### Run One Prompt With Streaming
@@ -324,7 +324,7 @@ claude-code-agent <entity> <action> [options]
 | `queue`         | `create`, `list`, `show`, `run`, `pause`, `resume`, `stop`, `delete`             |
 | `queue command` | `add`, `edit`, `remove`, `move`, `toggle-mode`                                   |
 | `bookmark`      | `add`, `list`, `show`, `search`, `delete`                                        |
-| `gql`           | Execute GraphQL documents or shorthand commands                                  |
+| `graphql`       | Execute GraphQL documents or shorthand commands                                  |
 | `token`         | `create`, `list`, `revoke`, `rotate`                                             |
 
 ## GraphQL CLI

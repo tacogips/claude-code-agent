@@ -97,7 +97,7 @@ export function createCli(): Command {
   program.addCommand(createActivityCommand());
 
   program
-    .command("gql")
+    .command("graphql")
     .description("Execute a GraphQL query or shorthand command")
     .argument("<document>", "GraphQL document or shorthand command")
     .option("--param <json>", "JSON value bound to $param")

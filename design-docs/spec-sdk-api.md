@@ -42,7 +42,7 @@ The CLI is a thin wrapper around the SDK.
 GraphQL is used as an in-process query and command surface. It is executed by the CLI or embedding application.
 
 ```bash
-claude-code-agent gql 'query { command(name: "session.list") }'
+claude-code-agent graphql 'query { command(name: "session.list") }'
 ```
 
 Typed session queries are also available:
@@ -92,7 +92,7 @@ Token plaintext is returned only at creation or rotation time. Stored metadata c
 | `activity` | `update`, `status`, `list`, `cleanup`, `setup` |
 | `auth` | credential import/export/verify commands |
 | `token` | `create`, `list`, `revoke`, `rotate` |
-| `gql` | local GraphQL query execution |
+| `graphql` | local GraphQL query execution |
 | `version` | version and dependency information |
 
 ---
