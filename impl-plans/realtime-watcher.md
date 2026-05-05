@@ -1,7 +1,7 @@
 # Real-Time Monitoring - File Watching and Parsing
 
 **Status**: Ready
-**Design Reference**: design-docs/spec-viewers.md#3-real-time-monitoring
+**Design Reference**: design-docs/DESIGN.md#real-time-monitoring
 **Created**: 2026-01-06
 **Last Updated**: 2026-01-06
 
@@ -16,7 +16,7 @@ This plan is part of the real-time monitoring system. See also:
 
 ## Design Document Reference
 
-**Source**: `design-docs/spec-viewers.md` Section 3: Real-time Monitoring
+**Source**: `design-docs/DESIGN.md` Real-time Monitoring feature summary
 
 ### Summary
 
@@ -33,7 +33,7 @@ Implement file watching and JSONL stream parsing for Claude Code transcript file
 **Excluded**:
 - Event parsing and state management (covered in realtime-events.md)
 - TUI output display (deferred, low priority)
-- Browser WebSocket integration (covered in browser-viewer.md)
+- Network streaming integration
 
 ---
 

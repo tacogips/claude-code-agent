@@ -24,13 +24,12 @@ External App  <-->  claude-code-agent  <-->  Claude Code
 
 | Feature                  | Description                                                   | Status         |
 | ------------------------ | ------------------------------------------------------------- | -------------- |
-| **GraphQL API**          | Command-style GraphQL surface for user-facing daemon access   | In Development |
+| **GraphQL CLI**          | Command-style GraphQL surface for local queries               | In Development |
 | **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files        | In Development |
 | **Session Groups**       | Orchestrate multi-project concurrent execution                | Planned        |
 | **Command Queue**        | Queue prompts for sequential execution                        | Planned        |
 | **Markdown Parsing**     | Parse message content into structured JSON                    | Planned        |
 | **SDK**                  | TypeScript API for programmatic integration                   | In Development |
-| **Daemon Mode**          | GraphQL API for remote execution with authentication          | Planned        |
 | **Bookmarks**            | Mark and retrieve important sessions/messages                 | Planned        |
 
 ## Installation
@@ -140,26 +139,6 @@ claude-code-agent queue run feature-impl
 claude-code-agent queue pause feature-impl
 claude-code-agent queue resume feature-impl
 claude-code-agent queue stop feature-impl
-```
-
-### Daemon Mode (Remote Execution)
-
-```bash
-# Start daemon with authentication
-claude-code-agent daemon start \
-  --port 8443 \
-  --auth-token-file ~/.config/claude-code-agent/api-tokens.json
-
-# Create API token
-claude-code-agent token create \
-  --name "CI/CD Token" \
-  --permissions session:create,session:read
-
-# Use the API
-curl -X POST https://localhost:8443/graphql \
-  -H "Authorization: Bearer cca_abc123xyz" \
-  -H "Content-Type: application/json" \
-  -d '{"query":"query ($param: JSON) { command(name: \"session.list\", params: $param) }","variables":{"param":{"projectPath":"/path/to/project"}}}'
 ```
 
 ## SDK Usage
@@ -345,13 +324,12 @@ claude-code-agent <entity> <action> [options]
 | `queue`         | `create`, `list`, `show`, `run`, `pause`, `resume`, `stop`, `delete`             |
 | `queue command` | `add`, `edit`, `remove`, `move`, `toggle-mode`                                   |
 | `bookmark`      | `add`, `list`, `show`, `search`, `delete`                                        |
-| `daemon`        | `start`, `stop`, `status`                                                        |
 | `gql`           | Execute GraphQL documents or shorthand commands                                  |
 | `token`         | `create`, `list`, `revoke`, `rotate`                                             |
 
-## GraphQL API
+## GraphQL CLI
 
-User-facing daemon traffic is exposed through `/graphql` using a command-style schema.
+Local GraphQL queries use a command-style schema.
 
 ```graphql
 query ($param: JSON) {
@@ -395,7 +373,7 @@ src/
 +-- sdk/                # Core SDK (TypeScript API)
 +-- polling/            # Real-time monitoring (file watcher)
 +-- repository/         # Data access layer
-+-- daemon/             # GraphQL daemon for remote execution
++-- auth/               # Local API token management
 +-- interfaces/         # Abstractions for testability
 ```
 
@@ -405,8 +383,7 @@ src/
 | -------------- | ------------------------ |
 | Runtime        | Bun                      |
 | Language       | TypeScript (strict mode) |
-| HTTP Server    | Elysia                   |
-| GraphQL API    | graphql-yoga             |
+| GraphQL        | graphql                  |
 | Testing        | Vitest                   |
 | Packaging      | Nix flakes               |
 
@@ -492,8 +469,7 @@ For detailed specifications, see `design-docs/`:
 | `DESIGN.md`              | Main architecture overview            |
 | `spec-session-groups.md` | Session Group lifecycle and execution |
 | `spec-command-queue.md`  | Command Queue for sequential prompts  |
-| `spec-sdk-api.md`        | SDK, daemon, REST API, authentication |
-| `spec-viewers.md`        | Browser and TUI viewer specifications |
+| `spec-sdk-api.md`        | SDK, GraphQL command surface, authentication |
 | `DECISIONS.md`           | All design decisions (Q1-Q36)         |
 
 ### Implementation Plans

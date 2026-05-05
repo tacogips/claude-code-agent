@@ -1,7 +1,7 @@
 # Real-Time Monitoring - Event Emission and State Management
 
 **Status**: Ready
-**Design Reference**: design-docs/spec-viewers.md#3-real-time-monitoring
+**Design Reference**: design-docs/DESIGN.md#real-time-monitoring
 **Created**: 2026-01-06
 **Last Updated**: 2026-01-06
 
@@ -16,7 +16,7 @@ This plan is part of the real-time monitoring system. See also:
 
 ## Design Document Reference
 
-**Source**: `design-docs/spec-viewers.md` Section 3: Real-time Monitoring
+**Source**: `design-docs/DESIGN.md` Real-time Monitoring feature summary
 
 ### Summary
 
@@ -35,7 +35,7 @@ Implement event parsing, state management, and high-level monitoring APIs for Cl
 **Excluded**:
 - File watching and JSONL parsing (covered in realtime-watcher.md)
 - TUI output display (deferred, low priority)
-- Browser WebSocket integration (covered in browser-viewer.md)
+- Network streaming integration
 
 ---
 
@@ -501,7 +501,7 @@ Parallelizable groups:
 3. Test with actual Claude Code session
 4. Verify events stream correctly
 5. Verify state updates accurately
-6. Review implementation against spec-viewers.md
+6. Review implementation against the real-time monitoring design summary
 
 ---
 

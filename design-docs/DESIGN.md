@@ -4,9 +4,9 @@
 
 **Project Name**: claude-code-agent
 
-**Purpose**: A TypeScript-based monitoring, visualization, and orchestration tool for Claude Code sessions. Provides external observation of Claude Code task execution, session progress, and agent workflows by reading transcript files stored in `~/.claude/projects/`.
+**Purpose**: A TypeScript-based monitoring and orchestration tool for Claude Code sessions. It observes Claude Code by reading transcript files and running Claude Code subprocesses through a local SDK/CLI boundary.
 
-**Key Value Proposition**: Non-invasive monitoring that maintains full compatibility without requiring Claude Code modifications.
+**Key Value Proposition**: Non-invasive local orchestration that maintains compatibility without requiring Claude Code modifications.
 
 ---
 
@@ -14,15 +14,14 @@
 
 | Capability | Description | Priority |
 |------------|-------------|----------|
-| **Session Viewer** | Browser-based session transcript viewing | High |
-| **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files | High |
+| **Session Reader** | Read Claude Code session metadata and transcript JSONL files | High |
+| **Real-time Monitoring** | Watch active sessions via file-system events | High |
 | **Session Groups** | Orchestrate multi-project concurrent execution | High |
-| **Command Queue** | Queue prompts for sequential execution with Web UI management | High |
-| **Markdown Parsing** | Parse message content into structured JSON (sections, paragraphs) | High |
-| **SDK** | TypeScript API for programmatic integration | High |
-| **Daemon Mode** | HTTP API for remote execution with authentication | High |
+| **Command Queue** | Queue prompts for sequential execution | High |
+| **Markdown Parsing** | Parse message content into structured JSON | High |
+| **SDK** | TypeScript API for programmatic local integration | High |
+| **GraphQL CLI** | Local command-style GraphQL query surface | Medium |
 | **Bookmarks** | Mark and retrieve important sessions/messages | Medium |
-| **TUI Viewer** | Terminal-based session viewing (Ink) | Low (Future) |
 
 ---
 
@@ -32,32 +31,25 @@
 +------------------------------------------------------------------+
 |                      claude-code-agent                            |
 +------------------------------------------------------------------+
-|                                                                   |
-|  +-----------------+                                              |
-|  | SDK Layer       |  <-- TypeScript API for embedding           |
-|  +-----------------+                                              |
-|          |                                                        |
-|  +-----------------+  +-----------------+  +-----------------+    |
-|  | CLI             |  | Daemon (HTTP)   |  | Event Bus       |    |
-|  +-----------------+  +-----------------+  +-----------------+    |
-|          |                    |                    |              |
-|          +--------------------+--------------------+              |
-|                               |                                   |
+|                                                                  |
+|  +-----------------+      +-----------------+                    |
+|  | SDK Layer       |<---->| CLI             |                    |
+|  +-----------------+      +-----------------+                    |
+|          |                                                       |
 |  +--------------------------------------------------------+      |
 |  |                   Core Services                        |      |
 |  | +----------------+ +----------------+ +---------------+ |      |
-|  | | Session Manager| | Group Manager  | | Transcript    | |      |
-|  | |                | |                | | Watcher       | |      |
+|  | | Session Reader | | Group Manager  | | Queue Runner  | |      |
 |  | +----------------+ +----------------+ +---------------+ |      |
 |  +--------------------------------------------------------+      |
-|                               |                                   |
+|          |                                                       |
 |  +--------------------------------------------------------+      |
-|  |               Repository Layer (Clean Arch)            |      |
+|  |                   Local Storage                        |      |
 |  | +----------------+ +----------------+ +---------------+ |      |
-|  | | DuckDB Adapter | | InMemory       | | (Future)      | |      |
+|  | | File Repos     | | InMemory Repos | | Token Store   | |      |
 |  | +----------------+ +----------------+ +---------------+ |      |
 |  +--------------------------------------------------------+      |
-|                                                                   |
+|                                                                  |
 +------------------------------------------------------------------+
 ```
 
@@ -67,156 +59,65 @@
 
 ```
 src/
-+-- interfaces/             # Abstractions for testability
-|   +-- filesystem.ts      # FileSystem interface + BunFileSystem
-|   +-- process-manager.ts # ProcessManager interface + BunProcessManager
-|   +-- clock.ts           # Clock interface + SystemClock
-|   +-- index.ts           # Re-exports
-|
-+-- container.ts           # Dependency injection container
-|
-+-- cli/                    # CLI entry point (thin wrapper around SDK)
-|   +-- main.ts
-|   +-- commands/
-|       +-- group.ts        # Session group commands
-|       +-- session.ts      # Session commands
-|       +-- queue.ts        # Command queue commands
-|       +-- bookmark.ts     # Bookmark commands
-|       +-- server.ts       # Browser viewer server
-|       +-- daemon.ts       # Daemon mode commands
-|
-+-- sdk/                    # Core SDK (TypeScript API)
-|   +-- index.ts           # Public exports
-|   +-- agent.ts           # ClaudeCodeAgent class
-|   +-- session.ts         # Session management
-|   +-- group.ts           # SessionGroup management
-|   +-- queue/             # Command Queue
-|   |   +-- types.ts       # Queue and command interfaces
-|   |   +-- storage.ts     # Queue persistence
-|   |   +-- runner.ts      # Execution engine
-|   +-- markdown-parser/   # Markdown-to-JSON parsing
-|   |   +-- parser.ts      # Core parsing logic
-|   |   +-- types.ts       # ParsedMarkdown interfaces
-|   +-- bookmarks.ts       # Bookmark functionality
-|   +-- config/            # Configuration
-|   +-- events.ts          # Event emitter
-|
-+-- viewer/                # UI layer
-|   +-- session-reader.ts  # JSONL parsing
-|   +-- types.ts           # Shared types
-|   +-- browser/          # Browser viewer (SvelteKit) - Primary UI
-|   |   +-- server.ts
-|   |   +-- routes/
-|   |   +-- static/
-|   |   +-- queue/        # Queue management UI
-|   +-- tui/              # TUI components (Ink) - Future/Low Priority
-|       +-- index.ts
-|       +-- components/
-|
-+-- polling/              # Real-time monitoring
-|   +-- watcher.ts        # File watcher (fs.watch)
-|   +-- parser.ts         # JSONL stream parser
-|   +-- state.ts          # State manager
-|
-+-- repository/           # Data access layer (Clean Architecture)
-|   +-- session-repository.ts     # Interface
-|   +-- duckdb-impl.ts            # DuckDB implementation
-|   +-- in-memory-impl.ts         # For testing
-|
-+-- daemon/              # HTTP daemon for remote execution
-|   +-- server.ts        # Elysia HTTP server
-|   +-- routes/          # API endpoints
-|   +-- auth.ts          # API key authentication
-|
-+-- test/                # Test utilities
-    +-- mocks/           # Mock implementations
-    +-- fixtures/        # Sample JSONL files
++-- auth/                  # Local token metadata management
++-- cli/                   # CLI entry point and commands
++-- graphql/               # Local GraphQL schema/executor
++-- interfaces/            # FileSystem, ProcessManager, Clock abstractions
++-- polling/               # Transcript monitoring and parsing
++-- repository/            # File and in-memory repositories
++-- sdk/                   # Public SDK facade and managers
++-- services/              # Atomic writer and file locking services
++-- test/                  # Test utilities, mocks, and fixtures
++-- types/                 # Shared domain types
 ```
 
 ---
 
 ## Technology Stack
 
-| Component | Technology | Rationale | Priority |
-|-----------|------------|-----------|----------|
-| Runtime | Bun | Fast TypeScript execution, built-in testing | Core |
-| Language | TypeScript (strict mode) | Type safety, IDE support | Core |
-| HTTP Server | Elysia | Type-safe, ergonomic API, Bun-optimized | Core |
-| Browser Viewer | SvelteKit | Full-stack SSR, file-based routing, small bundle | High |
-| Query Engine | DuckDB (bundled) | SQL queries on JSONL, Athena-like experience | High |
-| Testing | Vitest | Fast, compatible with Bun | Core |
-| Packaging | Nix flakes | Reproducible builds | Core |
-| Task Runner | go-task | Simple automation | Core |
-| TUI | Ink | React-like component model | Low (Future) |
+| Component | Technology | Rationale |
+|-----------|------------|-----------|
+| Runtime | Bun | Fast TypeScript execution and built-in tooling |
+| Language | TypeScript (strict mode) | Type safety and maintainability |
+| GraphQL | graphql | Local query execution without server runtime |
+| Testing | Vitest | Fast unit and integration tests |
+| Packaging | Nix flakes | Reproducible builds |
+| Task Runner | go-task | Simple automation |
 
 ---
 
 ## Implementation Phases
 
-### Phase 1: Core Infrastructure (MVP)
+### Phase 1: Core Infrastructure
 
-- [ ] CLI argument parsing
-- [ ] Session reader implementation
-- [ ] JSONL parser for session files
-- [ ] Basic type definitions
-- [ ] Testability interfaces (FileSystem, ProcessManager, Clock)
+- [x] CLI argument parsing
+- [x] Session reader implementation
+- [x] JSONL parser for session files
+- [x] Basic type definitions
+- [x] Testability interfaces
 
-### Phase 2: SDK and Session Groups
+### Phase 2: SDK and Orchestration
 
-- [ ] ClaudeCodeAgent class
-- [ ] Session Group management
-- [ ] Config generation (CLAUDE.md, etc.)
-- [ ] Concurrent session execution
+- [x] SDK manager facade
+- [x] Session group management
+- [x] Command queue management
+- [x] Config generation
+- [x] Concurrent session execution
 
-### Phase 3: Browser Viewer (Primary UI)
+### Phase 3: Local Query and Metadata Features
 
-- [ ] HTTP server with Elysia
-- [ ] API endpoints implementation
-- [ ] SvelteKit viewer
-- [ ] Browser auto-open
-- [ ] Session list with search/filter
-- [ ] Message timeline with syntax highlighting
+- [x] Local GraphQL command/query executor
+- [x] Bookmark system
+- [x] Activity status tracking
+- [x] Changed-file extraction
+- [x] Token metadata management
 
-### Phase 4: Daemon and Remote Execution
+### Phase 4: Enhancements
 
-- [ ] Daemon mode with authentication
-- [ ] REST API for remote execution
-- [ ] SSE for event streaming
-- [ ] Token management
-
-### Phase 5: Command Queue
-
-- [ ] Queue data model types
-- [ ] Queue storage/persistence
-- [ ] CLI commands (create, list, run, pause, resume, stop)
-- [ ] Command management (add, edit, remove, move)
-- [ ] Execution runner with --resume
-- [ ] Queue Web UI (list and detail views)
-
-### Phase 6: Markdown Parsing
-
-- [ ] Parser implementation
-- [ ] Section and content block types
-- [ ] CLI flag integration (--parse-markdown)
-- [ ] REST API query parameter
-
-### Phase 7: Enhancements
-
-- [ ] Bookmark system
-- [ ] Export functionality (JSON, Markdown)
-- [ ] Theme support
+- [ ] Export functionality
+- [ ] Advanced transcript search
 - [ ] Performance optimization
-- [ ] DuckDB query integration
-
-### Phase 8: TUI Viewer (Future/Low Priority)
-
-- [ ] Session list view (table display)
-- [ ] Session detail view (message timeline)
-- [ ] Task list view
-- [ ] Keyboard navigation
-- [ ] Search functionality
-
-> **Note**: TUI implementation is deferred. Web UI is the primary interactive interface.
+- [ ] Additional SDK examples
 
 ---
 
@@ -227,39 +128,28 @@ src/
 | [spec-data-storage.md](./spec-data-storage.md) | Claude Code data structures and agent storage |
 | [spec-session-groups.md](./spec-session-groups.md) | Session Group architecture and lifecycle |
 | [spec-command-queue.md](./spec-command-queue.md) | Command Queue for sequential prompt execution |
-| [spec-sdk-api.md](./spec-sdk-api.md) | SDK, daemon, REST API, authentication, markdown parsing |
-| [spec-viewers.md](./spec-viewers.md) | TUI, browser viewer, transcript monitoring |
+| [spec-sdk-api.md](./spec-sdk-api.md) | SDK, local GraphQL CLI, token metadata, and CLI interface |
 | [spec-infrastructure.md](./spec-infrastructure.md) | Error handling, testing, caching |
 | [spec-deployment.md](./spec-deployment.md) | Nix packaging |
 | [spec-changed-files.md](./spec-changed-files.md) | Extracting changed files from session transcripts |
-| [DECISIONS.md](./DECISIONS.md) | Consolidated design decisions (Q1-Q36) |
+| [DECISIONS.md](./DECISIONS.md) | Consolidated design decisions |
 
 ---
 
-## claude-code-agent's Role (Important)
+## claude-code-agent's Role
 
-claude-code-agent is an **intermediary** between external apps and Claude Code:
+claude-code-agent is a local intermediary between user workflows and Claude Code:
 
 ```
-External App  <-->  claude-code-agent  <-->  Claude Code
+Local CLI/SDK  <-->  claude-code-agent  <-->  Claude Code
                          |
                          v
-                    - Generates config (CLAUDE_CONFIG_DIR)
-                    - Executes Claude Code subprocess
-                    - Watches transcripts (Claude Code writes these)
-                    - Emits events (external apps consume)
-                    - Provides read-only query interface
+                    - Generates config
+                    - Executes Claude Code subprocesses
+                    - Watches transcripts
+                    - Emits SDK/CLI events
+                    - Provides local query interfaces
                     - Writes only its own metadata
 ```
 
-**claude-code-agent does NOT**:
-- Persist session content to databases (external apps handle this)
-- Modify ~/.claude directly
-- Store auth tokens (only provides override capability)
-
----
-
-## References
-
-- `references/README.md` - External references and design materials
-- `archive/` - Historical Q&A files with decision rationale
+**claude-code-agent is a local CLI/SDK package and does not expose a network listener.**

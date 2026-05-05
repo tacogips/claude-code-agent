@@ -9,7 +9,11 @@
   "bin": {
     "claude-code-agent": "./bin/claude-code-agent"
   },
-  "files": ["dist", "bin", "README.md"],
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/main.d.ts",
@@ -20,6 +24,11 @@
       "types": "./dist/sdk/index.d.ts",
       "import": "./dist/sdk/index.js",
       "default": "./dist/sdk/index.js"
+    },
+    "./sdk/testing": {
+      "types": "./src/sdk/mock-session-runner.ts",
+      "import": "./src/sdk/mock-session-runner.ts",
+      "default": "./src/sdk/mock-session-runner.ts"
     },
     "./container": {
       "types": "./dist/container.d.ts",
@@ -57,12 +66,9 @@
     "vitest": "2.1.8"
   },
   "dependencies": {
-    "@elysiajs/cors": "1.4.1",
     "commander": "14.0.2",
     "consola": "3.4.2",
-    "elysia": "1.4.20",
     "graphql": "16.13.1",
-    "graphql-yoga": "5.18.1",
     "minimatch": "10.1.1",
     "mitt": "3.0.1",
     "mustache": "4.2.0",

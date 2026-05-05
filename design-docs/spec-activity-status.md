@@ -388,56 +388,6 @@ if (await activity.isWaitingForUser("abc123")) {
 
 ---
 
-## 8. REST API
-
-### 8.1 Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/activity` | List all activity entries |
-| GET | `/api/activity/:sessionId` | Get activity for session |
-
-### 8.2 Request/Response Examples
-
-```bash
-# List all
-curl http://localhost:3000/api/activity
-
-# Response:
-{
-  "entries": [
-    {
-      "sessionId": "abc123",
-      "status": "working",
-      "projectPath": "/path/to/project",
-      "lastUpdated": "2026-01-31T10:30:00.000Z"
-    }
-  ]
-}
-
-# With filter
-curl "http://localhost:3000/api/activity?status=working"
-
-# Get specific session
-curl http://localhost:3000/api/activity/abc123
-
-# Response:
-{
-  "sessionId": "abc123",
-  "status": "working",
-  "projectPath": "/path/to/project",
-  "lastUpdated": "2026-01-31T10:30:00.000Z"
-}
-
-# Not found response (404):
-{
-  "error": "not_found",
-  "message": "Session not found"
-}
-```
-
----
-
 ## 9. Implementation Notes
 
 ### 9.1 File Locking
@@ -574,7 +524,6 @@ async function setupHooks(options: { global?: boolean }): Promise<void> {
 
 - Hook input parsing from stdin
 - CLI command execution
-- REST API endpoints
 
 ### 12.3 Mock Data
 
@@ -587,19 +536,11 @@ Provide mock transcript files with various scenarios:
 
 ## 13. Future Considerations
 
-### 13.1 Event Streaming
-
-Add SSE endpoint for real-time activity updates:
-
-```
-GET /api/activity/stream
-```
-
-### 13.2 Notification Hook
+### 13.1 Notification Hook
 
 If Claude Code adds an `AskUserQuestion` hook in the future, integrate it for more accurate detection.
 
-### 13.3 Activity History
+### 13.2 Activity History
 
 Optional logging of activity transitions for debugging:
 

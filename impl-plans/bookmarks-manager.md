@@ -1,7 +1,7 @@
 # Bookmarks Manager Implementation Plan
 
 **Status**: Completed
-**Design Reference**: design-docs/spec-viewers.md#6-bookmarks, design-docs/spec-sdk-api.md#5.3-bookmark-endpoints
+**Design Reference**: design-docs/spec-sdk-api.md#bookmarks
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-06
 **Completed**: 2026-01-06
@@ -17,7 +17,7 @@
 
 ## Design Document Reference
 
-**Source**: `design-docs/spec-viewers.md` Section 6: Bookmarks, `design-docs/spec-sdk-api.md` Section 5.3
+**Source**: `design-docs/spec-sdk-api.md` bookmarks command surface
 
 ### Summary
 

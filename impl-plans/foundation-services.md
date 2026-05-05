@@ -113,7 +113,7 @@ SessionReader
 
 | Name | Type | Purpose | Called By |
 |------|------|---------|-----------|
-| `EventEmitter` | class | Emit and subscribe to events | SDK, daemon |
+| `EventEmitter` | class | Emit and subscribe to events | SDK |
 
 **Class Definition**:
 
@@ -131,7 +131,7 @@ EventEmitter
 
 **Dependencies**: `src/sdk/events/types.ts`
 
-**Dependents**: All managers, daemon SSE
+**Dependents**: All managers
 
 ---
 

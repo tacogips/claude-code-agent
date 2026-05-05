@@ -9,10 +9,10 @@ This document describes the Command Queue feature for sequential prompt executio
 A **Command Queue** enables:
 - Queuing multiple prompts for sequential execution
 - **Flexible session mode**: Continue in same session (`--resume`) or start new session per command
-- Web UI-based management for editing, deleting, and reordering commands
+- CLI and SDK management for editing, deleting, and reordering commands
 - Pause/resume/stop controls
 
-> **UI Priority**: Web UI is the primary interactive interface for queue management. TUI is planned for future implementation.
+> **Interface Priority**: CLI and SDK are the primary interfaces for queue management.
 
 ### 1.1 Relationship to Other Features
 
@@ -246,72 +246,7 @@ queue.status = 'stopped';
 
 ## 5. Queue Management Interface
 
-### 5.1 Web UI (Primary)
-
-The web-based queue management interface will be implemented in the Browser Viewer (SvelteKit). Features include:
-- Queue list with status indicators
-- Queue detail view with command list
-- Inline editing of commands
-- Drag-and-drop reordering
-- Real-time status updates via WebSocket
-
-### 5.2 TUI Interface (Future/Low Priority)
-
-> **Note**: TUI features below are planned for future implementation. Use Web UI for queue management.
-
-#### 5.2.1 Queue List View
-
-```
-+----------------------------------------------------------------+
-| Command Queues                                                  |
-+----------------------------------------------------------------+
-| ID              | Name          | Status  | Progress           |
-|-----------------|---------------|---------|-------------------|
-| > 20260104-...  | Refactor Auth | running | 2/5 commands      |
-|   20260103-...  | Add Tests     | paused  | 3/8 commands      |
-|   20260102-...  | Bug Fixes     | done    | 5/5 commands      |
-+----------------------------------------------------------------+
-| [Enter] View  [n] New  [r] Run  [p] Pause  [s] Stop  [q] Quit  |
-+----------------------------------------------------------------+
-```
-
-#### 5.2.2 Queue Detail View
-
-```
-+------------------------------------------------------------------------+
-| Queue: Refactor Auth (20260104-143022)                                 |
-| Project: /g/gits/my-project                                            |
-| Status: running | Cost: $0.15 | Duration: 5m 32s                       |
-+------------------------------------------------------------------------+
-| #  | Status | Mode | Command                                  | Cost  |
-|----|--------|------|------------------------------------------|-------|
-| 1  | [x]    | cont | Analyze current auth implementation      | $0.05 |
-| 2  | [*]    | cont | Refactor auth module to use JWT          | $0.10 |
-| 3  | [ ]    | new  | Set up CI/CD pipeline                    | -     |
-| 4  | [ ]    | cont | Add deployment documentation             | -     |
-+------------------------------------------------------------------------+
-| [a] Add  [e] Edit  [d] Delete  [m] Move  [t] Toggle Mode  [r] Run      |
-+------------------------------------------------------------------------+
-```
-
-**Mode column**: `cont` = continue (same session), `new` = new session
-
-#### 5.2.3 Keyboard Shortcuts (TUI)
-
-| Context | Key | Action |
-|---------|-----|--------|
-| List | `j/k` | Navigate |
-| List | `Enter` | View queue |
-| List | `n` | Create new queue |
-| List | `r` | Run queue |
-| List | `p` | Pause queue |
-| List | `s` | Stop queue |
-| Detail | `a` | Add command |
-| Detail | `e` | Edit command |
-| Detail | `d` | Delete command |
-| Detail | `m` | Move command |
-| Detail | `t` | Toggle session mode (continue/new) |
-| All | `q` | Back/quit |
+Queue management is exposed through CLI commands and SDK methods. There is no hosted queue UI.
 
 ---
 
@@ -342,11 +277,6 @@ claude-code-agent queue stop <queue-id>
 # Delete queue
 claude-code-agent queue delete <queue-id> [--force]
 
-# Open Web UI (primary)
-claude-code-agent queue ui [<queue-id>]
-
-# Open TUI (future)
-# claude-code-agent queue tui [<queue-id>]
 ```
 
 ### 6.2 Command Management

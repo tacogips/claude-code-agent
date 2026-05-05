@@ -39,7 +39,6 @@ export type {
   AgentConfig,
   LoggingConfig,
   SessionExecutionConfig,
-  DaemonConfig,
 } from "./config";
 export { getDefaultConfig, mergeConfig } from "./config";
 

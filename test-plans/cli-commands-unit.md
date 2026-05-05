@@ -1,7 +1,7 @@
 # CLI Commands Unit Tests
 
 **Status**: Completed
-**Implementation Reference**: impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md, impl-plans/cli-other.md
+**Implementation Reference**: impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md
 **Source Files**: src/cli/commands/
 **Test Type**: Unit
 **Created**: 2026-01-12
@@ -9,7 +9,7 @@
 
 ## Implementation Reference
 
-CLI command handlers for all user-facing commands including bookmark, daemon, queue, group, session, files, server, and token management.
+CLI command handlers for all user-facing commands including bookmark, queue, group, session, files, auth, activity, version, and token management.
 
 **Key Features**:
 - Command registration with Commander.js
@@ -292,35 +292,32 @@ Verify group run, watch, pause, resume, and archive commands.
 
 ---
 
-### TEST-009: Daemon Command - Start/Stop/Status
+### TEST-009: Token Command - Create/List/Revoke/Rotate
 
 **Status**: Passing
 **Priority**: High
 **Parallelizable**: Yes
 **Dependencies**: None
 
-**Target**: `src/cli/commands/daemon.ts:registerDaemonCommands`
+**Target**: `src/cli/commands/token.ts:registerTokenCommands`
 
 **Description**:
-Verify daemon start, stop, and status commands (placeholders).
+Verify token management commands.
 
 **Scenarios**:
-1. Start daemon with default options
-2. Start daemon with --host and --port
-3. Start daemon with --auth-token-file
-4. Start daemon with --tls-cert and --tls-key
-5. Start daemon with --with-viewer
-6. Stop daemon
-7. Status command with format option
+1. Create token with default permissions
+2. Create token with explicit permissions
+3. List token metadata without plaintext token values
+4. Revoke token by ID
+5. Rotate token by ID
 
 **Assertions**:
-- [x] Start displays placeholder message
-- [x] Options parsed and displayed
-- [x] Exit code 1 (not implemented)
-- [x] Stop displays placeholder
-- [x] Status displays format option
+- [x] Token command registered
+- [x] Permissions parsed and validated
+- [x] Metadata output excludes plaintext token values
+- [x] Revocation and rotation delegate to token manager
 
-**Test Code Location**: `src/cli/commands/daemon.test.ts`
+**Test Code Location**: `src/cli/main.test.ts`, `src/auth/token-manager.test.ts`
 
 ---
 
@@ -431,7 +428,7 @@ Verify handling of special characters, paths, and edge cases.
 | TEST-006 | Queue Commands | Passing | High | TEST-004 |
 | TEST-007 | Group CRUD | Passing | Critical | None |
 | TEST-008 | Group Execution | Passing | Critical | TEST-007 |
-| TEST-009 | Daemon Commands | Passing | High | None |
+| TEST-009 | Token Commands | Passing | High | None |
 | TEST-010 | Error Handling | Passing | High | None |
 | TEST-011 | Output Formatting | Passing | Medium | None |
 | TEST-012 | Edge Cases | Passing | Medium | None |
@@ -443,10 +440,10 @@ Verify handling of special characters, paths, and edge cases.
 | src/cli/commands/bookmark.ts | 0% | 80% | Not Started |
 | src/cli/commands/queue.ts | 0% | 80% | Not Started |
 | src/cli/commands/group.ts | 0% | 80% | Not Started |
-| src/cli/commands/daemon.ts | 0% | 70% | Not Started |
 | src/cli/commands/session.ts | 0% | 75% | Not Started |
 | src/cli/commands/files.ts | 0% | 75% | Not Started |
-| src/cli/commands/server.ts | 0% | 70% | Not Started |
+| src/cli/commands/auth/ | 0% | 70% | Not Started |
+| src/cli/commands/activity/ | 0% | 70% | Not Started |
 | src/cli/commands/token.ts | 0% | 75% | Not Started |
 
 ## Completion Criteria
@@ -462,7 +459,7 @@ Verify handling of special characters, paths, and edge cases.
 ### Session: 2026-01-12 (14:30)
 **Tests Completed**: TEST-009
 **Status**: In Progress
-**Notes**: Implemented and verified TEST-009 (Daemon Commands). All 9 test scenarios passing. Tests verify placeholder implementations of daemon start/stop/status commands with proper option parsing and exit codes.
+**Notes**: Implemented and verified TEST-009 (Token Commands). Tests verify token command registration and token manager behavior.
 
 ### Session: 2026-01-12 (15:00)
 **Tests Completed**: TEST-007
@@ -579,7 +576,7 @@ Test file: src/cli/commands/queue.test.ts. Total tests in file: 33 (12 from TEST
 - TEST-001 to TEST-003: Bookmark commands (add, list, search, show, delete)
 - TEST-004 to TEST-006: Queue commands (CRUD, execution, command management)
 - TEST-007 to TEST-008: Group commands (CRUD, execution control)
-- TEST-009: Daemon commands (start, stop, status placeholders)
+- TEST-009: Token commands (create, list, revoke, rotate)
 - TEST-010: Error handling (SDK errors, not found errors, consistent formatting)
 - TEST-011: Output formatting (table, JSON, array, truncation)
 - TEST-012: Edge cases (Unicode, special characters, long prompts, negative indices)
@@ -588,7 +585,7 @@ Test files created:
 - src/cli/commands/bookmark.test.ts (26 tests)
 - src/cli/commands/queue.test.ts (33 tests)
 - src/cli/commands/group.test.ts (20 tests)
-- src/cli/commands/daemon.test.ts (9 tests)
+- src/auth/token-manager.test.ts (4 tests)
 - src/cli/commands/error-handling.test.ts (30 tests)
 - src/cli/output.test.ts (27 tests)
 - src/cli/commands/edge-cases.test.ts (19 tests)

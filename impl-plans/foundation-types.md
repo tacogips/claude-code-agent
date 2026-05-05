@@ -327,7 +327,7 @@ Define all core type definitions for the SDK.
 - `src/types/session.ts` - Session, SessionStatus, SessionMetadata, TokenUsage
 - `src/types/message.ts` - Message, MessageRole, ToolCall, ToolResult
 - `src/types/task.ts` - Task, TaskStatus, TaskProgress
-- `src/types/config.ts` - AgentConfig, DaemonConfig, ViewerConfig
+- `src/types/config.ts` - AgentConfig and related local configuration types
 - `src/types/index.ts` - Module exports
 - `src/result.test.ts` - 31 unit tests for Result utilities
 - `src/errors.test.ts` - 10 unit tests for error types

@@ -38,10 +38,10 @@ Current file-based write operations lack exclusive control, leading to:
 
 | Component | Risk Level | Concurrent Access Pattern | Priority |
 |-----------|------------|--------------------------|----------|
-| FileQueueRepository | CRITICAL | Multiple runners + CLI + daemon | P0 |
+| FileQueueRepository | CRITICAL | Multiple runners + CLI | P0 |
 | TokenManager | HIGH | Multiple API requests | P0 |
 | FileGroupRepository | HIGH | Multiple sessions updating | P1 |
-| FileBookmarkRepository | HIGH | CLI + REST API | P1 |
+| FileBookmarkRepository | HIGH | CLI + SDK | P1 |
 | FileChangeIndex | MEDIUM | Session completion events | P2 |
 | CredentialWriter | MEDIUM | Import/export operations | P2 |
 | ConfigGenerator | LOW | Per-session generation | P3 |
@@ -403,7 +403,7 @@ class FileQueueRepository extends BaseFileRepository<Queue> implements QueueRepo
 
 ### 3. SDK Layer Updates
 
-#### TASK-008: src/daemon/auth.ts (TokenManager Refactor)
+#### TASK-008: src/auth/token-manager.ts (TokenManager Refactor)
 
 **Status**: NOT_STARTED
 **Parallelizable**: Yes (after TASK-002, TASK-003)
@@ -624,7 +624,7 @@ async function verifyNoLostUpdates<T>(
 | FileQueueRepository | `src/repository/file/queue-repository.ts` | NOT_STARTED | - | P0 |
 | FileBookmarkRepository | `src/repository/file/bookmark-repository.ts` | NOT_STARTED | - | P1 |
 | FileGroupRepository | `src/repository/file/group-repository.ts` | NOT_STARTED | - | P1 |
-| TokenManager | `src/daemon/auth.ts` | NOT_STARTED | - | P0 |
+| TokenManager | `src/auth/token-manager.ts` | NOT_STARTED | - | P0 |
 | FileChangeIndex | `src/sdk/file-changes/index-manager.ts` | NOT_STARTED | - | P2 |
 | FileCredentialBackend | `src/sdk/credentials/backends/file.ts` | NOT_STARTED | - | P2 |
 | Container | `src/container.ts` | NOT_STARTED | - | P0 |

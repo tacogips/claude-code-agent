@@ -2,7 +2,7 @@
  * CLI entry point for claude-code-agent.
  *
  * Provides command-line interface with subcommands for session, group, bookmark,
- * and daemon management. Uses commander for argument parsing with global options
+ * and token management. Uses commander for argument parsing with global options
  * for output formatting.
  *
  * @module cli/main
@@ -11,7 +11,6 @@
 import { Command } from "commander";
 import { printError } from "./output";
 import { registerSessionCommands } from "./commands/session";
-import { registerDaemonCommands } from "./commands/daemon";
 import { registerBookmarkCommands } from "./commands/bookmark";
 import { registerTokenCommands } from "./commands/token";
 import { registerFilesCommands } from "./commands/files";
@@ -40,7 +39,7 @@ interface GlobalOptions {
  *
  * Sets up command structure with:
  * - Global options (--format, --help, --version)
- * - Subcommand placeholders for session, group, bookmark, server, daemon, token
+ * - Subcommands for session, group, bookmark, token, and local GraphQL queries
  * - Error handling with proper exit codes
  *
  * @returns Configured Commander program instance
@@ -81,9 +80,6 @@ export function createCli(): Command {
 
   // Session commands
   registerSessionCommands(program, getAgent);
-
-  // Daemon commands
-  registerDaemonCommands(program, getAgent);
 
   // Bookmark commands
   registerBookmarkCommands(program, getAgent);

@@ -406,54 +406,6 @@ claude-code-agent files index --stats
 claude-code-agent files index --build --project=/path/to/project
 ```
 
-### REST API
-
-```
-# ========================================
-# Session -> Files
-# ========================================
-
-GET /api/sessions/{sessionId}/files
-  Query Parameters:
-    - includeContent: boolean (default: false)
-    - extensions: comma-separated list
-    - directories: comma-separated list
-
-  Response: ChangedFilesSummary
-
-GET /api/sessions/{sessionId}/files/{encodedFilePath}/changes
-  Response: FileChange[]
-
-# ========================================
-# File -> Sessions (Reverse Lookup)
-# ========================================
-
-GET /api/files/search
-  Query Parameters:
-    - path: string (required) - file path or glob pattern
-    - project: string (optional) - project path filter
-    - from: string (optional) - ISO 8601 date
-    - to: string (optional) - ISO 8601 date
-    - includeContent: boolean (default: false)
-    - limit: number (default: 50)
-    - offset: number (default: 0)
-
-  Response: FileHistory
-
-# ========================================
-# Index Management
-# ========================================
-
-POST /api/files/index/build
-  Body: { projectPath?: string }
-  Response: IndexStats
-
-GET /api/files/index/stats
-  Response: IndexStats
-```
-
----
-
 ## Indexing Strategy
 
 ### Why Indexing is Needed
@@ -504,7 +456,7 @@ interface FileIndexEntry {
 | Strategy | Description | When to Use |
 |----------|-------------|-------------|
 | **On-Demand** | Build when first query made | Development, low usage |
-| **Background** | Periodic rebuild (cron/daemon) | Production, high usage |
+| **Background** | Periodic rebuild via scheduled local command | Production, high usage |
 | **Incremental** | Watch transcript changes, update delta | Real-time monitoring |
 
 ### Recommended Approach

@@ -6,14 +6,11 @@ This directory contains historical Q&A documents from the design phase.
 
 | File | Questions | Topic |
 |------|-----------|-------|
-| `qa-design-decisions.md` | Q1-Q12 | Core design decisions (TUI, query, viewer) |
 | `qa-agent-architecture.md` | Q13-Q21 | Agent architecture (directories, templates, isolation) |
-| `qa-use-case-gaps.md` | Q22-Q28 | Use case integration (SDK, daemon, bookmarks) |
-| `qa-design-review.md` | Q29-Q36 | Design review clarifications |
 
 ## Purpose
 
-These files preserve the full decision-making rationale and discussion.
+These files preserve historical decision-making rationale that still applies to the current local CLI/SDK design.
 For a summary of all decisions, see `../DECISIONS.md`.
 
 ## Templates

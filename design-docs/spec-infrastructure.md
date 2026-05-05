@@ -269,16 +269,6 @@ async function* parseJsonlWithRecovery(
     "maxBudgetUsd": 10.0,
     "onBudgetExceeded": "pause"
   },
-  "viewer": {
-    "defaultMode": "web",
-    "port": 3000,
-    "theme": "auto",
-    "showThinking": false
-  },
-  "daemon": {
-    "port": 8443,
-    "host": "0.0.0.0"
-  },
   "logging": {
     "level": "info",
     "file": null
@@ -292,8 +282,6 @@ async function* parseJsonlWithRecovery(
 interface Config {
   version: number;
   defaults: DefaultsConfig;
-  viewer: ViewerConfig;
-  daemon: DaemonConfig;
   logging: LoggingConfig;
 }
 
@@ -447,7 +435,6 @@ test/
 |   +-- session-manager.test.ts
 +-- integration/
 |   +-- session-group.test.ts
-|   +-- daemon.test.ts
 +-- e2e/
     +-- cli.test.ts
 ```
@@ -542,13 +529,7 @@ describe('SessionManager', () => {
 - Validate paths to prevent directory traversal
 - Respect file permissions
 
-### 8.2 API Security
-
-- API token authentication required for daemon
-- TLS for remote connections
-- Token expiration and rotation support
-
-### 8.3 Sensitive Data
+### 8.2 Sensitive Data
 
 - Auth tokens stored with restricted permissions
 - Credential files excluded from exports

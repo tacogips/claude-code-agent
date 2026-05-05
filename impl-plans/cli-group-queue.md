@@ -13,7 +13,7 @@ This plan is part of the complete CLI implementation, split for maintainability:
 - `impl-plans/cli-core.md` - Core CLI framework, argument parsing, command structure
 - `impl-plans/cli-session-commands.md` - Session-related commands
 - `impl-plans/cli-group-queue.md` (this file) - Group and queue commands
-- `impl-plans/cli-other.md` - Bookmark, server, daemon, token, and files commands
+- Bookmark, token, and files command plans
 
 ---
 
@@ -33,7 +33,7 @@ Implement group and queue commands for the claude-code-agent CLI. These commands
 
 **Excluded**:
 - Session commands (see cli-session-commands.md)
-- Other commands (see cli-other.md)
+- Bookmark, token, and files commands
 
 ---
 
@@ -183,7 +183,7 @@ queue delete <queue-id>
   SDK: agent.queues.delete()
 
 queue ui [queue-id]
-  Purpose: Open Web UI for queue management
+  Purpose: Removed; queue management is CLI/SDK only
   SDK: Opens browser to viewer URL
 
 queue command add <queue-id>

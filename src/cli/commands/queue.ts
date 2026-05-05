@@ -5,7 +5,6 @@
  * - CRUD operations (create, list, show, delete)
  * - Execution control (run, pause, resume, stop)
  * - Command management (add, edit, remove, move, toggle-mode)
- * - Web UI access
  *
  * @module cli/commands/queue
  */
@@ -46,7 +45,6 @@ type CommandDisplay = QueueCommand & { index: number } & Record<
  * - queue resume <queue-id>
  * - queue stop <queue-id>
  * - queue delete <queue-id>
- * - queue ui [queue-id]
  * - queue command add <queue-id>
  * - queue command edit <queue-id> <index>
  * - queue command toggle-mode <queue-id> <index>
@@ -350,29 +348,6 @@ export function registerQueueCommands(
           printError(`Queue not found: ${queueId}`);
           process.exit(1);
         }
-      } catch (error) {
-        printError(error instanceof Error ? error : String(error));
-        process.exit(1);
-      }
-    });
-
-  // queue ui [queue-id]
-  queueCmd
-    .command("ui")
-    .description("Open Web UI for queue management")
-    .argument("[queue-id]", "Optional queue ID to open directly")
-    .action(async (queueId?: string) => {
-      try {
-        // TODO: Implement viewer server integration
-        // For now, this is a placeholder
-        if (queueId !== undefined) {
-          console.log(`Opening viewer for queue: ${queueId}`);
-          console.log("Viewer URL: http://localhost:3000/queues/" + queueId);
-        } else {
-          console.log("Opening queue viewer UI");
-          console.log("Viewer URL: http://localhost:3000/queues");
-        }
-        printError("Web UI not yet implemented");
       } catch (error) {
         printError(error instanceof Error ? error : String(error));
         process.exit(1);

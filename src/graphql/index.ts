@@ -18,8 +18,7 @@ import {
   type ValueNode,
 } from "graphql";
 import type { SdkManager } from "../sdk";
-import type { TokenManager } from "../daemon/auth";
-import type { ApiToken, DaemonStatus, Permission } from "../daemon/types";
+import type { TokenManager, ApiToken, Permission } from "../auth";
 import type { TranscriptEvent } from "../polling/parser";
 import type { GroupSession, GroupStatus } from "../sdk/group/types";
 import type { SessionMode } from "../sdk/queue/types";
@@ -42,7 +41,6 @@ export interface GraphqlContext {
   readonly sdk: SdkManager;
   readonly tokenManager?: Pick<TokenManager, "hasPermission"> | undefined;
   readonly token?: ApiToken | undefined;
-  readonly daemonStatus?: (() => DaemonStatus) | undefined;
 }
 
 export interface GraphqlExecutionRequest {
@@ -511,7 +509,7 @@ async function executeCommand(
     case "session.resume":
       requirePermission(context, "session:create");
       throw new GraphQLError(
-        `${commandName} is not implemented in the daemon runtime`,
+        `${commandName} is not implemented in this runtime`,
       );
     case "group.create":
       return executeGroupCreate(record, context);
@@ -567,8 +565,6 @@ async function executeCommand(
       return executeActivityList(record, context);
     case "activity.get":
       return executeActivityGet(record, context);
-    case "daemon.status":
-      return executeDaemonStatus(context);
     default:
       throw new GraphQLError(`Unknown GraphQL command: ${commandName}`);
   }
@@ -1084,14 +1080,6 @@ async function executeActivityGet(
     throw notFoundError("Activity entry");
   }
   return entry;
-}
-
-function executeDaemonStatus(context: GraphqlContext): DaemonStatus {
-  const daemonStatus = context.daemonStatus;
-  if (daemonStatus === undefined) {
-    throw new GraphQLError("daemon.status is unavailable in this runtime");
-  }
-  return daemonStatus();
 }
 
 function requirePermission(

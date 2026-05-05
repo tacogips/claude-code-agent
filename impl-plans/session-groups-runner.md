@@ -364,5 +364,5 @@ None at this time.
 ### Future Enhancements
 
 - Watch mode for session progress (TUI)
-- Remote session execution via daemon
+- Remote session execution
 - Session result caching for re-runs

@@ -5,7 +5,6 @@
  * - ActivityManager processes hook inputs and updates status
  * - Activity store persists and retrieves entries correctly
  * - CLI commands work end-to-end with actual filesystem
- * - REST API endpoints return correct responses
  * - Full flow: hook update -> query status -> list entries
  *
  * @module sdk/activity/__tests__/integration.test
@@ -15,53 +14,10 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { Elysia } from "elysia";
 import { ActivityManager } from "../manager";
-import type { ActivityEntry } from "../../../types/activity";
 import type { HookInput } from "../hook-types";
 import { BunFileSystem } from "../../../interfaces/bun-filesystem";
 import { SystemClock } from "../../../interfaces/system-clock";
-import { activityRoutes } from "../../../daemon/routes/activity";
-import type { TokenManager, AuthenticatedApp } from "../../../daemon/auth";
-import type { ApiToken } from "../../../daemon/types";
-
-/**
- * Create a mock TokenManager for testing REST API.
- */
-function createMockTokenManager(): TokenManager {
-  return {
-    hasPermission: (): boolean => {
-      return true; // Grant all permissions for testing
-    },
-  } as unknown as TokenManager;
-}
-
-/**
- * Create test Elysia app with activity routes.
- */
-function createTestApp(
-  manager: ActivityManager,
-  tokenManager: TokenManager,
-): Elysia {
-  const app = new Elysia();
-
-  // Add mock authentication
-  const authenticatedApp = app.derive(() => ({
-    token: {
-      id: "test-token",
-      name: "Test Token",
-      hash: "mock-hash",
-      permissions: ["session:read"],
-      createdAt: "2026-01-31T00:00:00.000Z",
-      lastUsedAt: "2026-01-31T00:00:00.000Z",
-    } as ApiToken,
-  })) as unknown as AuthenticatedApp;
-
-  // Register activity routes
-  activityRoutes(authenticatedApp, manager, tokenManager);
-
-  return app;
-}
 
 /**
  * Create a mock transcript file with or without AskUserQuestion.
@@ -364,147 +320,6 @@ describe("Activity Integration Tests", () => {
     });
   });
 
-  describe("REST API Integration", () => {
-    test("GET /api/activity returns all entries", async () => {
-      const fs = new BunFileSystem();
-      const clock = new SystemClock();
-      const manager = new ActivityManager(fs, clock, { dataDir });
-
-      // Create test entries
-      const transcript1 = join(transcriptDir, "transcript-api-1.jsonl");
-      await createMockTranscript(transcript1, false);
-      await manager.update({
-        session_id: "api-session-1",
-        transcript_path: transcript1,
-        cwd: "/projects/api1",
-        permission_mode: "auto",
-        hook_event_name: "UserPromptSubmit",
-      });
-
-      const transcript2 = join(transcriptDir, "transcript-api-2.jsonl");
-      await createMockTranscript(transcript2, false);
-      await manager.update({
-        session_id: "api-session-2",
-        transcript_path: transcript2,
-        cwd: "/projects/api2",
-        permission_mode: "auto",
-        hook_event_name: "Stop",
-      });
-
-      // Create REST API app
-      const tokenManager = createMockTokenManager();
-      const app = createTestApp(manager, tokenManager);
-
-      // Query API
-      const response = await app.handle(
-        new Request("http://localhost/api/activity"),
-      );
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as { entries: ActivityEntry[] };
-      expect(data.entries).toHaveLength(2);
-
-      const sessionIds = data.entries.map((e) => e.sessionId).sort();
-      expect(sessionIds).toEqual(["api-session-1", "api-session-2"]);
-    });
-
-    test("GET /api/activity/:id returns entry for existing session", async () => {
-      const fs = new BunFileSystem();
-      const clock = new SystemClock();
-      const manager = new ActivityManager(fs, clock, { dataDir });
-
-      const transcript = join(transcriptDir, "transcript-api-get.jsonl");
-      await createMockTranscript(transcript, false);
-      await manager.update({
-        session_id: "api-get-session",
-        transcript_path: transcript,
-        cwd: "/projects/api-get",
-        permission_mode: "auto",
-        hook_event_name: "UserPromptSubmit",
-      });
-
-      const tokenManager = createMockTokenManager();
-      const app = createTestApp(manager, tokenManager);
-
-      const response = await app.handle(
-        new Request("http://localhost/api/activity/api-get-session"),
-      );
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as ActivityEntry;
-      expect(data.sessionId).toBe("api-get-session");
-      expect(data.status).toBe("working");
-      expect(data.projectPath).toBe("/projects/api-get");
-    });
-
-    test("GET /api/activity/:id returns 404 for unknown session", async () => {
-      const fs = new BunFileSystem();
-      const clock = new SystemClock();
-      const manager = new ActivityManager(fs, clock, { dataDir });
-
-      const tokenManager = createMockTokenManager();
-      const app = createTestApp(manager, tokenManager);
-
-      const response = await app.handle(
-        new Request("http://localhost/api/activity/unknown-session-id"),
-      );
-
-      expect(response.status).toBe(404);
-
-      const data = (await response.json()) as {
-        error: string;
-        message: string;
-      };
-      expect(data.error).toBe("not_found");
-      expect(data.message).toContain("Session not found");
-    });
-
-    test("GET /api/activity filters by status query parameter", async () => {
-      const fs = new BunFileSystem();
-      const clock = new SystemClock();
-      const manager = new ActivityManager(fs, clock, { dataDir });
-
-      // Create working session
-      const transcript1 = join(transcriptDir, "transcript-api-filter-1.jsonl");
-      await createMockTranscript(transcript1, false);
-      await manager.update({
-        session_id: "api-filter-working",
-        transcript_path: transcript1,
-        cwd: "/projects/working",
-        permission_mode: "auto",
-        hook_event_name: "UserPromptSubmit",
-      });
-
-      // Create idle session
-      const transcript2 = join(transcriptDir, "transcript-api-filter-2.jsonl");
-      await createMockTranscript(transcript2, false);
-      await manager.update({
-        session_id: "api-filter-idle",
-        transcript_path: transcript2,
-        cwd: "/projects/idle",
-        permission_mode: "auto",
-        hook_event_name: "Stop",
-      });
-
-      const tokenManager = createMockTokenManager();
-      const app = createTestApp(manager, tokenManager);
-
-      // Query with status filter
-      const response = await app.handle(
-        new Request("http://localhost/api/activity?status=working"),
-      );
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as { entries: ActivityEntry[] };
-      expect(data.entries).toHaveLength(1);
-      expect(data.entries[0]?.sessionId).toBe("api-filter-working");
-      expect(data.entries[0]?.status).toBe("working");
-    });
-  });
-
   describe("End-to-End Flow", () => {
     test("full flow: hook update -> query status -> list entries", async () => {
       const fs = new BunFileSystem();
@@ -579,21 +394,7 @@ describe("Activity Integration Tests", () => {
       });
       expect(waitingEntries).toHaveLength(2);
 
-      // Step 8: Query via REST API
-      const tokenManager = createMockTokenManager();
-      const app = createTestApp(manager, tokenManager);
-
-      const apiResponse = await app.handle(
-        new Request("http://localhost/api/activity/e2e-session-1"),
-      );
-
-      expect(apiResponse.status).toBe(200);
-
-      const apiData = (await apiResponse.json()) as ActivityEntry;
-      expect(apiData.sessionId).toBe("e2e-session-1");
-      expect(apiData.status).toBe("waiting_user_response");
-
-      // Step 9: Complete the session (Stop without AskUserQuestion)
+      // Step 8: Complete the session (Stop without AskUserQuestion)
       const transcript3 = join(transcriptDir, "transcript-e2e-3.jsonl");
       await createMockTranscript(transcript3, false);
 

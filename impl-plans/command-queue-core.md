@@ -34,7 +34,7 @@ Implement Command Queue manager, runner, repository, and SDK integration. This p
 **Excluded**:
 - Type definitions (command-queue-types.md)
 - CLI commands (cli.md)
-- Web UI (browser-viewer.md)
+- CLI and SDK queue commands
 
 ---
 

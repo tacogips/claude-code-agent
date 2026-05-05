@@ -49,13 +49,6 @@ describe("createCli", () => {
     expect(commands).toContain("gql");
   });
 
-  test("registers daemon subcommand", () => {
-    const program = createCli();
-    const commands = program.commands.map((cmd) => cmd.name());
-
-    expect(commands).toContain("daemon");
-  });
-
   test("registers token subcommand", () => {
     const program = createCli();
     const commands = program.commands.map((cmd) => cmd.name());

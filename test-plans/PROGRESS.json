@@ -1,9 +1,9 @@
 {
   "lastUpdated": "2026-01-13T16:00:00Z",
   "summary": {
-    "totalPlans": 15,
-    "totalTests": 198,
-    "passing": 198,
+    "totalPlans": 12,
+    "totalTests": 168,
+    "passing": 168,
     "failing": 0,
     "notStarted": 0
   },
@@ -118,29 +118,10 @@
         "TEST-007": { "status": "Passing", "priority": "High", "parallelizable": false, "deps": ["TEST-006"] }
       }
     },
-    "daemon-integration": {
-      "status": "Completed",
-      "testType": "Integration",
-      "implRef": "impl-plans/daemon-core.md, impl-plans/http-api.md, impl-plans/sse-events.md",
-      "sourceFiles": ["src/daemon/"],
-      "testCount": 10,
-      "tests": {
-        "TEST-001": { "status": "Passing", "priority": "Critical", "parallelizable": false, "deps": [] },
-        "TEST-002": { "status": "Passing", "priority": "Critical", "parallelizable": true, "deps": [] },
-        "TEST-003": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001", "TEST-002"] },
-        "TEST-004": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-003"] },
-        "TEST-005": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001", "TEST-002"] },
-        "TEST-006": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-005"] },
-        "TEST-007": { "status": "Passing", "priority": "Critical", "parallelizable": false, "deps": ["TEST-001"] },
-        "TEST-008": { "status": "Passing", "priority": "High", "parallelizable": false, "deps": ["TEST-007"] },
-        "TEST-009": { "status": "Passing", "priority": "High", "parallelizable": false, "deps": ["TEST-007"] },
-        "TEST-010": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001", "TEST-002", "TEST-003", "TEST-004", "TEST-005", "TEST-006", "TEST-007", "TEST-008", "TEST-009"] }
-      }
-    },
     "cli-unit": {
       "status": "Completed",
       "testType": "Unit",
-      "implRef": "impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md, impl-plans/cli-other.md",
+      "implRef": "impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md",
       "sourceFiles": ["src/cli/"],
       "testCount": 10,
       "tests": {
@@ -154,23 +135,6 @@
         "TEST-008": { "status": "Passing", "priority": "Medium", "parallelizable": false, "deps": ["TEST-001"] },
         "TEST-009": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001"] },
         "TEST-010": { "status": "Passing", "priority": "Medium", "parallelizable": false, "deps": ["TEST-001"] }
-      }
-    },
-    "browser-viewer-unit": {
-      "status": "Completed",
-      "testType": "Unit",
-      "implRef": "impl-plans/browser-viewer-server.md, impl-plans/browser-viewer-ui.md",
-      "sourceFiles": ["src/viewer/browser/"],
-      "testCount": 8,
-      "tests": {
-        "TEST-001": { "status": "Passing", "priority": "Critical", "parallelizable": false, "deps": [] },
-        "TEST-002": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001"] },
-        "TEST-003": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001"] },
-        "TEST-004": { "status": "Passing", "priority": "Critical", "parallelizable": false, "deps": ["TEST-001"] },
-        "TEST-005": { "status": "Passing", "priority": "Critical", "parallelizable": false, "deps": ["TEST-004"] },
-        "TEST-006": { "status": "Passing", "priority": "Medium", "parallelizable": true, "deps": [] },
-        "TEST-007": { "status": "Passing", "priority": "Medium", "parallelizable": true, "deps": ["TEST-001"] },
-        "TEST-008": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001", "TEST-002", "TEST-003", "TEST-004", "TEST-005"] }
       }
     },
     "bookmarks-unit": {
@@ -204,7 +168,7 @@
     "cli-commands-unit": {
       "status": "Completed",
       "testType": "Unit",
-      "implRef": "impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md, impl-plans/cli-other.md",
+      "implRef": "impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md",
       "sourceFiles": ["src/cli/commands/"],
       "testCount": 12,
       "tests": {
@@ -217,27 +181,6 @@
         "TEST-007": { "status": "Passing", "priority": "Critical", "parallelizable": true, "deps": [] },
         "TEST-008": { "status": "Passing", "priority": "Critical", "parallelizable": false, "deps": ["TEST-007"] },
         "TEST-009": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": [] },
-        "TEST-010": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": [] },
-        "TEST-011": { "status": "Passing", "priority": "Medium", "parallelizable": true, "deps": [] },
-        "TEST-012": { "status": "Passing", "priority": "Medium", "parallelizable": true, "deps": [] }
-      }
-    },
-    "daemon-routes-unit": {
-      "status": "Completed",
-      "testType": "Unit",
-      "implRef": "impl-plans/daemon-core.md, impl-plans/http-api.md",
-      "sourceFiles": ["src/daemon/routes/"],
-      "testCount": 12,
-      "tests": {
-        "TEST-001": { "status": "Passing", "priority": "Critical", "parallelizable": true, "deps": [] },
-        "TEST-002": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-001"] },
-        "TEST-003": { "status": "Passing", "priority": "Critical", "parallelizable": true, "deps": ["TEST-001"] },
-        "TEST-004": { "status": "Passing", "priority": "Critical", "parallelizable": true, "deps": ["TEST-003"] },
-        "TEST-005": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-003"] },
-        "TEST-006": { "status": "Passing", "priority": "Critical", "parallelizable": false, "deps": ["TEST-003"] },
-        "TEST-007": { "status": "Passing", "priority": "Critical", "parallelizable": true, "deps": ["TEST-001"] },
-        "TEST-008": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-007"] },
-        "TEST-009": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": ["TEST-007"] },
         "TEST-010": { "status": "Passing", "priority": "High", "parallelizable": true, "deps": [] },
         "TEST-011": { "status": "Passing", "priority": "Medium", "parallelizable": true, "deps": [] },
         "TEST-012": { "status": "Passing", "priority": "Medium", "parallelizable": true, "deps": [] }

@@ -2,7 +2,7 @@
  * Main SDK agent class providing unified access to all managers.
  *
  * This class acts as a facade for all SDK functionality, providing
- * a single entry point for external applications and the daemon server.
+ * a single entry point for external applications and the CLI.
  *
  * @module sdk/agent
  */

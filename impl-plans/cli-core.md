@@ -12,7 +12,7 @@
 This plan is part of the complete CLI implementation, split for maintainability:
 - `impl-plans/cli-core.md` (this file) - Core CLI framework, argument parsing, command structure
 - `impl-plans/cli-session-commands.md` - Session-related commands
-- `impl-plans/cli-group-commands.md` - Group, queue, bookmark, server, daemon, token, and files commands
+- `impl-plans/cli-group-commands.md` - Group, queue, bookmark, token, and files commands
 
 ---
 
@@ -179,7 +179,7 @@ Implement main CLI entry point with command registration.
 
 **Completion Criteria**:
 - [x] Argument parsing setup (using commander)
-- [x] Subcommand registration (session, group, bookmark, server, daemon, token)
+- [x] Subcommand registration (session, group, bookmark, token)
 - [x] Global options (--format, --help, --version)
 - [x] Error handling with proper exit codes
 - [x] Type checking passes (12 tests in src/cli/main.test.ts)

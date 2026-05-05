@@ -73,19 +73,15 @@ interface CommandProbeResult {
 - [x] Preserve existing error handling for missing executables and malformed output
 - [x] Add unit tests for fallback success and failure paths
 
-### 3. Public Example Consistency
+### 3. Public Example Cleanup
 
-#### `examples/hono-rest-api.ts`
+#### Removed obsolete network examples
 
 **Status**: COMPLETED
 
-```typescript
-type ContainerFactory = typeof import("../src/container")["createProductionContainer"];
-```
-
 **Checklist**:
-- [x] Use the actual exported container factory name in the example
-- [x] Keep the example aligned with the published package surface
+- [x] Remove obsolete network examples that depended on removed runtime surface
+- [x] Keep remaining examples aligned with the published package surface
 
 ---
 
@@ -95,7 +91,7 @@ type ContainerFactory = typeof import("../src/container")["createProductionConta
 |--------|-----------|--------|-------|
 | Package surface regression coverage | `src/package-metadata.test.ts` | COMPLETED | Added |
 | Tool version detection fallback | `src/sdk/tool-versions.ts` | COMPLETED | Added |
-| Public example consistency | `examples/hono-rest-api.ts` | COMPLETED | Verified |
+| Public example cleanup | `examples/README.md` | COMPLETED | Verified |
 
 ## Dependencies
 
@@ -103,7 +99,7 @@ type ContainerFactory = typeof import("../src/container")["createProductionConta
 |---------|------------|--------|
 | Package surface regression coverage | Existing package exports/build config | Available |
 | Tool version fallback | Existing process manager abstraction | Available |
-| Public example consistency | Package surface verification | Available |
+| Public example cleanup | Package surface verification | Available |
 
 ## Completion Criteria
 

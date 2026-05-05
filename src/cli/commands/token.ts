@@ -1,15 +1,15 @@
 /**
  * Token management subcommands for the CLI.
  *
- * Provides commands for creating, listing, revoking, and rotating API tokens
- * used for daemon authentication. Token commands work directly with TokenManager.
+ * Provides commands for creating, listing, revoking, and rotating API tokens.
+ * Token commands work directly with TokenManager.
  *
  * @module cli/commands/token
  */
 
 import type { Command } from "commander";
-import { TokenManager } from "../../daemon/auth";
-import type { Permission } from "../../daemon/types";
+import { TokenManager } from "../../auth";
+import type { Permission } from "../../auth";
 import { formatTable, formatJson, printError, printSuccess } from "../output";
 import { createProductionContainer } from "../../container";
 import { join } from "node:path";

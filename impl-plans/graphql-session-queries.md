@@ -13,12 +13,12 @@
 
 ### Summary
 
-Add a typed GraphQL session query surface for CLI and daemon usage so callers can list Claude Code sessions, fetch transcript history, inspect a specific session, and run grep-style transcript search without relying on the generic command wrapper.
+Add a typed GraphQL session query surface for CLI usage so callers can list Claude Code sessions, fetch transcript history, inspect a specific session, and run grep-style transcript search without relying on the generic command wrapper.
 
 ### Scope
 
 **Included**: typed session GraphQL schema/resolvers, CLI GraphQL compatibility, focused tests, progress tracking
-**Excluded**: session mutation runtime, daemon auth model changes, non-session schema redesign
+**Excluded**: session mutation runtime, non-session schema redesign
 
 ---
 
@@ -143,6 +143,6 @@ interface GraphqlCliCoverage {
 
 ## Related Plans
 
-- **Previous**: `impl-plans/graphql-client-boundary.md`
+- **Previous**: local GraphQL command boundary
 - **Next**: None
-- **Depends On**: `impl-plans/graphql-client-boundary.md`
+- **Depends On**: local GraphQL executor

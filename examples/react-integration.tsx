@@ -278,8 +278,7 @@ export function SessionViewer({ sessionId }: { sessionId: string }) {
 export function SessionListWithViewer() {
   const selectedRef = useRef<string | null>(null);
 
-  // In a real app, you would fetch sessions from the REST API:
-  //   const sessions = useFetch("/api/sessions");
+  // In a real app, you would pass sessions from your application state.
 
   return (
     <div className="session-app">

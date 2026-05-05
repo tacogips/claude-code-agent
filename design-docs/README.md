@@ -1,116 +1,21 @@
-# Claude Code Peeper - Design Documentation
+# Design Documentation
 
-## Project Status
+This directory contains design notes for the current claude-code-agent local CLI/SDK architecture.
 
-| Phase | Status |
-|-------|--------|
-| Requirements | In Progress |
-| Architecture | In Progress |
-| Features | Pending |
-| Review | Pending |
+## Current Documents
 
-**Current Iteration**: 1
+| Document | Description |
+|----------|-------------|
+| [DESIGN.md](./DESIGN.md) | Current architecture overview |
+| [DECISIONS.md](./DECISIONS.md) | Current design decisions |
+| [spec-sdk-api.md](./spec-sdk-api.md) | SDK, local GraphQL executor, token metadata, and CLI surface |
+| [spec-data-storage.md](./spec-data-storage.md) | Data storage model |
+| [spec-session-groups.md](./spec-session-groups.md) | Session group design |
+| [spec-command-queue.md](./spec-command-queue.md) | Command queue design |
+| [spec-activity-status.md](./spec-activity-status.md) | Activity tracking design |
+| [spec-changed-files.md](./spec-changed-files.md) | Changed-file extraction design |
+| [spec-deployment.md](./spec-deployment.md) | Packaging and deployment |
 
-## Quick Links
+## References
 
-- [Architecture Overview](./architecture/overview.md)
-- [Pending Questions](./qa/pending.md) - **Answer these**
-- [Your Responses](./qa/responses.md) - **Write answers here**
-
-## How to Participate
-
-### Async Communication Workflow
-
-1. **Check pending questions**: Read `design-docs/qa/pending.md`
-2. **Write your answers**: Edit `design-docs/qa/responses.md`
-3. **Run iteration**: Claude processes responses and updates docs
-4. **Review updates**: Check updated design documents
-5. **Repeat**: New questions may appear after processing
-
-### Response Format
-
-In `design-docs/qa/responses.md`, you can:
-- Check option boxes: `[x] A. Option`
-- Write free-form text under questions
-- Ask clarifying questions
-- Write "skip" or "defer" to postpone
-
-## Document Structure
-
-```
-design-docs/
-├── README.md                    # This file - status overview
-├── qa/
-│   ├── pending.md               # Questions awaiting user response
-│   ├── responses.md             # User responses (user writes here)
-│   └── history/                 # Archived Q&A sessions
-│       └── initial-questions.md
-├── research/
-│   ├── claude-code-file-structure.md  # Claude Code data format analysis
-│   └── references/              # External references
-├── architecture/
-│   ├── overview.md              # System architecture and project goals
-│   ├── modules/
-│   │   └── data-models.md       # TypeScript type definitions
-│   └── decisions/
-│       └── technical-design.md  # Technical design considerations
-├── features/                    # Feature specifications
-└── iterations/                  # Iteration summaries
-```
-
-## Design Process
-
-```
-┌─────────────────────────────────────────────────────┐
-│                 Design Iteration                     │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│   ┌──────────┐    ┌──────────┐    ┌──────────┐     │
-│   │  Check   │───>│ Process  │───>│ Generate │     │
-│   │ Responses│    │ Answers  │    │ Questions│     │
-│   └──────────┘    └──────────┘    └──────────┘     │
-│        │                               │            │
-│        └───────────────────────────────┘            │
-│                    Repeat                           │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-## Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `/design-status` | Show current design status |
-| `/design-interview` | Generate new interview questions |
-| `/design-process-responses` | Process user responses |
-| `/design-iterate` | Run one complete iteration |
-| `/design-summary` | Generate design summary |
-
-## Current Focus
-
-**Iteration 1**: Initial requirements gathering and architecture decisions.
-
-### Pending Decisions
-1. Monorepo structure
-2. Library API design
-3. Search implementation
-4. Claude Code API scope
-5. Auth token management
-
-### Next Steps
-1. Answer questions in `qa/pending.md`
-2. Claude will process and update design docs
-3. Review and provide feedback
-
-## Document Index
-
-### Research
-- [Claude Code File Structure](./research/claude-code-file-structure.md) - Analysis of Claude Code data formats
-
-### Architecture
-- [Overview](./architecture/overview.md) - Project goals, architecture diagram, use cases
-- [Data Models](./architecture/modules/data-models.md) - TypeScript type definitions
-- [Technical Design](./architecture/decisions/technical-design.md) - Design considerations and technical stack
-
-### Q&A History
-- [Initial Questions](./qa/history/initial-questions.md) - Original design questions
+External references are indexed in [references/README.md](./references/README.md).

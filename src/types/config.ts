@@ -2,7 +2,7 @@
  * Configuration types for claude-code-agent.
  *
  * These types define configuration options for the SDK,
- * daemon, and various features.
+ * and various features.
  *
  * @module types/config
  */
@@ -49,22 +49,6 @@ export interface SessionExecutionConfig {
   readonly template?: string | undefined;
   /** Whether to enable MCP servers */
   readonly enableMcp?: boolean | undefined;
-}
-
-/**
- * Configuration for daemon server.
- */
-export interface DaemonConfig {
-  /** Host to bind to (default: 0.0.0.0) */
-  readonly host?: string | undefined;
-  /** Port to listen on (default: 8443) */
-  readonly port?: number | undefined;
-  /** Path to authentication token file */
-  readonly authTokenFile?: string | undefined;
-  /** Path to TLS certificate file */
-  readonly tlsCert?: string | undefined;
-  /** Path to TLS private key file */
-  readonly tlsKey?: string | undefined;
 }
 
 /**

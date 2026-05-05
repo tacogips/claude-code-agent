@@ -1,7 +1,7 @@
 # CLI Commands Unit Tests
 
 **Status**: Ready
-**Implementation Reference**: impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md, impl-plans/cli-other.md
+**Implementation Reference**: impl-plans/cli-core.md, impl-plans/cli-session-commands.md, impl-plans/cli-group-queue.md
 **Source Files**: src/cli/
 **Test Type**: Unit
 **Created**: 2026-01-09
@@ -225,29 +225,29 @@ Verify bookmark management commands.
 
 ---
 
-### TEST-008: Daemon Commands
+### TEST-008: Token Commands
 
 **Status**: Passing
 **Priority**: Medium
 **Parallelizable**: No
 **Dependencies**: TEST-001
 
-**Target**: CLI daemon commands
+**Target**: CLI token commands
 
 **Description**:
-Verify daemon control commands.
+Verify token management commands.
 
 **Scenarios**:
-1. Start daemon
-2. Stop daemon
-3. Daemon status
-4. Configuration
+1. Create token
+2. List token metadata
+3. Revoke token
+4. Rotate token
 
 **Assertions**:
-- [x] Daemon starts
-- [x] Daemon stops
-- [x] Status shown
-- [x] Config works
+- [x] Token subcommands registered
+- [x] Token metadata does not expose plaintext
+- [x] Revocation removes token
+- [x] Rotation returns a replacement token
 
 **Test Code Location**: CLI command tests
 
@@ -318,7 +318,7 @@ Verify interactive TUI mode commands.
 | TEST-005 | Group Commands | Passing | High | TEST-001 |
 | TEST-006 | Queue Commands | Passing | High | TEST-001 |
 | TEST-007 | Bookmark Commands | Passing | Medium | TEST-001 |
-| TEST-008 | Daemon Commands | Passing | Medium | TEST-001 |
+| TEST-008 | Token Commands | Passing | Medium | TEST-001 |
 | TEST-009 | Error Handling | Passing | High | TEST-001 |
 | TEST-010 | Interactive TUI | Passing | Medium | TEST-001 |
 
