@@ -40,6 +40,9 @@ describe("SDK Exports", () => {
       expect(typeof SDK.SdkManager).toBe("function");
       expect(typeof SDK.SessionRunner).toBe("function");
       expect(typeof SDK.RunningSession).toBe("function");
+      expect(typeof SDK.MockClaudeRunningSession).toBe("function");
+      expect(typeof SDK.MockClaudeSessionRunner).toBe("function");
+      expect(typeof SDK.createMockClaudeSessionRunner).toBe("function");
       expect(typeof SDK.ClaudeCodeClient).toBe("function");
       expect(typeof SDK.ClaudeEnvironment).toBe("function");
       expect(typeof SDK.defineClaudeEnvironment).toBe("function");

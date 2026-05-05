@@ -322,6 +322,18 @@ export {
   type PermissionMode,
 } from "./agent";
 
+export type {
+  MockClaudeSessionResultInput,
+  MockClaudeRunningSessionOptions,
+  MockClaudeStartSessionCall,
+  MockClaudeResumeSessionCall,
+} from "./mock-session-runner";
+export {
+  MockClaudeRunningSession,
+  MockClaudeSessionRunner,
+  createMockClaudeSessionRunner,
+} from "./mock-session-runner";
+
 // SDK Client
 export {
   ClaudeCodeClient,
