@@ -26,9 +26,9 @@
       "default": "./dist/sdk/index.js"
     },
     "./sdk/testing": {
-      "types": "./dist/sdk/mock-session-runner.d.ts",
-      "import": "./dist/sdk/mock-session-runner.js",
-      "default": "./dist/sdk/mock-session-runner.js"
+      "types": "./src/sdk/mock-session-runner.ts",
+      "import": "./src/sdk/mock-session-runner.ts",
+      "default": "./src/sdk/mock-session-runner.ts"
     },
     "./container": {
       "types": "./dist/container.d.ts",

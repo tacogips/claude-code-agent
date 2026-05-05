@@ -57,9 +57,9 @@ describe("package metadata", () => {
       default: "./dist/sdk/index.js",
     });
     expect(packageMetadata.exports["./sdk/testing"]).toEqual({
-      types: "./dist/sdk/mock-session-runner.d.ts",
-      import: "./dist/sdk/mock-session-runner.js",
-      default: "./dist/sdk/mock-session-runner.js",
+      types: "./src/sdk/mock-session-runner.ts",
+      import: "./src/sdk/mock-session-runner.ts",
+      default: "./src/sdk/mock-session-runner.ts",
     });
     expect(packageMetadata.exports["./container"]).toEqual({
       types: "./dist/container.d.ts",
