@@ -323,10 +323,14 @@ export {
 } from "./agent";
 
 export type {
+  MockClaudeSessionAttachment,
+  MockClaudeSessionConfig,
+  MockClaudeSessionResult,
   MockClaudeSessionResultInput,
   MockClaudeRunningSessionOptions,
   MockClaudeStartSessionCall,
   MockClaudeResumeSessionCall,
+  MockClaudeStateChange,
 } from "./mock-session-runner";
 export {
   MockClaudeRunningSession,

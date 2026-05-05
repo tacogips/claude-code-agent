@@ -42,6 +42,10 @@ describe("MockClaudeSessionRunner", () => {
       sessionId: "mock-claude-stall",
       autoComplete: false,
     });
+    const stateChanges: object[] = [];
+    session.on("stateChange", (change) => {
+      stateChanges.push(change);
+    });
     const runner = createMockClaudeSessionRunner({
       startSessions: [session],
     });
@@ -70,6 +74,15 @@ describe("MockClaudeSessionRunner", () => {
     expect(running.getState()).toMatchObject({
       state: "completed",
       sessionId: "mock-claude-stall",
+    });
+    expect(stateChanges).toHaveLength(1);
+    expect(stateChanges[0]).toMatchObject({
+      from: "running",
+      to: "completed",
+      info: {
+        state: "completed",
+        sessionId: "mock-claude-stall",
+      },
     });
   });
 
@@ -100,5 +113,102 @@ describe("MockClaudeSessionRunner", () => {
       },
     ]);
     expect(messages).toEqual([assistantMessage("resumed")]);
+  });
+
+  test("tracks active sessions and close cancels unfinished sessions", async () => {
+    const runningSession = new MockClaudeRunningSession({
+      sessionId: "mock-claude-active",
+      autoComplete: false,
+    });
+    const runner = createMockClaudeSessionRunner({
+      startSessions: [runningSession],
+    });
+
+    const running = await runner.startSession({ prompt: "start" });
+    expect(runner.getActiveSessions()).toEqual([running]);
+
+    await runner.close();
+
+    expect(runner.getActiveSessions()).toEqual([]);
+    expect(running.getState()).toMatchObject({
+      state: "cancelled",
+      sessionId: "mock-claude-active",
+    });
+    await expect(running.waitForCompletion()).resolves.toMatchObject({
+      success: false,
+    });
+  });
+
+  test("cancel is a no-op after successful completion", async () => {
+    const session = new MockClaudeRunningSession({
+      sessionId: "mock-claude-completed",
+      autoComplete: false,
+    });
+    session.complete({ success: true });
+
+    await session.cancel();
+
+    expect(session.getState()).toMatchObject({
+      state: "completed",
+      sessionId: "mock-claude-completed",
+    });
+    await expect(session.waitForCompletion()).resolves.toMatchObject({
+      success: true,
+    });
+  });
+
+  test("records start and resume calls as snapshots", async () => {
+    const attachment = {
+      fileName: "before.txt",
+      content: "before",
+    };
+    const startConfig = {
+      prompt: "start",
+      systemPrompt: { preset: "claude_code" as const, append: "before" },
+      attachments: [attachment],
+    };
+    const runner = createMockClaudeSessionRunner({
+      startSessions: [
+        new MockClaudeRunningSession({
+          sessionId: "mock-claude-start-snapshot",
+        }),
+      ],
+      resumeSessions: [
+        new MockClaudeRunningSession({
+          sessionId: "mock-claude-resume-snapshot",
+        }),
+      ],
+    });
+
+    await runner.startSession(startConfig);
+    attachment.fileName = "after.txt";
+    startConfig.systemPrompt.append = "after";
+    startConfig.attachments.push({ fileName: "extra.txt", content: "extra" });
+
+    await runner.resumeSession(
+      "mock-claude-resume-snapshot",
+      "continue",
+      { preset: "claude_code", append: "resume-before" },
+      [attachment],
+    );
+    attachment.content = "after";
+
+    expect(runner.startSessionCalls).toEqual([
+      {
+        config: {
+          prompt: "start",
+          systemPrompt: { preset: "claude_code", append: "before" },
+          attachments: [{ fileName: "before.txt", content: "before" }],
+        },
+      },
+    ]);
+    expect(runner.resumeSessionCalls).toEqual([
+      {
+        sessionId: "mock-claude-resume-snapshot",
+        prompt: "continue",
+        systemPrompt: { preset: "claude_code", append: "resume-before" },
+        attachments: [{ fileName: "after.txt", content: "before" }],
+      },
+    ]);
   });
 });

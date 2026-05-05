@@ -1,6 +1,33 @@
 import { EventEmitter } from "node:events";
-import type { SessionAttachment, SessionConfig, SessionResult } from "./agent";
 import type { SessionState, SessionStateInfo } from "./types";
+
+export interface MockClaudeSessionAttachment {
+  readonly path?: string;
+  readonly fileName?: string;
+  readonly mimeType?: string;
+  readonly encoding?: "base64" | "utf8";
+  readonly content?: string;
+}
+
+export interface MockClaudeSessionConfig {
+  readonly prompt: string;
+  readonly projectPath?: string;
+  readonly resumeSessionId?: string;
+  readonly systemPrompt?:
+    | string
+    | { readonly preset: "claude_code"; readonly append?: string };
+  readonly attachments?: readonly MockClaudeSessionAttachment[];
+}
+
+export interface MockClaudeSessionResult {
+  readonly success: boolean;
+  readonly stats: {
+    readonly startedAt: string;
+    readonly completedAt: string;
+    readonly toolCallCount: number;
+    readonly messageCount: number;
+  };
+}
 
 export interface MockClaudeSessionResultInput {
   readonly success?: boolean;
@@ -19,7 +46,7 @@ export interface MockClaudeRunningSessionOptions {
 }
 
 export interface MockClaudeStartSessionCall {
-  readonly config: SessionConfig;
+  readonly config: MockClaudeSessionConfig;
 }
 
 export interface MockClaudeResumeSessionCall {
@@ -28,7 +55,14 @@ export interface MockClaudeResumeSessionCall {
   readonly systemPrompt?:
     | string
     | { readonly preset: "claude_code"; readonly append?: string };
-  readonly attachments?: readonly SessionAttachment[];
+  readonly attachments?: readonly MockClaudeSessionAttachment[];
+}
+
+export interface MockClaudeStateChange {
+  readonly from: SessionState;
+  readonly to: SessionState;
+  readonly info: SessionStateInfo;
+  readonly timestamp: string;
 }
 
 export class MockClaudeRunningSession extends EventEmitter {
@@ -38,14 +72,14 @@ export class MockClaudeRunningSession extends EventEmitter {
   #state: SessionState;
   #messageCount = 0;
   #waiter: (() => void) | undefined;
-  #completionResolver: ((result: SessionResult) => void) | undefined;
-  readonly #completion: Promise<SessionResult>;
+  #completionResolver: ((result: MockClaudeSessionResult) => void) | undefined;
+  readonly #completion: Promise<MockClaudeSessionResult>;
 
   constructor(options: MockClaudeRunningSessionOptions) {
     super();
     this.sessionId = options.sessionId;
     this.#state = options.state ?? "running";
-    this.#completion = new Promise<SessionResult>((resolve) => {
+    this.#completion = new Promise<MockClaudeSessionResult>((resolve) => {
       this.#completionResolver = resolve;
     });
     for (const message of options.messages ?? []) {
@@ -71,26 +105,11 @@ export class MockClaudeRunningSession extends EventEmitter {
   setState(state: SessionState): void {
     const previous = this.#state;
     this.#state = state;
-    this.emit("stateChange", { from: previous, to: state });
+    this.#emitStateChange(previous, state);
   }
 
   complete(result: MockClaudeSessionResultInput = {}): void {
-    if (this.#closed) {
-      return;
-    }
-    this.#closed = true;
-    const completed = buildSessionResult(result, this.#messageCount);
-    this.#state =
-      this.#state === "cancelled"
-        ? "cancelled"
-        : completed.success
-          ? "completed"
-          : "failed";
-    this.emit("stateChange", { to: this.#state });
-    this.emit("complete", completed);
-    this.#completionResolver?.(completed);
-    this.#completionResolver = undefined;
-    this.#wake();
+    this.#finish(result);
   }
 
   async *messages(): AsyncIterable<object> {
@@ -110,13 +129,15 @@ export class MockClaudeRunningSession extends EventEmitter {
     }
   }
 
-  async waitForCompletion(): Promise<SessionResult> {
+  async waitForCompletion(): Promise<MockClaudeSessionResult> {
     return await this.#completion;
   }
 
   async cancel(): Promise<void> {
-    this.#state = "cancelled";
-    this.complete({ success: false });
+    if (this.#closed) {
+      return;
+    }
+    this.#finish({ success: false }, "cancelled");
   }
 
   getState(): SessionStateInfo {
@@ -137,6 +158,40 @@ export class MockClaudeRunningSession extends EventEmitter {
     this.#waiter = undefined;
     waiter?.();
   }
+
+  #finish(
+    result: MockClaudeSessionResultInput,
+    terminalState?: SessionState,
+  ): void {
+    if (this.#closed) {
+      return;
+    }
+    const previous = this.#state;
+    this.#closed = true;
+    const completed = buildSessionResult(result, this.#messageCount);
+    this.#state =
+      terminalState ??
+      (this.#state === "cancelled"
+        ? "cancelled"
+        : completed.success
+          ? "completed"
+          : "failed");
+    this.#emitStateChange(previous, this.#state);
+    this.emit("complete", completed);
+    this.#completionResolver?.(completed);
+    this.#completionResolver = undefined;
+    this.#wake();
+  }
+
+  #emitStateChange(from: SessionState, to: SessionState): void {
+    const change: MockClaudeStateChange = {
+      from,
+      to,
+      info: this.getState(),
+      timestamp: new Date().toISOString(),
+    };
+    this.emit("stateChange", change);
+  }
 }
 
 export class MockClaudeSessionRunner {
@@ -144,6 +199,7 @@ export class MockClaudeSessionRunner {
   readonly resumeSessionCalls: MockClaudeResumeSessionCall[] = [];
   readonly #startSessions: MockClaudeRunningSession[] = [];
   readonly #resumeSessions: MockClaudeRunningSession[] = [];
+  readonly #activeSessions: Set<MockClaudeRunningSession> = new Set();
 
   enqueueStartSession(session: MockClaudeRunningSession): void {
     this.#startSessions.push(session);
@@ -153,9 +209,13 @@ export class MockClaudeSessionRunner {
     this.#resumeSessions.push(session);
   }
 
-  async startSession(config: SessionConfig): Promise<MockClaudeRunningSession> {
-    this.startSessionCalls.push({ config });
-    return this.#shiftSession(this.#startSessions, "start");
+  async startSession(
+    config: MockClaudeSessionConfig,
+  ): Promise<MockClaudeRunningSession> {
+    this.startSessionCalls.push({ config: cloneSessionConfig(config) });
+    return this.#activateSession(
+      this.#shiftSession(this.#startSessions, "start"),
+    );
   }
 
   async resumeSession(
@@ -164,15 +224,31 @@ export class MockClaudeSessionRunner {
     systemPrompt?:
       | string
       | { readonly preset: "claude_code"; readonly append?: string },
-    attachments?: readonly SessionAttachment[],
+    attachments?: readonly MockClaudeSessionAttachment[],
   ): Promise<MockClaudeRunningSession> {
     this.resumeSessionCalls.push({
       sessionId,
       ...(prompt === undefined ? {} : { prompt }),
-      ...(systemPrompt === undefined ? {} : { systemPrompt }),
-      ...(attachments === undefined ? {} : { attachments }),
+      ...(systemPrompt === undefined
+        ? {}
+        : { systemPrompt: cloneSystemPrompt(systemPrompt) }),
+      ...(attachments === undefined
+        ? {}
+        : { attachments: cloneAttachments(attachments) }),
     });
-    return this.#shiftSession(this.#resumeSessions, "resume");
+    return this.#activateSession(
+      this.#shiftSession(this.#resumeSessions, "resume"),
+    );
+  }
+
+  async close(): Promise<void> {
+    const sessions = Array.from(this.#activeSessions);
+    await Promise.all(sessions.map(async (session) => session.cancel()));
+    this.#activeSessions.clear();
+  }
+
+  getActiveSessions(): MockClaudeRunningSession[] {
+    return Array.from(this.#activeSessions);
   }
 
   #shiftSession(
@@ -183,6 +259,16 @@ export class MockClaudeSessionRunner {
     if (session === undefined) {
       throw new Error(`mock claude ${kind} session was not enqueued`);
     }
+    return session;
+  }
+
+  #activateSession(
+    session: MockClaudeRunningSession,
+  ): MockClaudeRunningSession {
+    this.#activeSessions.add(session);
+    session.once("complete", () => {
+      this.#activeSessions.delete(session);
+    });
     return session;
   }
 }
@@ -206,7 +292,7 @@ export function createMockClaudeSessionRunner(
 function buildSessionResult(
   input: MockClaudeSessionResultInput,
   fallbackMessageCount: number,
-): SessionResult {
+): MockClaudeSessionResult {
   return {
     success: input.success ?? true,
     stats: {
@@ -216,4 +302,43 @@ function buildSessionResult(
       messageCount: input.messageCount ?? fallbackMessageCount,
     },
   };
+}
+
+function cloneSessionConfig(
+  config: MockClaudeSessionConfig,
+): MockClaudeSessionConfig {
+  return {
+    prompt: config.prompt,
+    ...(config.projectPath === undefined
+      ? {}
+      : { projectPath: config.projectPath }),
+    ...(config.resumeSessionId === undefined
+      ? {}
+      : { resumeSessionId: config.resumeSessionId }),
+    ...(config.systemPrompt === undefined
+      ? {}
+      : { systemPrompt: cloneSystemPrompt(config.systemPrompt) }),
+    ...(config.attachments === undefined
+      ? {}
+      : { attachments: cloneAttachments(config.attachments) }),
+  };
+}
+
+function cloneSystemPrompt(
+  systemPrompt:
+    | string
+    | { readonly preset: "claude_code"; readonly append?: string },
+): string | { preset: "claude_code"; append?: string } {
+  if (typeof systemPrompt === "string") {
+    return systemPrompt;
+  }
+  return systemPrompt.append === undefined
+    ? { preset: systemPrompt.preset }
+    : { preset: systemPrompt.preset, append: systemPrompt.append };
+}
+
+function cloneAttachments(
+  attachments: readonly MockClaudeSessionAttachment[],
+): MockClaudeSessionAttachment[] {
+  return attachments.map((attachment) => ({ ...attachment }));
 }
