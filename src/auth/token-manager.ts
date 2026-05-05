@@ -6,47 +6,21 @@
  */
 
 import type { Container } from "../container";
-import { AtomicWriter } from "../services/atomic-writer";
-import { FileLockServiceImpl } from "../services/file-lock";
+import type { FileLockService } from "../interfaces/lock";
+import type { AtomicWriter } from "../services/atomic-writer";
+import { getTokenExpiryTimestamp } from "./duration";
 import type { ApiToken, CreateTokenOptions, Permission } from "./types";
+import { isPermission } from "./types";
 
 interface TokenStorage {
-  readonly tokens: ApiToken[];
+  readonly tokens: readonly ApiToken[];
 }
 
-function parseDuration(duration: string): number {
-  const match = /^(\d+)([dwyhm])$/.exec(duration);
-  if (!match) {
-    throw new Error(`Invalid duration format: ${duration}`);
-  }
-
-  const amountStr = match[1];
-  const unit = match[2];
-
-  if (amountStr === undefined || unit === undefined) {
-    throw new Error(`Invalid duration format: ${duration}`);
-  }
-
-  const amount = parseInt(amountStr, 10);
-  const multipliers: Record<string, number> = {
-    m: 60 * 1000,
-    h: 60 * 60 * 1000,
-    d: 24 * 60 * 60 * 1000,
-    w: 7 * 24 * 60 * 60 * 1000,
-    y: 365 * 24 * 60 * 60 * 1000,
-  };
-
-  const multiplier = multipliers[unit];
-  if (multiplier === undefined) {
-    throw new Error(`Unknown duration unit: ${unit}`);
-  }
-
-  return amount * multiplier;
-}
+const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 export class TokenManager {
   private tokens: ApiToken[] = [];
-  private readonly lockService: FileLockServiceImpl;
+  private readonly lockService: FileLockService;
   private readonly atomicWriter: AtomicWriter;
   private operationChain: Promise<void> = Promise.resolve();
 
@@ -54,15 +28,16 @@ export class TokenManager {
     private readonly container: Container,
     private readonly tokenFilePath: string,
   ) {
-    this.lockService = new FileLockServiceImpl(
-      container.fileSystem,
-      container.clock,
-    );
-    this.atomicWriter = new AtomicWriter(container.fileSystem);
+    this.lockService = container.fileLockService;
+    this.atomicWriter = container.atomicWriter;
   }
 
   async initialize(): Promise<void> {
-    await this.loadTokens();
+    await this.runSerialized(async () =>
+      this.lockService.withLock(this.tokenFilePath, async () => {
+        await this.loadTokens();
+      }),
+    );
   }
 
   async createToken(options: CreateTokenOptions): Promise<string> {
@@ -73,7 +48,8 @@ export class TokenManager {
         const fullToken = this.generateToken();
         const hash = await this.hashToken(fullToken);
         const tokenId = fullToken.slice(4, 12);
-        const now = this.container.clock.timestamp();
+        const currentTime = this.container.clock.now();
+        const createdAt = currentTime.toISOString();
 
         const token: ApiToken =
           options.expiresIn === undefined
@@ -81,19 +57,19 @@ export class TokenManager {
                 id: tokenId,
                 name: options.name,
                 hash,
-                permissions: options.permissions,
-                createdAt: now,
+                permissions: [...options.permissions],
+                createdAt,
               }
             : {
                 id: tokenId,
                 name: options.name,
                 hash,
-                permissions: options.permissions,
-                createdAt: now,
-                expiresAt: new Date(
-                  this.container.clock.now().getTime() +
-                    parseDuration(options.expiresIn),
-                ).toISOString(),
+                permissions: [...options.permissions],
+                createdAt,
+                expiresAt: getTokenExpiryTimestamp(
+                  options.expiresIn,
+                  currentTime,
+                ),
               };
 
         this.tokens.push(token);
@@ -122,7 +98,7 @@ export class TokenManager {
 
         if (
           storedToken.expiresAt !== undefined &&
-          this.container.clock.now() > new Date(storedToken.expiresAt)
+          this.container.clock.now() >= new Date(storedToken.expiresAt)
         ) {
           return null;
         }
@@ -135,13 +111,18 @@ export class TokenManager {
         this.tokens[tokenIndex] = updatedToken;
         await this.saveTokens();
 
-        return updatedToken;
+        return cloneToken(updatedToken);
       }),
     );
   }
 
   async listTokens(): Promise<readonly ApiToken[]> {
-    return [...this.tokens];
+    return this.runSerialized(async () =>
+      this.lockService.withLock(this.tokenFilePath, async () => {
+        await this.loadTokens();
+        return this.tokens.map(cloneToken);
+      }),
+    );
   }
 
   async revokeToken(tokenId: string): Promise<void> {
@@ -176,8 +157,11 @@ export class TokenManager {
           id: fullToken.slice(4, 12),
           name: oldToken.name,
           hash: await this.hashToken(fullToken),
-          permissions: oldToken.permissions,
+          permissions: [...oldToken.permissions],
           createdAt: this.container.clock.timestamp(),
+          ...(oldToken.expiresAt === undefined
+            ? {}
+            : { expiresAt: oldToken.expiresAt }),
         };
 
         this.tokens = this.tokens.filter((t) => t.id !== oldToken.id);
@@ -199,7 +183,11 @@ export class TokenManager {
       return false;
     }
 
-    return token.permissions.includes(`${resource}:*` as Permission);
+    const wildcardPermission = `${resource}:*`;
+    return (
+      isPermission(wildcardPermission) &&
+      token.permissions.includes(wildcardPermission)
+    );
   }
 
   private generateToken(): string {
@@ -230,18 +218,14 @@ export class TokenManager {
     const { fileSystem } = this.container;
 
     if (!(await fileSystem.exists(this.tokenFilePath))) {
-      await fileSystem.writeFile(
-        this.tokenFilePath,
-        JSON.stringify({ tokens: [] satisfies ApiToken[] }, null, 2),
-      );
       this.tokens = [];
+      await this.saveTokens();
       return;
     }
 
     try {
       const content = await fileSystem.readFile(this.tokenFilePath);
-      const storage = JSON.parse(content) as TokenStorage;
-      this.tokens = storage.tokens;
+      this.tokens = parseTokenStorage(content, this.tokenFilePath);
     } catch (error) {
       throw new Error(
         `Failed to load tokens from ${this.tokenFilePath}: ${error}`,
@@ -277,4 +261,84 @@ export class TokenManager {
       release?.();
     }
   }
+}
+
+function parseTokenStorage(content: string, filePath: string): ApiToken[] {
+  const value: unknown = JSON.parse(content);
+  if (!isTokenStorage(value)) {
+    throw new Error(`Invalid token storage schema in ${filePath}`);
+  }
+  return value.tokens.map(cloneToken);
+}
+
+function isTokenStorage(value: unknown): value is TokenStorage {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const tokens = value["tokens"];
+  return Array.isArray(tokens) && tokens.every(isApiToken);
+}
+
+function isApiToken(value: unknown): value is ApiToken {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const permissions = value["permissions"];
+  if (!Array.isArray(permissions)) {
+    return false;
+  }
+
+  return (
+    isNonEmptyString(value["id"]) &&
+    typeof value["name"] === "string" &&
+    isTokenHash(value["hash"]) &&
+    permissions.every(
+      (permission): permission is Permission =>
+        typeof permission === "string" && isPermission(permission),
+    ) &&
+    isIsoTimestamp(value["createdAt"]) &&
+    isOptionalIsoTimestamp(value["expiresAt"]) &&
+    isOptionalIsoTimestamp(value["lastUsedAt"])
+  );
+}
+
+function cloneToken(token: ApiToken): ApiToken {
+  return {
+    id: token.id,
+    name: token.name,
+    hash: token.hash,
+    permissions: [...token.permissions],
+    createdAt: token.createdAt,
+    ...(token.expiresAt === undefined ? {} : { expiresAt: token.expiresAt }),
+    ...(token.lastUsedAt === undefined ? {} : { lastUsedAt: token.lastUsedAt }),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function isTokenHash(value: unknown): value is string {
+  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
+}
+
+function isOptionalIsoTimestamp(value: unknown): value is string | undefined {
+  return value === undefined || isIsoTimestamp(value);
+}
+
+function isIsoTimestamp(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_TIMESTAMP_PATTERN.test(value)) {
+    return false;
+  }
+
+  const timestamp = Date.parse(value);
+  return (
+    !Number.isNaN(timestamp) && new Date(timestamp).toISOString() === value
+  );
 }

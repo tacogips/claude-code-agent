@@ -8,7 +8,12 @@
  */
 
 import type { Command } from "commander";
-import { TokenManager } from "../../auth";
+import {
+  isPermission,
+  parseTokenDurationMs,
+  TokenManager,
+  VALID_PERMISSIONS,
+} from "../../auth";
 import type { Permission } from "../../auth";
 import { formatTable, formatJson, printError, printSuccess } from "../output";
 import { createProductionContainer } from "../../container";
@@ -20,6 +25,15 @@ import { homedir } from "node:os";
  */
 interface GlobalOptions {
   readonly format: "table" | "json";
+}
+
+interface TokenTableRow extends Record<string, unknown> {
+  readonly id: string;
+  readonly name: string;
+  readonly permissions: string;
+  readonly expires: string;
+  readonly created: string;
+  readonly lastUsed: string;
 }
 
 /**
@@ -34,78 +48,44 @@ function getDefaultTokenFilePath(): string {
 /**
  * Parse comma-separated permissions string into Permission array.
  *
- * @param permissionsStr - Comma-separated permissions (e.g., "read,write")
+ * @param permissionsStr - Comma-separated permissions (e.g., "session:read,queue:*")
  * @returns Array of Permission values
  * @throws Error if any permission is invalid
  */
 function parsePermissions(permissionsStr: string): readonly Permission[] {
   const parts = permissionsStr.split(",").map((p) => p.trim());
-
-  // Validate each permission
-  const validPermissions: Permission[] = [
-    "session:create",
-    "session:read",
-    "session:cancel",
-    "group:create",
-    "group:run",
-    "queue:*",
-    "bookmark:*",
-  ];
-
+  const seen = new Set<Permission>();
   const permissions: Permission[] = [];
   for (const part of parts) {
-    if (!validPermissions.includes(part as Permission)) {
+    if (!isPermission(part)) {
       throw new Error(
-        `Invalid permission: ${part}. Valid permissions: ${validPermissions.join(", ")}`,
+        `Invalid permission: ${part}. Valid permissions: ${VALID_PERMISSIONS.join(", ")}`,
       );
     }
-    permissions.push(part as Permission);
+    if (seen.has(part)) {
+      continue;
+    }
+    seen.add(part);
+    permissions.push(part);
   }
 
   return permissions;
 }
 
-/**
- * Parse duration string like "365d" into an ISO 8601 date string.
- *
- * Supports formats: 365d, 1y, 30d, 7w, 24h
- *
- * @param durationStr - Duration string (e.g., "365d")
- * @returns ISO 8601 date string for the expiration time
- * @throws Error if format is invalid
- */
-function parseDurationToExpiry(durationStr: string): string {
-  const match = /^(\d+)([dwyhm])$/.exec(durationStr);
-  if (!match) {
-    throw new Error(
-      `Invalid duration format: ${durationStr}. Expected format: <number><unit> (e.g., 365d, 30d, 1y)`,
-    );
+async function createDefaultTokenManager(): Promise<TokenManager> {
+  const container = createProductionContainer();
+  const tokenManager = new TokenManager(container, getDefaultTokenFilePath());
+  await tokenManager.initialize();
+  return tokenManager;
+}
+
+function handleCommandError(error: unknown): never {
+  if (error instanceof Error) {
+    printError(error);
+  } else {
+    printError(String(error));
   }
-
-  const amountStr = match[1];
-  const unit = match[2];
-
-  if (amountStr === undefined || unit === undefined) {
-    throw new Error(`Invalid duration format: ${durationStr}`);
-  }
-
-  const amount = parseInt(amountStr, 10);
-
-  const multipliers: Record<string, number> = {
-    m: 60 * 1000, // minutes
-    h: 60 * 60 * 1000, // hours
-    d: 24 * 60 * 60 * 1000, // days
-    w: 7 * 24 * 60 * 60 * 1000, // weeks
-    y: 365 * 24 * 60 * 60 * 1000, // years
-  };
-
-  const multiplier = multipliers[unit];
-  if (multiplier === undefined) {
-    throw new Error(`Unknown duration unit: ${unit}`);
-  }
-
-  const expiryMs = Date.now() + amount * multiplier;
-  return new Date(expiryMs).toISOString();
+  process.exit(1);
 }
 
 /**
@@ -146,17 +126,13 @@ export function registerTokenCommands(program: Command): void {
           // Parse permissions
           const permissions = parsePermissions(options.permissions);
 
-          // Create TokenManager
-          const container = createProductionContainer();
-          const tokenFilePath = getDefaultTokenFilePath();
-          const tokenManager = new TokenManager(container, tokenFilePath);
-          await tokenManager.initialize();
+          const tokenManager = await createDefaultTokenManager();
 
           // Create token with or without expiration
           let fullToken: string;
           if (options.expires !== undefined) {
             // Validate format by attempting to parse
-            parseDurationToExpiry(options.expires);
+            parseTokenDurationMs(options.expires);
             fullToken = await tokenManager.createToken({
               name: options.name,
               permissions,
@@ -186,12 +162,7 @@ export function registerTokenCommands(program: Command): void {
             console.log("  Expires: Never");
           }
         } catch (error) {
-          if (error instanceof Error) {
-            printError(error);
-          } else {
-            printError(String(error));
-          }
-          process.exit(1);
+          handleCommandError(error);
         }
       },
     );
@@ -203,12 +174,7 @@ export function registerTokenCommands(program: Command): void {
     .action(async () => {
       try {
         const globalOpts = program.opts() as GlobalOptions;
-
-        // Create TokenManager
-        const container = createProductionContainer();
-        const tokenFilePath = getDefaultTokenFilePath();
-        const tokenManager = new TokenManager(container, tokenFilePath);
-        await tokenManager.initialize();
+        const tokenManager = await createDefaultTokenManager();
 
         // List tokens
         const tokens = await tokenManager.listTokens();
@@ -227,7 +193,7 @@ export function registerTokenCommands(program: Command): void {
           console.log(formatJson(tokens));
         } else {
           // Table format (never show full token values, only metadata)
-          const tableData = tokens.map((token) => ({
+          const tableData: TokenTableRow[] = tokens.map((token) => ({
             id: token.id,
             name: token.name,
             permissions: token.permissions.join(", "),
@@ -237,7 +203,7 @@ export function registerTokenCommands(program: Command): void {
           }));
 
           console.log(
-            formatTable(tableData as unknown as Record<string, unknown>[], [
+            formatTable(tableData, [
               { key: "id", header: "ID", width: 10 },
               { key: "name", header: "Name", width: 20 },
               { key: "permissions", header: "Permissions", width: 30 },
@@ -248,12 +214,7 @@ export function registerTokenCommands(program: Command): void {
           );
         }
       } catch (error) {
-        if (error instanceof Error) {
-          printError(error);
-        } else {
-          printError(String(error));
-        }
-        process.exit(1);
+        handleCommandError(error);
       }
     });
 
@@ -263,23 +224,14 @@ export function registerTokenCommands(program: Command): void {
     .description("Revoke API token")
     .action(async (tokenId: string) => {
       try {
-        // Create TokenManager
-        const container = createProductionContainer();
-        const tokenFilePath = getDefaultTokenFilePath();
-        const tokenManager = new TokenManager(container, tokenFilePath);
-        await tokenManager.initialize();
+        const tokenManager = await createDefaultTokenManager();
 
         // Revoke token
         await tokenManager.revokeToken(tokenId);
 
         printSuccess(`Token revoked: ${tokenId}`);
       } catch (error) {
-        if (error instanceof Error) {
-          printError(error);
-        } else {
-          printError(String(error));
-        }
-        process.exit(1);
+        handleCommandError(error);
       }
     });
 
@@ -289,11 +241,7 @@ export function registerTokenCommands(program: Command): void {
     .description("Rotate API token (create new, revoke old)")
     .action(async (tokenId: string) => {
       try {
-        // Create TokenManager
-        const container = createProductionContainer();
-        const tokenFilePath = getDefaultTokenFilePath();
-        const tokenManager = new TokenManager(container, tokenFilePath);
-        await tokenManager.initialize();
+        const tokenManager = await createDefaultTokenManager();
 
         // Rotate token
         const newToken = await tokenManager.rotateToken(tokenId);
@@ -308,12 +256,7 @@ export function registerTokenCommands(program: Command): void {
         console.log("");
         console.log(`Old token (${tokenId}) has been revoked.`);
       } catch (error) {
-        if (error instanceof Error) {
-          printError(error);
-        } else {
-          printError(String(error));
-        }
-        process.exit(1);
+        handleCommandError(error);
       }
     });
 }

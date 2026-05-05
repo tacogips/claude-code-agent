@@ -1,5 +1,19 @@
 import { EventEmitter } from "node:events";
-import type { SessionState, SessionStateInfo } from "./types";
+import {
+  isTerminalState,
+  type SessionState,
+  type SessionStateInfo,
+} from "./types";
+
+const DEFAULT_STARTED_AT = "2026-01-01T00:00:00.000Z";
+const DEFAULT_COMPLETED_AT = "2026-01-01T00:00:01.000Z";
+const DEFAULT_SESSION_DURATION_MS = 1000;
+
+interface SessionResultFallbacks {
+  readonly startedAt: string;
+  readonly toolCallCount: number;
+  readonly messageCount: number;
+}
 
 export interface MockClaudeSessionAttachment {
   readonly path?: string;
@@ -70,6 +84,9 @@ export class MockClaudeRunningSession extends EventEmitter {
   readonly #queue: object[] = [];
   #closed = false;
   #state: SessionState;
+  #startedAt: string;
+  #completedAt: string | undefined;
+  #toolCallCount: number;
   #messageCount = 0;
   #waiter: (() => void) | undefined;
   #completionResolver: ((result: MockClaudeSessionResult) => void) | undefined;
@@ -79,11 +96,27 @@ export class MockClaudeRunningSession extends EventEmitter {
     super();
     this.sessionId = options.sessionId;
     this.#state = options.state ?? "running";
+    this.#startedAt = options.result?.startedAt ?? DEFAULT_STARTED_AT;
+    this.#toolCallCount = options.result?.toolCallCount ?? 0;
     this.#completion = new Promise<MockClaudeSessionResult>((resolve) => {
       this.#completionResolver = resolve;
     });
     for (const message of options.messages ?? []) {
       this.pushMessage(message);
+    }
+    if (isTerminalState(this.#state)) {
+      const completed = buildSessionResult(
+        {
+          ...options.result,
+          success: getTerminalResultSuccess(this.#state),
+        },
+        this.#getResultFallbacks(),
+      );
+      this.#closed = true;
+      this.#applyCompletionStats(completed);
+      this.#completionResolver?.(completed);
+      this.#completionResolver = undefined;
+      return;
     }
     if (options.autoComplete !== false) {
       queueMicrotask(() => {
@@ -103,6 +136,11 @@ export class MockClaudeRunningSession extends EventEmitter {
   }
 
   setState(state: SessionState): void {
+    if (isTerminalState(state)) {
+      this.#finish({ success: getTerminalResultSuccess(state) }, state);
+      return;
+    }
+
     const previous = this.#state;
     this.#state = state;
     this.#emitStateChange(previous, state);
@@ -145,9 +183,11 @@ export class MockClaudeRunningSession extends EventEmitter {
       state: this.#state,
       sessionId: this.sessionId,
       stats: {
-        startedAt: "2026-01-01T00:00:00.000Z",
-        ...(this.#closed ? { completedAt: "2026-01-01T00:00:01.000Z" } : {}),
-        toolCallCount: 0,
+        startedAt: this.#startedAt,
+        ...(this.#completedAt === undefined
+          ? {}
+          : { completedAt: this.#completedAt }),
+        toolCallCount: this.#toolCallCount,
         messageCount: this.#messageCount,
       },
     };
@@ -168,7 +208,8 @@ export class MockClaudeRunningSession extends EventEmitter {
     }
     const previous = this.#state;
     this.#closed = true;
-    const completed = buildSessionResult(result, this.#messageCount);
+    const completed = buildSessionResult(result, this.#getResultFallbacks());
+    this.#applyCompletionStats(completed);
     this.#state =
       terminalState ??
       (this.#state === "cancelled"
@@ -181,6 +222,21 @@ export class MockClaudeRunningSession extends EventEmitter {
     this.#completionResolver?.(completed);
     this.#completionResolver = undefined;
     this.#wake();
+  }
+
+  #getResultFallbacks(): SessionResultFallbacks {
+    return {
+      startedAt: this.#startedAt,
+      toolCallCount: this.#toolCallCount,
+      messageCount: this.#messageCount,
+    };
+  }
+
+  #applyCompletionStats(result: MockClaudeSessionResult): void {
+    this.#startedAt = result.stats.startedAt;
+    this.#completedAt = result.stats.completedAt;
+    this.#toolCallCount = result.stats.toolCallCount;
+    this.#messageCount = result.stats.messageCount;
   }
 
   #emitStateChange(from: SessionState, to: SessionState): void {
@@ -265,6 +321,10 @@ export class MockClaudeSessionRunner {
   #activateSession(
     session: MockClaudeRunningSession,
   ): MockClaudeRunningSession {
+    if (isTerminalState(session.getState().state)) {
+      return session;
+    }
+
     this.#activeSessions.add(session);
     session.once("complete", () => {
       this.#activeSessions.delete(session);
@@ -291,17 +351,34 @@ export function createMockClaudeSessionRunner(
 
 function buildSessionResult(
   input: MockClaudeSessionResultInput,
-  fallbackMessageCount: number,
+  fallbacks: SessionResultFallbacks = {
+    startedAt: DEFAULT_STARTED_AT,
+    toolCallCount: 0,
+    messageCount: 0,
+  },
 ): MockClaudeSessionResult {
+  const startedAt = input.startedAt ?? fallbacks.startedAt;
   return {
     success: input.success ?? true,
     stats: {
-      startedAt: input.startedAt ?? "2026-01-01T00:00:00.000Z",
-      completedAt: input.completedAt ?? "2026-01-01T00:00:01.000Z",
-      toolCallCount: input.toolCallCount ?? 0,
-      messageCount: input.messageCount ?? fallbackMessageCount,
+      startedAt,
+      completedAt: input.completedAt ?? getDefaultCompletedAt(startedAt),
+      toolCallCount: input.toolCallCount ?? fallbacks.toolCallCount,
+      messageCount: input.messageCount ?? fallbacks.messageCount,
     },
   };
+}
+
+function getTerminalResultSuccess(state: SessionState): boolean {
+  return state === "completed";
+}
+
+function getDefaultCompletedAt(startedAt: string): string {
+  const startedAtMs = Date.parse(startedAt);
+  if (Number.isNaN(startedAtMs)) {
+    return DEFAULT_COMPLETED_AT;
+  }
+  return new Date(startedAtMs + DEFAULT_SESSION_DURATION_MS).toISOString();
 }
 
 function cloneSessionConfig(

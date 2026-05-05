@@ -139,6 +139,50 @@ describe("MockClaudeSessionRunner", () => {
     });
   });
 
+  test("does not track already-completed queued sessions as active", async () => {
+    const completedSession = new MockClaudeRunningSession({
+      sessionId: "mock-claude-already-completed",
+      autoComplete: false,
+    });
+    completedSession.complete({ success: true });
+    const runner = createMockClaudeSessionRunner({
+      startSessions: [completedSession],
+    });
+
+    const running = await runner.startSession({ prompt: "start" });
+
+    expect(running.getState()).toMatchObject({
+      state: "completed",
+      sessionId: "mock-claude-already-completed",
+    });
+    expect(runner.getActiveSessions()).toEqual([]);
+  });
+
+  test("treats sessions constructed in terminal states as already closed", async () => {
+    const completedSession = new MockClaudeRunningSession({
+      sessionId: "mock-claude-terminal",
+      state: "completed",
+      autoComplete: false,
+      result: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        messageCount: 3,
+      },
+    });
+
+    await expect(completedSession.waitForCompletion()).resolves.toEqual({
+      success: true,
+      stats: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        completedAt: "2026-05-05T00:00:01.000Z",
+        toolCallCount: 0,
+        messageCount: 3,
+      },
+    });
+    expect(() => {
+      completedSession.pushMessage(assistantMessage("too late"));
+    }).toThrow("is closed");
+  });
+
   test("cancel is a no-op after successful completion", async () => {
     const session = new MockClaudeRunningSession({
       sessionId: "mock-claude-completed",
@@ -154,6 +198,113 @@ describe("MockClaudeSessionRunner", () => {
     });
     await expect(session.waitForCompletion()).resolves.toMatchObject({
       success: true,
+    });
+  });
+
+  test("setState closes and resolves sessions when entering terminal states", async () => {
+    const session = new MockClaudeRunningSession({
+      sessionId: "mock-claude-set-state-terminal",
+      autoComplete: false,
+      result: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        toolCallCount: 2,
+      },
+    });
+    session.pushMessage(assistantMessage("before failure"));
+
+    session.setState("failed");
+
+    expect(session.getState()).toMatchObject({
+      state: "failed",
+      stats: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        completedAt: "2026-05-05T00:00:01.000Z",
+        toolCallCount: 2,
+        messageCount: 1,
+      },
+    });
+    await expect(session.waitForCompletion()).resolves.toMatchObject({
+      success: false,
+    });
+    expect(() => {
+      session.pushMessage(assistantMessage("after failure"));
+    }).toThrow("is closed");
+  });
+
+  test("getState reflects custom completion stats", async () => {
+    const session = new MockClaudeRunningSession({
+      sessionId: "mock-claude-custom-stats",
+      autoComplete: false,
+      result: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        completedAt: "2026-05-05T00:02:00.000Z",
+        toolCallCount: 2,
+        messageCount: 4,
+      },
+    });
+
+    session.complete({
+      completedAt: "2026-05-05T00:02:00.000Z",
+      toolCallCount: 2,
+      messageCount: 4,
+    });
+
+    await expect(session.waitForCompletion()).resolves.toMatchObject({
+      stats: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        completedAt: "2026-05-05T00:02:00.000Z",
+        toolCallCount: 2,
+        messageCount: 4,
+      },
+    });
+    expect(session.getState()).toMatchObject({
+      stats: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        completedAt: "2026-05-05T00:02:00.000Z",
+        toolCallCount: 2,
+        messageCount: 4,
+      },
+    });
+  });
+
+  test("defaults completion time relative to the configured start time", async () => {
+    const session = new MockClaudeRunningSession({
+      sessionId: "mock-claude-relative-completion",
+      autoComplete: false,
+      result: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+      },
+    });
+
+    session.complete();
+
+    await expect(session.waitForCompletion()).resolves.toMatchObject({
+      stats: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        completedAt: "2026-05-05T00:00:01.000Z",
+      },
+    });
+  });
+
+  test("manual completion preserves configured fallback stats", async () => {
+    const session = new MockClaudeRunningSession({
+      sessionId: "mock-claude-preserve-fallback-stats",
+      autoComplete: false,
+      result: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        toolCallCount: 3,
+      },
+    });
+
+    session.complete();
+
+    await expect(session.waitForCompletion()).resolves.toMatchObject({
+      stats: {
+        startedAt: "2026-05-05T00:00:00.000Z",
+        completedAt: "2026-05-05T00:00:01.000Z",
+        toolCallCount: 3,
+        messageCount: 0,
+      },
     });
   });
 

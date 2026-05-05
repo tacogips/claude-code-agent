@@ -9,9 +9,15 @@ interface PackageExportTarget {
 }
 
 interface PackageMetadata {
+  readonly homepage: string;
+  readonly repository: {
+    readonly type: string;
+    readonly url: string;
+  };
   readonly exports: {
     readonly ".": PackageExportTarget;
     readonly "./sdk": PackageExportTarget;
+    readonly "./sdk/testing": PackageExportTarget;
     readonly "./container": PackageExportTarget;
   };
   readonly scripts: {
@@ -25,6 +31,18 @@ function readPackageMetadata(): PackageMetadata {
 }
 
 describe("package metadata", () => {
+  test("uses project repository metadata instead of placeholders", () => {
+    const packageMetadata = readPackageMetadata();
+
+    expect(packageMetadata.homepage).toBe(
+      "https://github.com/tacogips/claude-code-agent",
+    );
+    expect(packageMetadata.repository).toEqual({
+      type: "git",
+      url: "https://github.com/tacogips/claude-code-agent.git",
+    });
+  });
+
   test("publishes the documented SDK and container subpath exports", () => {
     const packageMetadata = readPackageMetadata();
 
@@ -37,6 +55,11 @@ describe("package metadata", () => {
       types: "./dist/sdk/index.d.ts",
       import: "./dist/sdk/index.js",
       default: "./dist/sdk/index.js",
+    });
+    expect(packageMetadata.exports["./sdk/testing"]).toEqual({
+      types: "./dist/sdk/mock-session-runner.d.ts",
+      import: "./dist/sdk/mock-session-runner.js",
+      default: "./dist/sdk/mock-session-runner.js",
     });
     expect(packageMetadata.exports["./container"]).toEqual({
       types: "./dist/container.d.ts",
@@ -51,6 +74,7 @@ describe("package metadata", () => {
 
     expect(buildScript).toContain("src/main.ts");
     expect(buildScript).toContain("src/sdk/index.ts");
+    expect(buildScript).toContain("src/sdk/mock-session-runner.ts");
     expect(buildScript).toContain("src/container.ts");
   });
 });

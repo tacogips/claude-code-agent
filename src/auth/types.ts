@@ -5,20 +5,29 @@
  * programmatic GraphQL execution. They do not imply an HTTP server runtime.
  */
 
+export const VALID_PERMISSIONS = [
+  "session:create",
+  "session:read",
+  "session:cancel",
+  "group:create",
+  "group:run",
+  "queue:*",
+  "bookmark:*",
+] as const;
+
+const VALID_PERMISSION_SET = new Set<string>(VALID_PERMISSIONS);
+
 /**
  * Permission identifiers for API token access control.
  *
  * Permissions follow the pattern: <resource>:<action>.
  * Wildcard (*) grants all actions for a resource.
  */
-export type Permission =
-  | "session:create"
-  | "session:read"
-  | "session:cancel"
-  | "group:create"
-  | "group:run"
-  | "queue:*"
-  | "bookmark:*";
+export type Permission = (typeof VALID_PERMISSIONS)[number];
+
+export function isPermission(value: string): value is Permission {
+  return VALID_PERMISSION_SET.has(value);
+}
 
 /**
  * Options for creating a new API token.
