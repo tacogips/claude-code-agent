@@ -55,7 +55,7 @@ export class FileGroupRepository
   async findById(id: string): Promise<SessionGroup | null> {
     try {
       return await this.readWithLock(this.getMetaPath(id));
-    } catch (error: unknown) {
+    } catch (_error: unknown) {
       // If file doesn't exist or is invalid JSON, return null
       return null;
     }
@@ -100,10 +100,7 @@ export class FileGroupRepository
         if (group !== null) {
           groups.push(group);
         }
-      } catch {
-        // Skip invalid or unreadable groups
-        continue;
-      }
+      } catch {}
     }
 
     // Apply filters

@@ -206,6 +206,13 @@ export class QueueManager {
   }
 
   /**
+   * Persist a full queue document (e.g. crash recovery updating status).
+   */
+  async persistQueueSnapshot(queue: CommandQueue): Promise<void> {
+    await this.repository.save(queue);
+  }
+
+  /**
    * Delete a queue by its ID.
    *
    * @param queueId - Queue ID to delete

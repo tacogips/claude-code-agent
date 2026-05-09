@@ -264,12 +264,17 @@ export class GroupRunner {
       "paused",
     );
 
+    const groupAfterPause = this.currentGroup;
+    if (groupAfterPause === null) {
+      return;
+    }
+
     // Emit paused event
     const timestamp = this.container.clock.now().toISOString();
     this.eventEmitter.emit("group_paused", {
       type: "group_paused",
       timestamp,
-      groupId: this.currentGroup!.id,
+      groupId: groupAfterPause.id,
       runningSessions: 0,
       reason,
     });
@@ -373,15 +378,20 @@ export class GroupRunner {
       },
     );
 
+    const groupAfterStop = this.currentGroup;
+    if (groupAfterStop === null) {
+      return;
+    }
+
     // Emit failed event
     const timestamp = this.container.clock.now().toISOString();
-    const failedSessions =
-      this.currentGroup?.sessions.filter((s) => s.status === "failed").length ??
-      0;
+    const failedSessions = groupAfterStop.sessions.filter(
+      (s) => s.status === "failed",
+    ).length;
     this.eventEmitter.emit("group_failed", {
       type: "group_failed",
       timestamp,
-      groupId: this.currentGroup!.id,
+      groupId: groupAfterStop.id,
       failedSessions,
       reason: "Manually stopped",
     });
@@ -490,9 +500,13 @@ export class GroupRunner {
    * Start a session execution.
    */
   private async startSession(session: GroupSession): Promise<void> {
+    if (this.currentGroup === null) {
+      throw new Error("Cannot start session: no group loaded");
+    }
+    const group = this.currentGroup;
     const process = await startGroupSession(
       session,
-      this.currentGroup!,
+      group,
       this.container,
       this.configGenerator,
       this.currentOptions.resume,
@@ -527,11 +541,16 @@ export class GroupRunner {
       },
     );
 
+    const groupAfterStart = this.currentGroup;
+    if (groupAfterStart === null) {
+      return;
+    }
+
     // Emit session started event
     this.eventEmitter.emit("group_session_started", {
       type: "group_session_started",
       timestamp,
-      groupId: this.currentGroup!.id,
+      groupId: groupAfterStart.id,
       sessionId: session.id,
       projectPath: session.projectPath,
       prompt: session.prompt,
@@ -780,32 +799,41 @@ export class GroupRunner {
   private async completeGroup(): Promise<void> {
     this.state = "completed";
 
+    if (this.currentGroup === null || this.progressAggregator === null) {
+      return;
+    }
+
     const timestamp = this.container.clock.now().toISOString();
-    const progress = this.progressAggregator!.computeProgress(
-      this.currentGroup!,
-    );
+    const group = this.currentGroup;
+    const progressAggregator = this.progressAggregator;
+    const progress = progressAggregator.computeProgress(group);
 
     // Update group status
     this.currentGroup = await this.updater.updateGroupStatus(
-      this.currentGroup,
+      group,
       "completed",
       {
         completedAt: timestamp,
       },
     );
 
+    const groupAfterComplete = this.currentGroup;
+    if (groupAfterComplete === null) {
+      return;
+    }
+
     // Emit completion event
     this.eventEmitter.emit("group_completed", {
       type: "group_completed",
       timestamp,
-      groupId: this.currentGroup!.id,
+      groupId: groupAfterComplete.id,
       completedSessions: progress.completed,
       failedSessions: progress.failed,
       totalCostUsd: progress.totalCost,
       elapsedMs: progress.elapsedTime ?? 0,
     });
 
-    logger.info(`Group ${this.currentGroup!.id} completed`, {
+    logger.info(`Group ${groupAfterComplete.id} completed`, {
       completed: progress.completed,
       failed: progress.failed,
       totalCost: progress.totalCost,
@@ -832,15 +860,20 @@ export class GroupRunner {
       },
     );
 
+    const groupAfterFail = this.currentGroup;
+    if (groupAfterFail === null) {
+      return;
+    }
+
     // Emit failure event
     this.eventEmitter.emit("group_failed", {
       type: "group_failed",
       timestamp,
-      groupId: this.currentGroup!.id,
+      groupId: groupAfterFail.id,
       failedSessions,
       reason,
     });
 
-    logger.error(`Group ${this.currentGroup!.id} failed`, { reason });
+    logger.error(`Group ${groupAfterFail.id} failed`, { reason });
   }
 }

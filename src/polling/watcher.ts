@@ -161,7 +161,7 @@ export class TranscriptWatcher {
             eventQueue.push(change);
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // File might have been deleted or truncated
         // Reset offset and continue watching
         watchedFile.offset = 0;
@@ -190,7 +190,7 @@ export class TranscriptWatcher {
             if (result.done === true) break;
             handleWatchEvent();
           }
-        } catch (error) {
+        } catch (_error) {
           // Watch iterator failed, stop watching
           watchedFile.stopped = true;
         }
@@ -348,7 +348,7 @@ export class TranscriptWatcher {
   private async readFile(path: string): Promise<string> {
     try {
       return await this.fileSystem.readFile(path);
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist yet, return empty string
       return "";
     }

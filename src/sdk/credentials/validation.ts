@@ -5,7 +5,7 @@
  * Used for importing and writing credentials across machines.
  */
 
-import { Result, ok, err } from "../../result";
+import { type Result, ok, err } from "../../result";
 import { CredentialError } from "./errors";
 import type { SubscriptionType } from "./types";
 

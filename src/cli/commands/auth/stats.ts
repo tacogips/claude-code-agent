@@ -106,7 +106,7 @@ export function createAuthStatsCommand(): Command {
 
         // Parse period as integer
         const periodDays = parseInt(options.period, 10);
-        if (isNaN(periodDays) || periodDays <= 0) {
+        if (Number.isNaN(periodDays) || periodDays <= 0) {
           printError(
             `Invalid period: ${options.period}. Must be a positive number.`,
           );

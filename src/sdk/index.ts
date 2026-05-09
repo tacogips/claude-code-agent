@@ -191,7 +191,7 @@ export {
 } from "./__fixtures__/mock-receiver";
 
 // Re-export TranscriptEvent from polling/parser for SDK consumers
-export { type TranscriptEvent } from "../polling/parser";
+export type { TranscriptEvent } from "../polling/parser";
 
 // JSONL Parser
 export {

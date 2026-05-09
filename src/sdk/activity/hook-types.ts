@@ -8,7 +8,7 @@
  * @module sdk/activity/hook-types
  */
 
-import { Result, ok, err } from "../../result";
+import { type Result, ok, err } from "../../result";
 
 /**
  * Common fields for all hook inputs.

@@ -287,7 +287,7 @@ class ActivityStoreImpl implements ActivityStoreService {
         version: "1.0",
         sessions: {},
       };
-    } catch (error) {
+    } catch (_error) {
       // Error reading or parsing, return empty store
       return {
         version: "1.0",

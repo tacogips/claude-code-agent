@@ -137,10 +137,7 @@ export class BookmarkSearch {
     }
 
     // Search in description
-    if (
-      bookmark.description !== undefined &&
-      bookmark.description.toLowerCase().includes(query)
-    ) {
+    if (bookmark.description?.toLowerCase()?.includes(query) ?? false) {
       return true;
     }
 
@@ -212,12 +209,9 @@ export class BookmarkSearch {
     }
 
     // Description match
-    if (
-      bookmark.description !== undefined &&
-      bookmark.description.toLowerCase().includes(query)
-    ) {
-      const descLower = bookmark.description.toLowerCase();
-      const startsWithQuery = descLower.startsWith(query);
+    const descLower = bookmark.description?.toLowerCase();
+    if (descLower?.includes(query) ?? false) {
+      const startsWithQuery = (descLower ?? "").startsWith(query);
       return startsWithQuery ? 0.7 : 0.6;
     }
 

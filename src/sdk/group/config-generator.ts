@@ -9,7 +9,7 @@
 
 import type { Container } from "../../container";
 import type { SessionGroup, GroupSession } from "./types";
-import { Result, ok, err } from "../../result";
+import { type Result, ok, err } from "../../result";
 import { createTaggedLogger } from "../../logger";
 import Mustache from "mustache";
 
@@ -80,8 +80,8 @@ export class ConfigGenerator {
       return err(mkdirResult.error);
     }
 
-    let claudeMdPath: string | undefined = undefined;
-    let settingsPath: string | undefined = undefined;
+    let claudeMdPath: string | undefined;
+    let settingsPath: string | undefined;
 
     // Generate CLAUDE.md if requested
     if (sessionConfig?.generateClaudeMd) {

@@ -9,10 +9,10 @@
 
 import type { Command } from "commander";
 import { LogLevels } from "consola";
-import {
-  type SdkManager,
-  type SessionRunner,
-  type SessionRunnerOptions,
+import type {
+  SdkManager,
+  SessionRunner,
+  SessionRunnerOptions,
 } from "../../sdk/agent";
 import { logger } from "../../logger";
 import { formatTable, formatJson, printError } from "../output";

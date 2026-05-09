@@ -114,7 +114,7 @@ export class AtomicWriter {
     try {
       const fs = await import("node:fs/promises");
       await fs.rename(from, to);
-    } catch (error) {
+    } catch (_error) {
       // Fallback for mock filesystem: simulate rename
       // This path is used in tests where native fs operations don't work
       // with MockFileSystem

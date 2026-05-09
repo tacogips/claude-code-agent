@@ -6,7 +6,7 @@
 
 import { readFile, mkdir, unlink, access, constants, chmod } from "fs/promises";
 import { dirname } from "path";
-import { Result, ok, err } from "../../../result";
+import { type Result, ok, err } from "../../../result";
 import type { ClaudeCredentials } from "../types";
 import { CredentialError } from "../errors";
 import { isValidCredentials, isNodeError } from "./type-guards";

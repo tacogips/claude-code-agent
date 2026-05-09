@@ -7,12 +7,28 @@
  * @module cli/commands/group
  */
 
-import { Command } from "commander";
+import type { Command } from "commander";
 import type { SdkManager } from "../../sdk";
+import type { GroupFilter } from "../../repository/group-repository";
+import type { GroupStatus } from "../../sdk/group/types";
 import { formatTable, formatJson, printError, printSuccess } from "../output";
 import { createTaggedLogger } from "../../logger";
 
 const logger = createTaggedLogger("cli-group");
+
+const GROUP_STATUSES = [
+  "created",
+  "running",
+  "paused",
+  "completed",
+  "failed",
+  "archived",
+  "deleted",
+] as const satisfies readonly GroupStatus[];
+
+function isGroupStatus(value: string): value is GroupStatus {
+  return (GROUP_STATUSES as readonly string[]).includes(value);
+}
 
 /**
  * Register all group subcommands.
@@ -99,11 +115,17 @@ export function registerGroupCommands(
       try {
         const agent = await getAgent();
 
-        // Build filter
-        const filter =
-          options.status !== undefined
-            ? { status: options.status as any }
-            : undefined;
+        const statusOpt = options.status;
+        if (statusOpt !== undefined && !isGroupStatus(statusOpt)) {
+          printError(
+            new Error(
+              `Invalid --status "${statusOpt}". Expected one of: ${GROUP_STATUSES.join(", ")}`,
+            ),
+          );
+          process.exit(1);
+        }
+        const filter: GroupFilter | undefined =
+          statusOpt !== undefined ? { status: statusOpt } : undefined;
 
         const groups = await agent.groups.listGroups(filter);
 

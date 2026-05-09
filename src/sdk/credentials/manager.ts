@@ -5,7 +5,7 @@
  * Combines CredentialReader and CredentialWriter for complete credential management.
  */
 
-import { Result, ok, err } from "../../result";
+import { type Result, ok, err } from "../../result";
 import { CredentialReader, type CredentialReaderOptions } from "./reader";
 import { CredentialWriter, type CredentialWriterOptions } from "./writer";
 import {

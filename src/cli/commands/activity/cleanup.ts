@@ -47,7 +47,7 @@ export function createActivityCleanupCommand(): Command {
       try {
         // Parse hours threshold
         const hours = parseInt(options.olderThan, 10);
-        if (isNaN(hours) || hours < 0) {
+        if (Number.isNaN(hours) || hours < 0) {
           console.error("Error: --older-than must be a non-negative number");
           process.exit(1);
         }

@@ -120,7 +120,7 @@ export class FileLockServiceImpl implements FileLockService {
       if (attempt < opts.maxRetries) {
         // Exponential backoff: 100ms, 200ms, 400ms, 800ms, ...
         const delay = Math.min(
-          opts.retryInterval * Math.pow(2, attempt - 1),
+          opts.retryInterval * 2 ** (attempt - 1),
           opts.timeout - elapsed,
         );
         if (delay > 0) {
@@ -292,7 +292,7 @@ export class FileLockServiceImpl implements FileLockService {
       }
 
       return null;
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist or invalid JSON
       return null;
     }
@@ -314,7 +314,7 @@ export class FileLockServiceImpl implements FileLockService {
       // process.kill(pid, 0) checks if process exists without actually killing it
       // Throws if process doesn't exist
       process.kill(lockInfo.pid, 0);
-    } catch (error) {
+    } catch (_error) {
       // Process doesn't exist, lock is stale
       return true;
     }
@@ -337,7 +337,7 @@ export class FileLockServiceImpl implements FileLockService {
   private async cleanStaleLock(lockPath: string): Promise<void> {
     try {
       await this.fs.rm(lockPath, { force: true });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors during cleanup
       // Another process may have already cleaned it up
     }
@@ -362,7 +362,7 @@ export class FileLockServiceImpl implements FileLockService {
 
         try {
           await fs.rm(lockPath, { force: true });
-        } catch (error) {
+        } catch (_error) {
           // Ignore errors during release
           // Lock file may have been removed externally
         }

@@ -309,7 +309,7 @@ describe("SdkManager", () => {
       const agent = await SdkManager.create(container);
 
       let eventReceived = false;
-      let receivedEventData: unknown = undefined;
+      let receivedEventData: unknown;
 
       agent.events.on("group_created", (data) => {
         eventReceived = true;

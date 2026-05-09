@@ -157,10 +157,7 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
       }
 
       // Search in description
-      if (
-        bookmark.description !== undefined &&
-        bookmark.description.toLowerCase().includes(query)
-      ) {
+      if (bookmark.description?.toLowerCase()?.includes(query) ?? false) {
         results.push(bookmark);
         continue;
       }
@@ -171,7 +168,6 @@ export class InMemoryBookmarkRepository implements BookmarkRepository {
       );
       if (matchesTag) {
         results.push(bookmark);
-        continue;
       }
     }
 

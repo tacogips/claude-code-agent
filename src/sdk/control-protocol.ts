@@ -9,7 +9,7 @@
 
 import { EventEmitter } from "events";
 import type { Transport } from "./transport/transport";
-import { ToolRegistry } from "./tool-registry";
+import type { ToolRegistry } from "./tool-registry";
 import { ControlProtocolError, TimeoutError } from "./errors";
 import type {
   JsonRpcMessage,

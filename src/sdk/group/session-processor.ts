@@ -9,7 +9,7 @@
 import type { Container } from "../../container";
 import type { ManagedProcess } from "../../interfaces/process-manager";
 import type { GroupSession, SessionGroup } from "./types";
-import { ConfigGenerator } from "./config-generator";
+import type { ConfigGenerator } from "./config-generator";
 import { createTaggedLogger } from "../../logger";
 
 const logger = createTaggedLogger("session-processor");
@@ -125,7 +125,7 @@ export async function processGroupSessionOutput(
       // This is simplified - real implementation would parse
       // the stream-json output format
     }
-  } catch (error) {
+  } catch (_error) {
     logger.debug(`stdout closed for session ${sessionId}`);
   }
 
@@ -134,7 +134,7 @@ export async function processGroupSessionOutput(
     for await (const line of process.stderr) {
       logger.warn(`Session ${sessionId} stderr: ${line}`);
     }
-  } catch (error) {
+  } catch (_error) {
     logger.debug(`stderr closed for session ${sessionId}`);
   }
 }

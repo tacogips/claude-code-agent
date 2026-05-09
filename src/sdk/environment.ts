@@ -83,11 +83,15 @@ export function toClaudeEnvironmentRecord<
 >(input: TVariables): TVariables;
 export function toClaudeEnvironmentRecord<
   TVariables extends ClaudeEnvironmentShape,
->(input: ClaudeEnvironmentInput<TVariables> | undefined): TVariables | undefined;
+>(
+  input: ClaudeEnvironmentInput<TVariables> | undefined,
+): TVariables | undefined;
 export function toClaudeEnvironmentRecord(input: undefined): undefined;
 export function toClaudeEnvironmentRecord<
   TVariables extends ClaudeEnvironmentShape,
->(input: ClaudeEnvironmentInput<TVariables> | undefined): TVariables | undefined {
+>(
+  input: ClaudeEnvironmentInput<TVariables> | undefined,
+): TVariables | undefined {
   if (input === undefined) {
     return undefined;
   }

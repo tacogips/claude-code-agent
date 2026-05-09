@@ -9,7 +9,7 @@
  * @module cli/commands/queue
  */
 
-import { Command } from "commander";
+import type { Command } from "commander";
 import type { SdkManager } from "../../sdk/agent";
 import type { CommandQueue, QueueCommand } from "../../repository";
 import {

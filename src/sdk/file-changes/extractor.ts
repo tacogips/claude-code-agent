@@ -613,12 +613,11 @@ export class FileChangeExtractor {
     const timestamps = changedFiles.flatMap((file) =>
       file.changes.map((c) => c.timestamp),
     );
+    const firstTs = timestamps[0];
+    const lastTs = timestamps[timestamps.length - 1];
     const sessionStart =
-      timestamps.length > 0 ? timestamps[0]! : new Date().toISOString();
-    const sessionEnd =
-      timestamps.length > 0
-        ? timestamps[timestamps.length - 1]!
-        : new Date().toISOString();
+      firstTs !== undefined ? firstTs : new Date().toISOString();
+    const sessionEnd = lastTs !== undefined ? lastTs : new Date().toISOString();
 
     const summary: ChangedFilesSummary = {
       sessionId,
@@ -673,10 +672,7 @@ export class FileChangeExtractor {
         const raw = JSON.parse(trimmed) as object;
         const entry = this.parseEntry(raw);
         entries.push(entry);
-      } catch {
-        // Skip malformed lines
-        continue;
-      }
+      } catch {}
     }
 
     return entries;
@@ -738,16 +734,18 @@ export class FileChangeExtractor {
 
     // Filter by extension
     if (options?.extensions !== undefined && options.extensions.length > 0) {
+      const extensions = options.extensions;
       filtered = filtered.filter((file) => {
         const ext = path.extname(file.path);
-        return options.extensions!.includes(ext);
+        return extensions.includes(ext);
       });
     }
 
     // Filter by directory
     if (options?.directories !== undefined && options.directories.length > 0) {
+      const directories = options.directories;
       filtered = filtered.filter((file) => {
-        return options.directories!.some((dir) => file.path.startsWith(dir));
+        return directories.some((dir) => file.path.startsWith(dir));
       });
     }
 

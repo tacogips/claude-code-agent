@@ -7,7 +7,7 @@
  * @module sdk/activity/transcript-analyzer
  */
 
-import { open, access, constants } from "fs/promises";
+import { open, access, constants, type FileHandle } from "fs/promises";
 
 /**
  * TranscriptAnalyzer checks for AskUserQuestion tool usage in transcripts.
@@ -86,7 +86,7 @@ async function hasAskUserQuestionImpl(
     return false;
   }
 
-  let fileHandle;
+  let fileHandle: FileHandle | undefined;
   try {
     // Open file for reading
     fileHandle = await open(transcriptPath, "r");
@@ -213,10 +213,7 @@ function detectAskUserQuestion(lines: string[]): boolean {
           }
         }
       }
-    } catch {
-      // Invalid JSON or parsing error - skip this line
-      continue;
-    }
+    } catch {}
   }
 
   return false;

@@ -5,7 +5,7 @@
  * Supports writing credentials to platform-specific storage (file or keychain).
  */
 
-import { Result, err } from "../../result";
+import { type Result, err } from "../../result";
 import {
   type CredentialBackend,
   createCredentialBackend,
@@ -13,7 +13,7 @@ import {
 import { FileCredentialBackend } from "./backends/file";
 import { type OAuthTokensInput, validateCredentialsInput } from "./validation";
 import type { ClaudeCredentials } from "./types";
-import { CredentialError } from "./errors";
+import type { CredentialError } from "./errors";
 
 /**
  * Options for configuring CredentialWriter

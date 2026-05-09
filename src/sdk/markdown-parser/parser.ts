@@ -303,16 +303,19 @@ class MarkdownParser {
       endIndex = lines.length - 1;
     }
 
+    const endLine =
+      endIndex < lines.length ? lines[endIndex] : lines[lines.length - 1];
+    if (endLine === undefined) {
+      throw new Error("Invalid code block end line index");
+    }
+
     return {
       block: {
         type: "code",
         code: codeLines.join("\n"),
         language,
         lineStart: startLine.number,
-        lineEnd:
-          endIndex < lines.length
-            ? lines[endIndex]!.number
-            : lines[lines.length - 1]!.number,
+        lineEnd: endLine.number,
       },
       endIndex,
     };

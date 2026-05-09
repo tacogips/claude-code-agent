@@ -6,7 +6,7 @@ import { describe, test, expect, beforeEach } from "vitest";
 import { FileChangeService } from "./service";
 import { createTestContainer } from "../../container";
 import type { Container } from "../../container";
-import { MockFileSystem } from "../../test/mocks/filesystem";
+import type { MockFileSystem } from "../../test/mocks/filesystem";
 import path from "node:path";
 
 describe("FileChangeService", () => {

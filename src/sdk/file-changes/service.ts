@@ -232,14 +232,16 @@ export class FileChangeService {
     }
 
     if (options?.fromDate !== undefined) {
+      const fromDate = options.fromDate;
       filteredEntries = filteredEntries.filter(
-        (entry) => entry.lastChange >= options.fromDate!,
+        (entry) => entry.lastChange >= fromDate,
       );
     }
 
     if (options?.toDate !== undefined) {
+      const toDate = options.toDate;
       filteredEntries = filteredEntries.filter(
-        (entry) => entry.firstChange <= options.toDate!,
+        (entry) => entry.firstChange <= toDate,
       );
     }
 
@@ -288,9 +290,10 @@ export class FileChangeService {
       entry.firstChange,
       entry.lastChange,
     ]);
-    const firstModified =
-      timestamps.length > 0 ? timestamps[timestamps.length - 1]! : "";
-    const lastModified = timestamps.length > 0 ? timestamps[0]! : "";
+    const oldestTs = timestamps[timestamps.length - 1];
+    const newestTs = timestamps[0];
+    const firstModified = oldestTs !== undefined ? oldestTs : "";
+    const lastModified = newestTs !== undefined ? newestTs : "";
 
     const history: FileHistory = {
       path: normalizedPath,

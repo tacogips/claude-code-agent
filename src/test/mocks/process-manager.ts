@@ -144,11 +144,10 @@ export class MockManagedProcess implements ManagedProcess {
   get exitCode(): Promise<number | null> {
     const exitDelay = this.config.exitDelay ?? 0;
     const exitCodeValue = this.config.exitCode;
-    const self = this;
 
     return new Promise((resolve) => {
       // If already killed, resolve immediately
-      if (self.killed) {
+      if (this.killed) {
         setImmediate(() => resolve(null));
         return;
       }
@@ -159,7 +158,7 @@ export class MockManagedProcess implements ManagedProcess {
         let elapsed = 0;
         const intervalId = setInterval(() => {
           elapsed += checkInterval;
-          if (self.killed) {
+          if (this.killed) {
             clearInterval(intervalId);
             resolve(null);
           } else if (elapsed >= exitDelay) {
@@ -170,7 +169,7 @@ export class MockManagedProcess implements ManagedProcess {
       } else {
         // Use setImmediate to ensure async behavior
         setImmediate(() => {
-          resolve(self.killed ? null : exitCodeValue);
+          resolve(this.killed ? null : exitCodeValue);
         });
       }
     });

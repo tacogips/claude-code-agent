@@ -54,7 +54,7 @@ export class FileBookmarkRepository
   async findById(id: string): Promise<Bookmark | null> {
     try {
       return await this.readWithLock(this.getBookmarkPath(id));
-    } catch (error: unknown) {
+    } catch (_error: unknown) {
       // If file doesn't exist or is invalid JSON, return null
       return null;
     }
@@ -263,10 +263,7 @@ export class FileBookmarkRepository
         if (bookmark !== null) {
           bookmarks.push(bookmark);
         }
-      } catch {
-        // Skip invalid or unreadable bookmarks
-        continue;
-      }
+      } catch {}
     }
 
     return bookmarks;
@@ -291,8 +288,9 @@ export class FileBookmarkRepository
 
     if (filter.tags !== undefined && filter.tags.length > 0) {
       // Filter to bookmarks that have ALL specified tags
+      const tags = filter.tags;
       results = results.filter((b) =>
-        filter.tags!.every((tag) => b.tags.includes(tag)),
+        tags.every((tag) => b.tags.includes(tag)),
       );
     }
 

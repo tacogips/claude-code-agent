@@ -6,7 +6,7 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { Result, ok, err } from "../../../result";
+import { type Result, ok, err } from "../../../result";
 import type { ClaudeCredentials } from "../types";
 import { CredentialError } from "../errors";
 import type { CredentialBackend } from "./file";

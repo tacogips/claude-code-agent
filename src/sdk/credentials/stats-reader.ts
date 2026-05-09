@@ -5,7 +5,7 @@
  */
 
 import { readFile } from "fs/promises";
-import { Result, ok, err } from "../../result";
+import { type Result, ok, err } from "../../result";
 import type {
   RawStatsCache,
   UsageStats,

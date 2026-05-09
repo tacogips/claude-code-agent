@@ -155,21 +155,12 @@ export class QueueRecovery {
    * @param queue - Queue to mark as paused
    */
   private async markAsPaused(queue: CommandQueue): Promise<void> {
-    // Use the manager's internal repository access
-    // We need to update the queue directly rather than through manager
-    // methods since those may have validation that prevents this operation
-
     const updatedQueue: CommandQueue = {
       ...queue,
       status: "paused",
       updatedAt: this.container.clock.now().toISOString(),
     };
 
-    // Access the repository through the manager
-    // NOTE: This assumes we can access the repository
-    // In production, we might need to add a method to QueueManager
-    // to handle this specific recovery scenario
-    const repository = (this.manager as any).repository;
-    await repository.save(updatedQueue);
+    await this.manager.persistQueueSnapshot(updatedQueue);
   }
 }
