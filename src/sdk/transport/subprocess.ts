@@ -12,6 +12,7 @@ import { dirname, resolve } from "node:path";
 import { CLINotFoundError, CLIConnectionError } from "../errors";
 import type { ClaudeEnvironmentShape } from "../environment";
 import type { Transport } from "./transport";
+import { assertNoPrintModeArgs } from "../claude-args";
 
 /**
  * Options for subprocess transport configuration.
@@ -55,6 +56,9 @@ export interface TransportOptions {
 
   /**
    * Maximum budget in USD for the session.
+   *
+   * Claude Code currently exposes this as a print-mode-only flag, so the
+   * subprocess transport does not pass it when running in interactive mode.
    */
   maxBudgetUsd?: number;
 
@@ -100,7 +104,7 @@ export interface TransportOptions {
 
   /**
    * Additional CLI arguments to pass to Claude Code.
-   * These are appended as-is to the command line.
+   * These are appended to the command line after rejecting print-mode flags.
    * Example: ['--dangerously-skip-permissions', '--model', 'claude-opus-4-6']
    */
   additionalArgs?: string[];
@@ -114,16 +118,7 @@ export interface TransportOptions {
  */
 export function buildSubprocessCommand(options: TransportOptions): string[] {
   const cliPath = options.cliPath ?? "claude";
-  const args = [
-    cliPath,
-    "--print",
-    "--output-format",
-    "stream-json",
-    "--input-format",
-    "stream-json",
-    "--include-partial-messages",
-    "--verbose",
-  ];
+  const args = [cliPath, "--verbose"];
 
   if (options.mcpConfig !== undefined) {
     args.push("--mcp-config", JSON.stringify(options.mcpConfig));
@@ -135,10 +130,6 @@ export function buildSubprocessCommand(options: TransportOptions): string[] {
 
   if (options.model !== undefined) {
     args.push("--model", options.model);
-  }
-
-  if (options.maxBudgetUsd !== undefined) {
-    args.push("--max-budget", String(options.maxBudgetUsd));
   }
 
   if (options.maxTurns !== undefined) {
@@ -181,6 +172,7 @@ export function buildSubprocessCommand(options: TransportOptions): string[] {
     options.additionalArgs !== undefined &&
     options.additionalArgs.length > 0
   ) {
+    assertNoPrintModeArgs(options.additionalArgs, "transport additionalArgs");
     args.push(...options.additionalArgs);
   }
 

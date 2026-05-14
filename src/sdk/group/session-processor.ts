@@ -11,6 +11,8 @@ import type { ManagedProcess } from "../../interfaces/process-manager";
 import type { GroupSession, SessionGroup } from "./types";
 import type { ConfigGenerator } from "./config-generator";
 import { createTaggedLogger } from "../../logger";
+import { createHash } from "node:crypto";
+import { assertNoPrintModeArgs } from "../claude-args";
 
 const logger = createTaggedLogger("session-processor");
 
@@ -69,18 +71,23 @@ export async function startGroupSession(
   // TODO: [Future Enhancement] Process Pool per Working Directory
   // See src/sdk/queue/runner.ts for detailed description of the planned enhancement.
   // Summary: Reuse long-lived processes via /clear instead of spawning new processes.
-  const args = ["-p", "--output-format", "stream-json"];
+  const args: string[] = [];
+  const claudeSessionId =
+    session.claudeSessionId ?? createDeterministicSessionUuid(session.id);
 
   // Pass additional CLI arguments from group config
   if (
     group.config.additionalArgs !== undefined &&
     group.config.additionalArgs.length > 0
   ) {
+    assertNoPrintModeArgs(group.config.additionalArgs, "group additionalArgs");
     args.push(...group.config.additionalArgs);
   }
 
   if (resumeFlag) {
-    args.push("--resume");
+    args.push("--resume", claudeSessionId);
+  } else {
+    args.push("--session-id", claudeSessionId);
   }
   args.push(session.prompt);
 
@@ -96,6 +103,17 @@ export async function startGroupSession(
   });
 
   return process;
+}
+
+function createDeterministicSessionUuid(sessionId: string): string {
+  const hex = createHash("sha256").update(sessionId).digest("hex");
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `4${hex.slice(13, 16)}`,
+    `${((Number.parseInt(hex.slice(16, 18), 16) & 0x3f) | 0x80).toString(16)}${hex.slice(18, 20)}`,
+    hex.slice(20, 32),
+  ].join("-");
 }
 
 /**
@@ -116,25 +134,25 @@ export async function processGroupSessionOutput(
   sessionId: string,
   process: ManagedProcess,
 ): Promise<void> {
-  // Process stdout for progress updates
-  // In a real implementation, we'd parse the JSON output
-  // to extract cost, token usage, and tool activity
-  try {
-    for await (const _line of process.stdout) {
-      // Parse JSON output for progress updates
-      // This is simplified - real implementation would parse
-      // the stream-json output format
-    }
-  } catch (_error) {
-    logger.debug(`stdout closed for session ${sessionId}`);
-  }
-
-  // Process stderr for errors
-  try {
-    for await (const line of process.stderr) {
+  await Promise.all([
+    drainLines(process.stdout, () => {
+      // Drain stdout so the child process cannot block on a full pipe.
+    }),
+    drainLines(process.stderr, (line) => {
       logger.warn(`Session ${sessionId} stderr: ${line}`);
+    }),
+  ]);
+}
+
+async function drainLines(
+  lines: AsyncIterable<string>,
+  onLine: (line: string) => void,
+): Promise<void> {
+  try {
+    for await (const line of lines) {
+      onLine(line);
     }
   } catch (_error) {
-    logger.debug(`stderr closed for session ${sessionId}`);
+    logger.debug("process stream closed");
   }
 }

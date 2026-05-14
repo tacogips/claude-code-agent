@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-09T01:00:00Z",
+  "lastUpdated": "2026-05-14T02:58:41Z",
   "phases": {
     "1": { "status": "READY" },
     "2": { "status": "BLOCKED" },
@@ -46,6 +46,44 @@
           "status": "Completed",
           "parallelizable": true,
           "deps": ["TASK-001"]
+        }
+      }
+    },
+    "claude-print-mode-removal": {
+      "phase": 1,
+      "status": "Completed",
+      "path": "impl-plans/completed/claude-print-mode-removal.md",
+      "designReference": "design-docs/specs/claude-print-mode-removal.md",
+      "tasks": {
+        "TASK-001": {
+          "status": "Completed",
+          "parallelizable": true,
+          "deps": []
+        },
+        "TASK-002": {
+          "status": "Completed",
+          "parallelizable": true,
+          "deps": []
+        },
+        "TASK-003": {
+          "status": "Completed",
+          "parallelizable": false,
+          "deps": ["TASK-001"]
+        },
+        "TASK-004": {
+          "status": "Completed",
+          "parallelizable": false,
+          "deps": ["TASK-001"]
+        },
+        "TASK-005": {
+          "status": "Completed",
+          "parallelizable": true,
+          "deps": []
+        },
+        "TASK-006": {
+          "status": "Completed",
+          "parallelizable": false,
+          "deps": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005"]
         }
       }
     }
