@@ -7,6 +7,12 @@
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     git-hooks.url = "github:cachix/git-hooks.nix";
+    divedra = {
+      url = "github:tacogips/divedra/main";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.git-hooks.follows = "git-hooks";
+      inputs.nixpkgs-unstable.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs =
@@ -16,6 +22,7 @@
       nixpkgs-unstable,
       flake-utils,
       git-hooks,
+      divedra,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -25,10 +32,48 @@
 
         divedraCli = pkgs.writeShellApplication {
           name = "divedra";
-          runtimeInputs = [ pkgs-unstable.bun ];
+          runtimeInputs = [
+            pkgs-unstable.bun
+            pkgs.nodejs_22
+          ];
           text = ''
-            divedra_repo="''${DIVEDRA_REPO:-/g/gits/tacogips/divedra}"
-            exec bun run "$divedra_repo/src/main.ts" "$@"
+            set -euo pipefail
+
+            invocation_cwd="$PWD"
+            source_dir="${divedra}"
+            cache_root="''${XDG_CACHE_HOME:-$HOME/.cache}/divedra/claude-code-agent-nix"
+            source_key="''${source_dir##*/}"
+            runtime_root="$cache_root/$source_key"
+            runtime_src="$runtime_root/src"
+            ready_file="$runtime_root/.build-ready"
+            source_file="$runtime_root/.source-path"
+
+            cached_source=""
+            if [ -f "$source_file" ]; then
+              IFS= read -r cached_source < "$source_file" || cached_source=""
+            fi
+
+            mkdir -p "$cache_root"
+
+            if [ ! -f "$ready_file" ] || [ "$cached_source" != "$source_dir" ]; then
+              if [ -d "$runtime_root" ]; then
+                chmod -R u+w "$runtime_root" 2>/dev/null || true
+              fi
+              rm -rf "$runtime_root"
+              mkdir -p "$runtime_src"
+              cp -R "$source_dir"/. "$runtime_src"
+              chmod -R u+w "$runtime_root"
+              (
+                cd "$runtime_src"
+                bun install --frozen-lockfile
+                bun build packages/divedra-addons/src/index.ts --outfile packages/divedra-addons/dist/index.js --target bun
+              )
+              printf '%s\n' "$source_dir" > "$source_file"
+              touch "$ready_file"
+            fi
+
+            cd "$invocation_cwd"
+            exec bun run "$runtime_src/src/main.ts" "$@"
           '';
         };
 
