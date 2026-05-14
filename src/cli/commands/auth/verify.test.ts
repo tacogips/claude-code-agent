@@ -64,7 +64,7 @@ describe("createAuthVerifyCommand", () => {
           timedOut: false,
           stdout: "",
           stderr: "",
-          commandArgs: ["-p", "--model", "claude-sonnet-4-5"],
+          commandArgs: ["--model", "claude-sonnet-4-5"],
         },
       }),
     );

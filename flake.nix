@@ -23,6 +23,15 @@
         pkgs = import nixpkgs { inherit system; };
         pkgs-unstable = import nixpkgs-unstable { inherit system; };
 
+        divedraCli = pkgs.writeShellApplication {
+          name = "divedra";
+          runtimeInputs = [ pkgs-unstable.bun ];
+          text = ''
+            divedra_repo="''${DIVEDRA_REPO:-/g/gits/tacogips/divedra}"
+            exec bun run "$divedra_repo/src/main.ts" "$@"
+          '';
+        };
+
         preCommitCheck = git-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
@@ -54,6 +63,7 @@
           gh
           go-task
           gitleaks
+          divedraCli
         ]) ++ preCommitCheck.enabledPackages;
 
       in

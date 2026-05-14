@@ -227,7 +227,7 @@ function buildProbeArgs(
   model: string,
   prompt: string | undefined,
 ): readonly string[] {
-  const args = ["-p", "--output-format", "stream-json", "--model", model];
+  const args = ["--model", model];
   args.push(prompt ?? DEFAULT_PROBE_PROMPT);
   return args;
 }
@@ -239,6 +239,8 @@ async function executeModelProbe(
   spawnOptions: SpawnOptions,
   timeoutMs: number,
 ): Promise<ProbeExecutionResult> {
+  const requestedModel = getModelArgValue(args);
+
   try {
     const process = processManager.spawn(cliPath, args, spawnOptions);
     const stdoutPromise = collectLines(process.stdout);
@@ -268,7 +270,7 @@ async function executeModelProbe(
           message: timeoutMessage,
         },
         model: {
-          requested: args[4] ?? null,
+          requested: requestedModel,
           checked: true,
           available: false,
           timedOut: true,
@@ -291,7 +293,7 @@ async function executeModelProbe(
           exitCode: 0,
         },
         model: {
-          requested: args[4] ?? null,
+          requested: requestedModel,
           checked: true,
           available: true,
           timedOut: false,
@@ -321,7 +323,7 @@ async function executeModelProbe(
         message: failureMessage,
       },
       model: {
-        requested: args[4] ?? null,
+        requested: requestedModel,
         checked: true,
         available: false,
         timedOut: false,
@@ -344,7 +346,7 @@ async function executeModelProbe(
         message,
       },
       model: {
-        requested: args[4] ?? null,
+        requested: requestedModel,
         checked: true,
         available: false,
         timedOut: false,
@@ -356,6 +358,15 @@ async function executeModelProbe(
       },
     };
   }
+}
+
+function getModelArgValue(args: readonly string[]): string | null {
+  const modelFlagIndex = args.indexOf("--model");
+  if (modelFlagIndex === -1) {
+    return null;
+  }
+
+  return args[modelFlagIndex + 1] ?? null;
 }
 
 /**

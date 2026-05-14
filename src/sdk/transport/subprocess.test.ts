@@ -289,6 +289,7 @@ describe("SubprocessTransport CLI Arguments", () => {
       prompt: "hello from sdk",
     });
 
+    expect(args.includes("--print")).toBe(false);
     expect(args.includes("--prompt")).toBe(false);
     expect(args.at(-1)).toBe("hello from sdk");
   });
@@ -317,6 +318,20 @@ describe("SubprocessTransport CLI Arguments", () => {
     expect(extraArgIndex).toBeGreaterThan(-1);
     expect(promptIndex).toBeGreaterThan(extraArgIndex);
     expect(args.at(-1)).toBe("run task");
+  });
+
+  test("rejects print-mode additional args", () => {
+    expect(() =>
+      buildSubprocessCommand({
+        additionalArgs: ["--output-format", "stream-json"],
+      }),
+    ).toThrow("transport additionalArgs cannot include");
+
+    expect(() =>
+      buildSubprocessCommand({
+        additionalArgs: ["--print"],
+      }),
+    ).toThrow("transport additionalArgs cannot include");
   });
 
   test("adds attachment parent directories via --add-dir", () => {

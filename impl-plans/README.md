@@ -85,6 +85,7 @@ Large features are split into multiple related plans with cross-references.
 
 | Plan | Completed | Design Reference |
 |------|-----------|------------------|
+| `claude-print-mode-removal.md` | 2026-05-14 | `design-docs/specs/claude-print-mode-removal.md` |
 | `package-surface-and-tool-version-fallback.md` | 2026-03-30 | GitHub issues `#44`, `#45` |
 
 ## Phase Dependencies (for impl-exec-auto)

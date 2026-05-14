@@ -38,6 +38,8 @@ result-*
 logs/
 *.log
 npm-debug.log*
+test-output.txt
+type-check-output.txt
 
 # Test coverage
 coverage/

@@ -290,7 +290,7 @@ async function runSession(session: Session): Promise<void> {
   };
 
   const proc = Bun.spawn(
-    ['claude', '-p', '--output-format', 'stream-json', session.prompt],
+    ['claude', session.prompt],
     {
       env,
       cwd: session.projectPath,

@@ -595,8 +595,6 @@ class SubprocessTransport implements Transport {
   private buildCommand(): string[] {
     const args = [
       this.options.cliPath ?? 'claude',
-      '--output-format', 'stream-json',
-      '--input-format', 'stream-json',
       '--verbose'
     ];
 

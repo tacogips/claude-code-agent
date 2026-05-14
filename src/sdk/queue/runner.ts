@@ -16,8 +16,8 @@ import type {
 } from "../../repository/queue-repository";
 import type { ManagedProcess } from "../../interfaces/process-manager";
 import { createTaggedLogger } from "../../logger";
+import { assertNoPrintModeArgs } from "../claude-args";
 import { QueueUpdater } from "./runner-updaters";
-import { captureClaudeSessionId } from "./session-capture";
 import type { RunOptions, QueueResult } from "./runner-types";
 
 const logger = createTaggedLogger("queue-runner");
@@ -553,23 +553,28 @@ export class QueueRunner {
     // 4. Support removing all processes for a specific working directory
     //
     // Challenges identified:
-    // - Claude Code's -p mode is single-prompt: process exits after completion
+    // - Claude Code interactive mode keeps its own process lifecycle
     // - No built-in support for receiving multiple prompts via stdin in one process
-    // - Session ID is returned by Claude Code, not externally specifiable
-    // - Would require Claude Code CLI changes to support long-lived interactive mode
+    // - Process pooling would require an interactive control protocol
     //
     // Current --resume approach provides session context continuity (not process reuse).
     // See: design-docs/reference-claude-code-internals.md for CLI options.
-    const args: string[] = ["-p", "--output-format", "stream-json"];
+    const sessionId = shouldStartNewSession
+      ? crypto.randomUUID()
+      : (queue.currentSessionId ?? crypto.randomUUID());
+    const args: string[] = [];
 
     // Append additional CLI arguments from queue configuration
     if (queue.additionalArgs !== undefined && queue.additionalArgs.length > 0) {
+      assertNoPrintModeArgs(queue.additionalArgs, "queue additionalArgs");
       args.push(...queue.additionalArgs);
     }
 
-    // Add --resume flag if continuing session
+    // Add --resume flag if continuing session, otherwise create a known session.
     if (!shouldStartNewSession) {
-      args.push("--resume");
+      args.push("--resume", sessionId);
+    } else {
+      args.push("--session-id", sessionId);
     }
 
     args.push(command.prompt);
@@ -580,14 +585,9 @@ export class QueueRunner {
     });
 
     this.runningProcesses.set(queueId, process);
+    void drainProcessOutput(queueId, process);
 
     try {
-      // Capture session ID from stdout
-      const sessionId = await captureClaudeSessionId(
-        process.stdout,
-        this.container.clock,
-      );
-
       // Update queue's current session ID if new session
       if (shouldStartNewSession) {
         await this.updater.updateQueueSessionId(queueId, sessionId);
@@ -716,5 +716,32 @@ export class QueueRunner {
     }
 
     return command.sessionMode === "new";
+  }
+}
+
+async function drainProcessOutput(
+  queueId: string,
+  process: ManagedProcess,
+): Promise<void> {
+  await Promise.all([
+    drainLines(process.stdout, (line) => {
+      logger.debug(`Queue ${queueId} stdout: ${line}`);
+    }),
+    drainLines(process.stderr, (line) => {
+      logger.warn(`Queue ${queueId} stderr: ${line}`);
+    }),
+  ]);
+}
+
+async function drainLines(
+  lines: AsyncIterable<string>,
+  onLine: (line: string) => void,
+): Promise<void> {
+  try {
+    for await (const line of lines) {
+      onLine(line);
+    }
+  } catch {
+    // The process may close streams during normal termination.
   }
 }

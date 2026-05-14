@@ -60,6 +60,10 @@ describe("verifyClaudeReadiness", () => {
     expect(result.model.available).toBe(true);
     expect(result.model.requested).toBe("claude-sonnet-4-5");
     expect(processManager.getSpawnHistory()[0]?.args).toContain("--model");
+    expect(processManager.getSpawnHistory()[0]?.args).not.toContain("-p");
+    expect(processManager.getSpawnHistory()[0]?.args).not.toContain(
+      "--output-format",
+    );
     expect(processManager.getSpawnHistory()[0]?.args).toContain(
       "claude-sonnet-4-5",
     );

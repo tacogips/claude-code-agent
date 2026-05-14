@@ -187,11 +187,11 @@ function executeCommand(queue: CommandQueue, command: QueueCommand) {
 
   if (shouldStartNewSession) {
     // Start new session
-    spawn('claude', ['-p', '--output-format', 'stream-json', command.prompt]);
-    // Capture new sessionId and update queue.claudeSessionId
+    spawn('claude', ['--session-id', generatedSessionId, command.prompt]);
+    // Store generatedSessionId on queue.claudeSessionId
   } else {
     // Continue existing session
-    spawn('claude', ['-p', '--output-format', 'stream-json', '--resume', command.prompt]);
+    spawn('claude', ['--resume', queue.claudeSessionId, command.prompt]);
   }
 
   // Store sessionId on command for tracking
@@ -202,15 +202,15 @@ function executeCommand(queue: CommandQueue, command: QueueCommand) {
 ### 4.2 First Command (or sessionMode='new')
 
 ```bash
-claude -p --output-format stream-json "{prompt}"
+claude --session-id "{generated-session-id}" "{prompt}"
 ```
 
-Starts new session, captures `sessionId` from output, updates `queue.claudeSessionId`.
+Starts new session with an agent-generated `sessionId`, updates `queue.claudeSessionId`.
 
 ### 4.3 Subsequent Commands (sessionMode='continue')
 
 ```bash
-claude -p --output-format stream-json --resume "{prompt}"
+claude --resume "{session-id}" "{prompt}"
 ```
 
 Continues existing session conversation.
@@ -227,7 +227,7 @@ queue.status = 'paused';
 
 ```typescript
 // Resume with --resume flag (respects current command's sessionMode)
-spawn('claude', ['-p', '--output-format', 'stream-json', '--resume', prompt]);
+spawn('claude', ['--resume', queue.claudeSessionId, prompt]);
 queue.status = 'running';
 ```
 

@@ -190,9 +190,15 @@ describe("QueueRunner", () => {
 
       // First command should NOT have --resume (first command always starts new)
       expect(spawnCalls[0]?.args).not.toContain("--resume");
+      expect(spawnCalls[0]?.args).toContain("--session-id");
+      expect(spawnCalls[0]?.args).not.toContain("-p");
+      expect(spawnCalls[0]?.args).not.toContain("--output-format");
 
       // Second command should NOT have --resume (sessionMode='new')
       expect(spawnCalls[1]?.args).not.toContain("--resume");
+      expect(spawnCalls[1]?.args).toContain("--session-id");
+      expect(spawnCalls[1]?.args).not.toContain("-p");
+      expect(spawnCalls[1]?.args).not.toContain("--output-format");
     });
 
     it("should continue session when sessionMode is 'continue'", async () => {
@@ -233,9 +239,46 @@ describe("QueueRunner", () => {
 
       // First command should NOT have --resume (first command)
       expect(spawnCalls[0]?.args).not.toContain("--resume");
+      expect(spawnCalls[0]?.args).toContain("--session-id");
+      expect(spawnCalls[0]?.args).not.toContain("-p");
+      expect(spawnCalls[0]?.args).not.toContain("--output-format");
 
       // Second command should have --resume (sessionMode='continue')
       expect(spawnCalls[1]?.args).toContain("--resume");
+      expect(spawnCalls[1]?.args).not.toContain("-p");
+      expect(spawnCalls[1]?.args).not.toContain("--output-format");
+    });
+
+    it("should reject print-mode queue additional args before spawn", async () => {
+      const queue = await manager.createQueue({
+        projectPath: "/test/project",
+        name: "Test Queue",
+      });
+
+      await repository.save({
+        ...queue,
+        additionalArgs: ["-p"],
+      });
+
+      await manager.addCommand(queue.id, {
+        prompt: "Command 1",
+        sessionMode: "continue",
+      });
+
+      let spawned = false;
+      container.processManager.spawn = () => {
+        spawned = true;
+        throw new Error("spawn should not be called");
+      };
+
+      const result = await runner.run(queue.id);
+      const updatedQueue = await manager.getQueue(queue.id);
+
+      expect(result.status).toBe("failed");
+      expect(spawned).toBe(false);
+      expect(updatedQueue?.commands[0]?.error).toContain(
+        "queue additionalArgs cannot include",
+      );
     });
 
     it("should emit queue_started and queue_completed events", async () => {
