@@ -23,6 +23,7 @@ import {
 export {
   RunningSession,
   SessionRunner,
+  type ClaudeReasoningEffort,
   type PermissionMode,
   type SessionAttachment,
   type SessionConfig,

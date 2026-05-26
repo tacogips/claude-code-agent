@@ -249,6 +249,18 @@ describe("SubprocessTransport CLI Arguments", () => {
     expect(true).toBe(true);
   });
 
+  test("includes effort when provided", () => {
+    const args = buildSubprocessCommand({
+      model: "claude-opus-4",
+      effort: "high",
+      prompt: "continue",
+    });
+
+    expect(args).toContain("--effort");
+    expect(args[args.indexOf("--effort") + 1]).toBe("high");
+    expect(args.indexOf("--effort")).toBeLessThan(args.indexOf("continue"));
+  });
+
   test("includes max-budget when provided", () => {
     void new SubprocessTransport({
       maxBudgetUsd: 10.5,

@@ -55,6 +55,11 @@ export interface TransportOptions {
   model?: string;
 
   /**
+   * Effort level for the session.
+   */
+  effort?: string;
+
+  /**
    * Maximum budget in USD for the session.
    *
    * Claude Code currently exposes this as a print-mode-only flag, so the
@@ -130,6 +135,10 @@ export function buildSubprocessCommand(options: TransportOptions): string[] {
 
   if (options.model !== undefined) {
     args.push("--model", options.model);
+  }
+
+  if (options.effort !== undefined) {
+    args.push("--effort", options.effort);
   }
 
   if (options.maxTurns !== undefined) {

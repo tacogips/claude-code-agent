@@ -29,6 +29,8 @@ export type PermissionMode =
   | "plan"
   | "bypassPermissions";
 
+export type ClaudeReasoningEffort = "low" | "medium" | "high" | "xhigh" | "max";
+
 /**
  * Options for creating a SessionRunner.
  */
@@ -47,6 +49,8 @@ export interface SessionRunnerOptions {
   permissionMode?: PermissionMode;
   /** Model selection */
   model?: string;
+  /** Reasoning effort level */
+  effort?: ClaudeReasoningEffort;
   /** Budget limit */
   maxBudgetUsd?: number;
   /** Maximum turns */
@@ -702,6 +706,7 @@ export class SessionRunner {
     if (this.options.permissionMode !== undefined)
       options.permissionMode = this.options.permissionMode;
     if (this.options.model !== undefined) options.model = this.options.model;
+    if (this.options.effort !== undefined) options.effort = this.options.effort;
     if (this.options.maxBudgetUsd !== undefined)
       options.maxBudgetUsd = this.options.maxBudgetUsd;
     if (this.options.maxTurns !== undefined)

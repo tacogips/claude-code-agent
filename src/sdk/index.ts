@@ -319,6 +319,7 @@ export {
   type SessionConfig as AgentSessionConfig,
   type SessionAttachment as AgentSessionAttachment,
   type SessionResult,
+  type ClaudeReasoningEffort,
   type PermissionMode,
 } from "./agent";
 
