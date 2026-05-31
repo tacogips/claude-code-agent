@@ -1,0 +1,27 @@
+/**
+ * Auth Command Utilities
+ *
+ * Shared utility functions for auth CLI commands.
+ *
+ * @module cli/commands/auth/utils
+ */
+/**
+ * Format relative time from now
+ *
+ * Converts a Date to a human-readable relative time string.
+ * Handles both future and past dates appropriately.
+ *
+ * @param date - The date to format relative to now
+ * @returns A human-readable relative time string (e.g., "2 days from now", "3 hours ago")
+ *
+ * @example
+ * ```typescript
+ * // Future date
+ * formatRelativeTime(new Date(Date.now() + 86400000)) // "1 day from now"
+ *
+ * // Past date
+ * formatRelativeTime(new Date(Date.now() - 7200000)) // "2 hours ago"
+ * ```
+ */
+export declare function formatRelativeTime(date: Date): string;
+//# sourceMappingURL=utils.d.ts.map

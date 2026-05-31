@@ -1,0 +1,1 @@
+{"version":3,"file":"system-clock.d.ts","sourceRoot":"","sources":["../../src/interfaces/system-clock.ts"],"names":[],"mappings":"AAAA;;;;;;;GAOG;AAEH,OAAO,KAAK,EAAE,KAAK,EAAE,MAAM,SAAS,CAAC;AAErC;;;;;GAKG;AACH,qBAAa,WAAY,YAAW,KAAK;IACvC;;;;OAIG;IACH,GAAG,IAAI,IAAI;IAIX;;;;OAIG;IACH,SAAS,IAAI,MAAM;IAInB;;;;;;;OAOG;IACG,KAAK,CAAC,EAAE,EAAE,MAAM,GAAG,OAAO,CAAC,IAAI,CAAC;CAUvC"}

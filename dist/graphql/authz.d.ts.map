@@ -1,0 +1,1 @@
+{"version":3,"file":"authz.d.ts","sourceRoot":"","sources":["../../src/graphql/authz.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAGH,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,SAAS,CAAC;AAC1C,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,SAAS,CAAC;AAE9C,wBAAgB,iBAAiB,CAC/B,OAAO,EAAE,cAAc,EACvB,UAAU,EAAE,UAAU,GACrB,IAAI,CAQN"}

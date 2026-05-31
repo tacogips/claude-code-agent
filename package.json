@@ -10,7 +10,6 @@
     "claude-code-agent": "./bin/claude-code-agent"
   },
   "files": [
-    "src",
     "dist",
     "bin",
     "README.md"
@@ -22,14 +21,14 @@
       "default": "./dist/main.js"
     },
     "./sdk": {
-      "types": "./src/sdk/index.ts",
-      "import": "./src/sdk/index.ts",
-      "default": "./src/sdk/index.ts"
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js",
+      "default": "./dist/sdk/index.js"
     },
     "./sdk/testing": {
-      "types": "./src/sdk/mock-session-runner.ts",
-      "import": "./src/sdk/mock-session-runner.ts",
-      "default": "./src/sdk/mock-session-runner.ts"
+      "types": "./dist/sdk/mock-session-runner.d.ts",
+      "import": "./dist/sdk/mock-session-runner.js",
+      "default": "./dist/sdk/mock-session-runner.js"
     },
     "./container": {
       "types": "./dist/container.d.ts",
@@ -39,7 +38,7 @@
   },
   "scripts": {
     "dev": "bun run --watch src/main.ts",
-    "build": "bun build src/main.ts src/sdk/index.ts src/sdk/mock-session-runner.ts src/container.ts --outdir dist --target bun && tsc --emitDeclarationOnly",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun build src/main.ts src/sdk/index.ts src/sdk/mock-session-runner.ts src/container.ts --outdir dist --target bun",
     "prepack": "bun run build",
     "start": "bun run src/main.ts",
     "test": "vitest run",
