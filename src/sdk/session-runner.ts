@@ -29,7 +29,7 @@ export type PermissionMode =
   | "plan"
   | "bypassPermissions";
 
-export type ClaudeReasoningEffort = "low" | "medium" | "high" | "xhigh" | "max";
+export type ClaudeReasoningEffort = string;
 
 /**
  * Options for creating a SessionRunner.
@@ -40,9 +40,9 @@ export interface SessionRunnerOptions {
   /** MCP servers (SDK and external) */
   mcpServers?: Record<string, McpServerConfig>;
   /** Tools to allow (pre-approved) */
-  allowedTools?: string[];
+  allowedTools?: readonly string[];
   /** Tools to disallow */
-  disallowedTools?: string[];
+  disallowedTools?: readonly string[];
   /** System prompt customization */
   systemPrompt?: string | { preset: "claude_code"; append?: string };
   /** Permission mode */
@@ -62,7 +62,7 @@ export interface SessionRunnerOptions {
   /** Default timeout for operations in ms */
   defaultTimeout?: number;
   /** Additional CLI arguments to pass to Claude Code (e.g., ['--dangerously-skip-permissions']) */
-  additionalArgs?: string[];
+  additionalArgs?: readonly string[];
 }
 
 /**
@@ -81,7 +81,7 @@ export interface SessionConfig {
   /** Session-level system prompt override */
   systemPrompt?: string | { preset: "claude_code"; append?: string };
   /** Optional file/image attachments for the initial prompt */
-  attachments?: SessionAttachment[];
+  attachments?: readonly SessionAttachment[];
 }
 
 /**
@@ -596,7 +596,7 @@ export class SessionRunner {
     sessionId: string,
     prompt?: string,
     systemPrompt?: string | { preset: "claude_code"; append?: string },
-    attachments?: SessionAttachment[],
+    attachments?: readonly SessionAttachment[],
   ): Promise<RunningSession> {
     const config: SessionConfig = {
       prompt: prompt ?? "",
@@ -713,11 +713,11 @@ export class SessionRunner {
       options.maxTurns = this.options.maxTurns;
     if (systemPrompt !== undefined) options.systemPrompt = systemPrompt;
     if (this.options.allowedTools !== undefined)
-      options.allowedTools = this.options.allowedTools;
+      options.allowedTools = [...this.options.allowedTools];
     if (this.options.disallowedTools !== undefined)
-      options.disallowedTools = this.options.disallowedTools;
+      options.disallowedTools = [...this.options.disallowedTools];
     if (this.options.additionalArgs !== undefined)
-      options.additionalArgs = this.options.additionalArgs;
+      options.additionalArgs = [...this.options.additionalArgs];
 
     return options;
   }
@@ -751,7 +751,7 @@ export class SessionRunner {
    */
   private async resolveSessionAttachments(
     sessionId: string,
-    attachments: SessionAttachment[] | undefined,
+    attachments: readonly SessionAttachment[] | undefined,
     projectPath: string | undefined,
   ): Promise<{ paths: string[]; cleanup: (() => Promise<void>) | undefined }> {
     if (attachments === undefined || attachments.length === 0) {
