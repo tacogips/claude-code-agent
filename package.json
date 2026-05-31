@@ -10,6 +10,7 @@
     "claude-code-agent": "./bin/claude-code-agent"
   },
   "files": [
+    "src",
     "dist",
     "bin",
     "README.md"
