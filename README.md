@@ -341,16 +341,13 @@ query ($param: JSON) {
 
 ### Prerequisites
 
-- Nix with flakes enabled (recommended)
+- mise 2026.8.3 or newer
 - Or: Bun >= 1.0.0, TypeScript
 
 ### Setup
 
 ```bash
-# Using Nix (recommended)
-nix develop
-
-# Or manually
+mise install
 bun install
 ```
 
