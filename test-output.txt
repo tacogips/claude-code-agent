@@ -1,0 +1,487 @@
+$ vitest run
+
+ RUN  v2.1.8 /g/gits/tacogips/claude-code-agent
+
+ ✓ src/polling/state-manager.test.ts (28 tests) 13ms
+ ✓ src/cli/commands/bookmark.test.ts (20 tests) 31ms
+error: required option '--session <id>' not specified
+error: required option '--name <name>' not specified
+ ✓ src/repository/file/bookmark-repository.test.ts (49 tests) 38ms
+ ✓ src/polling/event-parser.test.ts (23 tests) 18ms
+error: missing required argument 'slug'
+error: required option '--project <path>' not specified
+error: missing required argument 'slug'
+
+[cli-group]  WARN  About to delete group: Test Group (group-123)
+
+
+[cli-group]  WARN  This action cannot be undone.
+
+
+[cli-group]  WARN  Use --force to skip this confirmation.
+
+ ✓ src/cli/commands/queue.test.ts (33 tests) 59ms
+
+[cli-group]  WARN  group watch: Not yet implemented
+
+ ✓ src/cli/commands/group.test.ts (20 tests) 73ms
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 1: Paths with Spaces > queue create handles project paths with spaces
+{
+  "id": "queue-123",
+  "name": "Test Queue"
+}
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 1: Paths with Spaces > queue create handles paths with multiple consecutive spaces
+{
+  "id": "queue-456",
+  "name": "Test"
+}
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 2: Paths with Special Characters > queue create handles paths with @ symbol
+{
+  "id": "queue-789",
+  "name": "Test"
+}
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 2: Paths with Special Characters > queue create handles paths with # $ % & characters
+{
+  "id": "queue-special",
+  "name": "Test"
+}
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 2: Paths with Special Characters > queue create handles paths with parentheses and brackets
+{
+  "id": "queue-brackets",
+  "name": "Test"
+}
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 3: Unicode in Names and Descriptions > bookmark add handles emoji in name
+ID              Type     Name                        Session ID 
+--------------  -------  --------------------------  -----------
+bookmark-emoji  session  Important Bookmark 🔖 ⭐ 📌  session-123
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 3: Unicode in Names and Descriptions > bookmark add handles CJK characters in name
+ID            Type     Name                    Session ID 
+------------  -------  ----------------------  -----------
+bookmark-cjk  session  重要なブックマーク 重要书签 중요한 북마크  session-456
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 3: Unicode in Names and Descriptions > group create handles unicode in description
+  Name: Test Group
+  Status: created
+  Created: 2026-01-14T03:02:10.701Z
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 3: Unicode in Names and Descriptions > group create handles mixed emoji and text
+  Name: 🔥 Production Deploy 🚀 v2.0
+  Status: created
+  Created: 2026-01-14T03:02:10.703Z
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 4: Very Long Prompts > queue command add handles prompts exceeding 500 characters
+{
+  "id": "cmd-long",
+  "prompt": "This is a very long prompt that exceeds typical display limits. This is a very long prompt that exceeds typical display limits. This is a very long prompt that exceeds typical display limits. This is a very long prompt that exceeds typical display limits. This is a very long prompt that exceeds typical display limits. This is a very long prompt that exceeds typical display limits. This is a very long prompt that exceeds typical display limits. This is a very long prompt that exceeds typical display limits. Extra text to make it exactly over 500 characters for testing purposes.",
+  "sessionMode": "continue",
+  "status": "pending",
+  "createdAt": "2026-01-14T03:02:10.706Z",
+  "updatedAt": "2026-01-14T03:02:10.706Z"
+}
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 4: Very Long Prompts > queue command add handles prompts with 1000+ characters
+{
+  "id": "cmd-extreme",
+  "prompt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA with some extra text",
+  "sessionMode": "new",
+  "status": "pending",
+  "createdAt": "2026-01-14T03:02:10.709Z",
+  "updatedAt": "2026-01-14T03:02:10.709Z"
+}
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 5: Empty Strings Where Allowed > bookmark add accepts empty description
+ID              Type     Name           Session ID 
+--------------  -------  -------------  -----------
+bookmark-empty  session  Test Bookmark  session-789
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 5: Empty Strings Where Allowed > group create accepts undefined description
+  Name: Test Group
+  Status: created
+  Created: 2026-01-14T03:02:10.715Z
+
+stdout | src/cli/commands/edge-cases.test.ts > Edge Cases - Special Characters and Paths > Scenario 5: Empty Strings Where Allowed > queue create uses slug as name when name not provided
+{
+  "id": "queue-default",
+  "name": "my-queue-slug"
+}
+
+ ✓ src/cli/commands/edge-cases.test.ts (19 tests) 71ms
+ ✓ src/cli/commands/error-handling.test.ts (30 tests) 104ms
+ ❯ src/daemon/auth.test.ts (0 test)
+ ❯ src/sdk/bookmarks/manager.test.ts (0 test)
+
+[file-index]  WARN  Projects directory does not exist: .claude/projects
+
+
+[file-index]  WARN  Projects directory does not exist: /home/taco/.claude/projects
+
+ ❯ src/sdk/file-changes/extractor.test.ts (11 tests | 3 failed) 28ms
+   × FileChangeExtractor > extractFromTranscript > parses Edit tool calls 15ms
+     → expected '/test.ts' to contain 'src/test.ts'
+   × FileChangeExtractor > extractFromTranscript > parses Write tool calls 1ms
+     → expected '/new.ts' to contain 'src/new.ts'
+   × FileChangeExtractor > extractFromSession > builds complete summary with statistics 4ms
+     → expected 2 to be 3 // Object.is equality
+
+[file-index]  WARN  Projects directory does not exist: /home/taco/.claude/projects
+
+
+[file-index]  WARN  Projects directory does not exist: /home/taco/.claude/projects
+
+ ✓ src/sdk/queue/manager.test.ts (42 tests) 49ms
+ ✓ src/sdk/file-changes/index-manager.test.ts (18 tests) 52ms
+ ✓ src/sdk/file-changes/service.test.ts (16 tests) 69ms
+ ✓ src/sdk/group/manager.test.ts (42 tests) 37ms
+ ✓ src/sdk/session-reader.test.ts (70 tests) 53ms
+ ✓ src/repository/file/queue-repository.test.ts (40 tests) 47ms
+ ✓ src/sdk/group/dependency-graph.test.ts (33 tests) 24ms
+ ❯ src/daemon/routes/queues.test.ts (0 test)
+stderr | src/polling/group-monitor.test.ts > GroupMonitor > addSession() > should not add duplicate sessions
+Error monitoring session session-dup-001: File not found: /home/taco/.claude/sessions/claude-duplicate-001/transcript.jsonl
+
+stderr | src/polling/group-monitor.test.ts > GroupMonitor > removeSession() > should stop monitoring a specific session
+Error monitoring session session-remove-001: undefined is not an object (evaluating 'this.eventParser.parseEvents')
+
+ ✓ src/repository/in-memory/bookmark-repository.test.ts (33 tests) 26ms
+ ✓ src/polling/group-monitor.test.ts (12 tests | 2 skipped) 82ms
+ ✓ src/sdk/markdown-parser/parser.test.ts (29 tests) 19ms
+ ❯ src/daemon/routes/bookmarks.test.ts (0 test)
+
+[queue-recovery]  ERROR  Failed to recover queue 20260106-120000-test-queue: Simulated save error
+
+ ✓ src/repository/in-memory/queue-repository.test.ts (34 tests) 26ms
+ ✓ src/sdk/queue/recovery.test.ts (12 tests) 41ms
+ ✓ src/polling/parser.test.ts (34 tests) 18ms
+ ❯ src/daemon/sse.test.ts (0 test)
+ ✓ src/repository/file/group-repository.test.ts (31 tests) 44ms
+
+[queue-runner]  ERROR  Command 0 failed in queue 20260101-000000-test-queue { commandId: 'cmd-JNyDWNwX2HCM', exitCode: 1, durationMs: 0 }
+
+
+[config-generator]  ERROR  Failed to read template file { path: '/nonexistent/template.md',
+  error:
+   { FileNotFoundError: File not found: /nonexistent/template.md
+       at readFile (/g/gits/tacogips/claude-code-agent/src/test/mocks/filesystem.ts:195:7)
+       at readFile (/g/gits/tacogips/claude-code-agent/src/test/mocks/filesystem.ts:191:18)
+       at resolveTemplate (/g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.ts:236:57)
+       at resolveTemplate (/g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.ts:231:5)
+       at /g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.test.ts:198:38
+       at /g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.test.ts:197:56
+       at /g/gits/tacogips/claude-code-agent/node_modules/@vitest/runner/dist/index.js:533:10
+       at /g/gits/tacogips/claude-code-agent/node_modules/@vitest/runner/dist/index.js:532:9
+       at runWithTimeout (/g/gits/tacogips/claude-code-agent/node_modules/@vitest/runner/dist/index.js:39:6)
+       at runTest (/g/gits/tacogips/claude-code-agent/node_modules/@vitest/runner/dist/index.js:1056:16)
+     code: 'FILE_NOT_FOUND',
+     recoverable: false,
+     path: '/nonexistent/template.md' } }
+
+
+[config-generator]  ERROR  Template not found { path: '/home/taco/.config/claude-code-agent/templates/nonexistent-template.md' }
+
+
+[config-generator]  ERROR  Failed to read template file { path: '/nonexistent/template.md',
+  error:
+   { FileNotFoundError: File not found: /nonexistent/template.md
+       at readFile (/g/gits/tacogips/claude-code-agent/src/test/mocks/filesystem.ts:195:7)
+       at readFile (/g/gits/tacogips/claude-code-agent/src/test/mocks/filesystem.ts:191:18)
+       at resolveTemplate (/g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.ts:236:57)
+       at resolveTemplate (/g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.ts:231:5)
+       at generateClaudeMdFile (/g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.ts:284:39)
+       at generateClaudeMdFile (/g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.ts:279:5)
+       at generateSessionConfig (/g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.ts:90:43)
+       at /g/gits/tacogips/claude-code-agent/src/sdk/group/config-generator.test.ts:420:38
+       at /g/gits/tacogips/claude-code-agent/node_modules/@vitest/runner/dist/index.js:533:10
+       at processTicksAndRejections (native)
+     code: 'FILE_NOT_FOUND',
+     recoverable: false,
+     path: '/nonexistent/template.md' } }
+
+ ✓ src/sdk/group/config-generator.test.ts (25 tests) 67ms
+ ❯ src/sdk/credentials/__tests__/reader.test.ts (0 test)
+ ✓ src/sdk/queue/runner.test.ts (11 tests) 72ms
+ ✓ src/sdk/agent.test.ts (50 tests) 26ms
+ ✓ src/polling/output.test.ts (17 tests) 17ms
+ ✓ src/result.test.ts (31 tests) 25ms
+ ✓ src/cli/output.test.ts (27 tests) 26ms
+ ✓ src/repository/in-memory/group-repository.test.ts (24 tests) 16ms
+ ✓ src/sdk/bookmarks/search.test.ts (21 tests) 29ms
+ ✓ src/sdk/jsonl-parser.test.ts (26 tests) 36ms
+ ✓ src/sdk/markdown-parser/detectors.test.ts (37 tests) 20ms
+ ✓ src/sdk/group/progress.test.ts (17 tests) 16ms
+ ✓ src/polling/monitor.test.ts (9 tests) 112ms
+ ✓ src/test/mocks/filesystem.test.ts (33 tests) 34ms
+ ✓ src/cli/commands/session.test.ts (9 tests) 45ms
+ ✓ src/viewer/browser/routes/ws.test.ts (9 tests) 12ms
+
+[events]  ERROR  Error in once handler for session_started: once handler error
+
+
+[events]  ERROR  Error in event handler for session_started: handler error
+
+
+[group-runner]  ERROR  Session s1 failed { error: 'Process exited with code 1' }
+
+
+[group-runner]  ERROR  Session s2 failed { error: 'Process exited with code 1' }
+
+
+[group-runner]  WARN  Error threshold reached (2/2)
+
+ ✓ src/sdk/group/runner.test.ts (19 tests) 471ms
+ ✓ src/sdk/events/emitter.test.ts (18 tests) 61ms
+ ✓ src/repository/in-memory/session-repository.test.ts (21 tests) 23ms
+ ✓ src/test/mocks/process-manager.test.ts (21 tests) 28ms
+ ❯ src/daemon/routes/auth-helper.test.ts (0 test)
+ ✓ src/test/helpers.test.ts (26 tests) 14ms
+ ✓ src/test/mocks/clock.test.ts (20 tests) 11ms
+ ✓ src/types/types.test.ts (18 tests) 14ms
+ ✓ src/sdk/group/events.test.ts (8 tests) 11ms
+ ✓ src/viewer/browser/routes/api.test.ts (20 tests) 111ms
+ ✓ src/cli/commands/daemon.test.ts (9 tests) 21ms
+ ❯ src/daemon/routes/index.test.ts (0 test)
+ ✓ src/sdk/group/types.test.ts (10 tests) 9ms
+ ✓ src/errors.test.ts (10 tests) 20ms
+ ✓ src/container.test.ts (11 tests) 10ms
+ ❯ src/daemon/routes/validation.test.ts (0 test)
+ ✓ src/test/fixtures/fixtures.test.ts (14 tests) 11ms
+ ❯ src/daemon/routes/error-format.test.ts (0 test)
+ ✓ src/lib.test.ts (5 tests) 5ms
+error: Could not resolve: "/favicon.png"
+    at /g/gits/tacogips/claude-code-agent/src/viewer/browser/static/build/index.html
+ ✓ src/daemon/routes/sessions.test.ts (5 tests) 41ms
+ ✓ src/cli/main.test.ts (12 tests) 20ms
+ ✓ src/daemon/server.test.ts (7 tests) 18ms
+ ❯ src/viewer/browser/server.test.ts (19 tests | 2 failed) 193ms
+   × ViewerServer > endpoints > GET / returns placeholder response 50ms
+     → expected false to be true // Object.is equality
+   × ViewerServer > endpoints > GET /api/nonexistent returns 404 8ms
+     → expected 200 to be 404 // Object.is equality
+ ✓ src/daemon/routes/groups.test.ts (5 tests) 195ms
+ ✓ src/polling/watcher.test.ts (13 tests) 1663ms
+   ✓ TranscriptWatcher > watchMultiple > should merge changes from multiple files in order received 318ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 10 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/daemon/auth.test.ts [ src/daemon/auth.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/auth.test.ts:20:1
+     18| import type { ApiToken } from "./types";
+     19| 
+     20| describe("TokenManager", () => {
+       | ^
+     21|   let container: Container;
+     22|   let tokenManager: TokenManager;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+ FAIL  src/daemon/sse.test.ts [ src/daemon/sse.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/sse.test.ts:16:1
+     14| import type { EventFilter } from "./sse-types";
+     15| 
+     16| describe("SSEConnection", () => {
+       | ^
+     17|   let emitter: EventEmitter;
+     18| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  src/daemon/routes/error-format.test.ts [ src/daemon/routes/error-format.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/routes/error-format.test.ts:38:1
+     36| }
+     37| 
+     38| describe("TEST-010: Error Response Format", () => {
+       | ^
+     39|   test("400 Bad Request format", () => {
+     40|     const response = createErrorResponse(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  src/daemon/routes/bookmarks.test.ts [ src/daemon/routes/bookmarks.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/routes/bookmarks.test.ts:103:1
+    101| }
+    102| 
+    103| describe("Bookmark Routes", () => {
+       | ^
+    104|   describe("TEST-007: Bookmark Create", () => {
+    105|     test("Create session-type bookmark - 200", async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  src/daemon/routes/auth-helper.test.ts [ src/daemon/routes/auth-helper.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/routes/auth-helper.test.ts:37:1
+     35| }
+     36| 
+     37| describe("validateAuth", () => {
+       | ^
+     38|   describe("Token Validation (TEST-001)", () => {
+     39|     test("Valid Bearer token - success", async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  src/daemon/routes/queues.test.ts [ src/daemon/routes/queues.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/routes/queues.test.ts:153:1
+    151| }
+    152| 
+    153| describe("Queue Routes", () => {
+       | ^
+    154|   describe("TEST-003: Queue Create", () => {
+    155|     test("Create queue with valid body - 200", async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  src/daemon/routes/index.test.ts [ src/daemon/routes/index.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/routes/index.test.ts:15:1
+     13| } from "./index";
+     14| 
+     15| describe("TEST-012: Route Registration", () => {
+       | ^
+     16|   test("All route modules exported", () => {
+     17|     expect(sessionRoutes).toBeDefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  src/daemon/routes/validation.test.ts [ src/daemon/routes/validation.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/daemon/routes/validation.test.ts:37:1
+     35| }
+     36| 
+     37| describe("TEST-011: Request Body Validation", () => {
+       | ^
+     38|   test("Empty body handling", () => {
+     39|     const body = parseAndValidateBody(null);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  src/sdk/bookmarks/manager.test.ts [ src/sdk/bookmarks/manager.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/sdk/bookmarks/manager.test.ts:20:1
+     18| } from "../../repository/in-memory";
+     19| 
+     20| describe("BookmarkManager", () => {
+       | ^
+     21|   let manager: BookmarkManager;
+     22|   let repository: InMemoryBookmarkRepository;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+
+ FAIL  src/sdk/credentials/__tests__/reader.test.ts [ src/sdk/credentials/__tests__/reader.test.ts ]
+Error: Cannot use describe outside of the test runner. Run "bun test" to run tests.
+ ❯ src/sdk/credentials/__tests__/reader.test.ts:10:1
+      8| import { CredentialReader } from "../reader";
+      9| 
+     10| describe("CredentialReader", () => {
+       | ^
+     11|   let configDir: string;
+     12| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/sdk/file-changes/extractor.test.ts > FileChangeExtractor > extractFromTranscript > parses Edit tool calls
+AssertionError: expected '/test.ts' to contain 'src/test.ts'
+
+Expected: "src/test.ts"
+Received: "/test.ts"
+
+ ❯ src/sdk/file-changes/extractor.test.ts:58:33
+     56|       const changedFile = result.changedFiles[0];
+     57|       expect(changedFile).toBeDefined();
+     58|       expect(changedFile!.path).toContain("src/test.ts");
+       |                                 ^
+     59|       expect(changedFile!.changeCount).toBe(1);
+     60|       expect(changedFile!.toolsUsed).toContain("Edit");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/15]⎯
+
+ FAIL  src/sdk/file-changes/extractor.test.ts > FileChangeExtractor > extractFromTranscript > parses Write tool calls
+AssertionError: expected '/new.ts' to contain 'src/new.ts'
+
+Expected: "src/new.ts"
+Received: "/new.ts"
+
+ ❯ src/sdk/file-changes/extractor.test.ts:99:33
+     97|       const changedFile = result.changedFiles[0];
+     98|       expect(changedFile).toBeDefined();
+     99|       expect(changedFile!.path).toContain("src/new.ts");
+       |                                 ^
+    100|       expect(changedFile!.changeCount).toBe(1);
+    101|       expect(changedFile!.toolsUsed).toContain("Write");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/15]⎯
+
+ FAIL  src/sdk/file-changes/extractor.test.ts > FileChangeExtractor > extractFromSession > builds complete summary with statistics
+AssertionError: expected 2 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 2
+
+ ❯ src/sdk/file-changes/extractor.test.ts:536:41
+    534|       const summary = await extractor.extractFromSession(transcriptPat…
+    535| 
+    536|       expect(summary.totalFilesChanged).toBe(3);
+       |                                         ^
+    537|       expect(summary.totalChanges).toBe(3);
+    538|       expect(summary.files).toHaveLength(3);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/15]⎯
+
+ FAIL  src/viewer/browser/server.test.ts > ViewerServer > endpoints > GET / returns placeholder response
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/viewer/browser/server.test.ts:155:27
+    153|     test("GET / returns placeholder response", async () => {
+    154|       const response = await fetch(`${server.getUrl()}/`);
+    155|       expect(response.ok).toBe(true);
+       |                           ^
+    156| 
+    157|       const data = await response.json();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/15]⎯
+
+ FAIL  src/viewer/browser/server.test.ts > ViewerServer > endpoints > GET /api/nonexistent returns 404
+AssertionError: expected 200 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 200
+
+ ❯ src/viewer/browser/server.test.ts:246:31
+    244|     test("GET /api/nonexistent returns 404", async () => {
+    245|       const response = await fetch(`${server.getUrl()}/api/nonexistent…
+    246|       expect(response.status).toBe(404);
+       |                               ^
+    247| 
+    248|       const data = await response.json();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/15]⎯
+
+ Test Files  12 failed | 57 passed (69)
+      Tests  5 failed | 1309 passed | 2 skipped (1316)
+   Start at  12:02:10
+   Duration  2.72s (transform 4.18s, setup 0ms, collect 13.60s, tests 4.52s, environment 34ms, prepare 4.36s)
+
+error: script "test" exited with code 1
