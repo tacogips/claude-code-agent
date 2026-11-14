@@ -1,0 +1,508 @@
+# claude-code-agent
+
+A TypeScript-based monitoring, visualization, and orchestration tool for Claude Code sessions. Provides external observation of Claude Code task execution, session progress, and agent workflows.
+
+## Overview
+
+claude-code-agent acts as an **intermediary** between external applications and Claude Code:
+
+```
+External App  <-->  claude-code-agent  <-->  Claude Code
+                         |
+                         v
+                    - Generates config (CLAUDE_CONFIG_DIR)
+                    - Executes Claude Code subprocess
+                    - Watches transcripts (Claude Code writes these)
+                    - Emits events (external apps consume)
+                    - Provides read-only query interface
+                    - Writes only its own metadata
+```
+
+**Key Value Proposition**: Non-invasive monitoring that maintains full compatibility without requiring Claude Code modifications.
+
+## Features
+
+| Feature                  | Description                                                   | Status         |
+| ------------------------ | ------------------------------------------------------------- | -------------- |
+| **GraphQL API**          | Command-style GraphQL surface for user-facing daemon access   | In Development |
+| **Real-time Monitoring** | Watch active sessions via fs.watch on transcript files        | In Development |
+| **Session Groups**       | Orchestrate multi-project concurrent execution                | Planned        |
+| **Command Queue**        | Queue prompts for sequential execution                        | Planned        |
+| **Markdown Parsing**     | Parse message content into structured JSON                    | Planned        |
+| **SDK**                  | TypeScript API for programmatic integration                   | In Development |
+| **Daemon Mode**          | GraphQL API for remote execution with authentication          | Planned        |
+| **Bookmarks**            | Mark and retrieve important sessions/messages                 | Planned        |
+
+## Installation
+
+### Using Nix (Recommended)
+
+```bash
+# Install directly
+nix profile install github:tacogips/claude-code-agent
+
+# Or use in a flake
+{
+  inputs.claude-code-agent.url = "github:tacogips/claude-code-agent";
+}
+```
+
+### From Source
+
+**Prerequisites**: Bun >= 1.0.0
+
+```bash
+git clone https://github.com/tacogips/claude-code-agent.git
+cd claude-code-agent
+bun install
+bun run build
+```
+
+## Quick Start
+
+### View Sessions
+
+```bash
+# List sessions for current project
+claude-code-agent session list
+
+# List all sessions
+claude-code-agent session list --all
+
+# Show session details
+claude-code-agent session show <session-id>
+
+# Query the local GraphQL command surface
+claude-code-agent gql 'query { command(name: "session.list") }'
+```
+
+### Run One Prompt With Streaming
+
+```bash
+# Claude Code-like terminal output (default: char stream)
+claude-code-agent session run --prompt "say hello"
+
+# Explicit char stream with per-character pacing
+claude-code-agent session run --prompt "say hello" --stream-granularity char --char-delay-ms 30
+
+# Raw event stream (JSON lines)
+claude-code-agent session run --prompt "say hello" --stream-granularity event
+```
+
+### Session Groups (Multi-Project Orchestration)
+
+```bash
+# Create a session group
+claude-code-agent group create "my-refactor" \
+  --name "Cross-Project Refactor" \
+  --description "Refactor auth across services"
+
+# Add sessions to the group
+claude-code-agent session add my-refactor \
+  --project /path/to/project-a \
+  --prompt "Implement auth module"
+
+claude-code-agent session add my-refactor \
+  --project /path/to/project-b \
+  --prompt "Update shared library" \
+  --depends-on <previous-session-id>
+
+# Run the group
+claude-code-agent group run my-refactor --concurrent 3
+
+# Watch progress
+claude-code-agent group watch my-refactor
+```
+
+### Command Queue (Sequential Prompts)
+
+```bash
+# Create a queue
+claude-code-agent queue create "feature-impl" \
+  --project /path/to/project \
+  --name "Implement New Feature"
+
+# Add commands
+claude-code-agent queue command add feature-impl \
+  --prompt "Analyze current implementation"
+
+claude-code-agent queue command add feature-impl \
+  --prompt "Refactor the module"
+
+claude-code-agent queue command add feature-impl \
+  --prompt "Set up CI/CD" \
+  --session-mode new  # Start new session for this command
+
+# Run the queue
+claude-code-agent queue run feature-impl
+
+# Pause/resume/stop
+claude-code-agent queue pause feature-impl
+claude-code-agent queue resume feature-impl
+claude-code-agent queue stop feature-impl
+```
+
+### Daemon Mode (Remote Execution)
+
+```bash
+# Start daemon with authentication
+claude-code-agent daemon start \
+  --port 8443 \
+  --auth-token-file ~/.config/claude-code-agent/api-tokens.json
+
+# Create API token
+claude-code-agent token create \
+  --name "CI/CD Token" \
+  --permissions session:create,session:read
+
+# Use the API
+curl -X POST https://localhost:8443/graphql \
+  -H "Authorization: Bearer cca_abc123xyz" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"query ($param: JSON) { command(name: \"session.list\", params: $param) }","variables":{"param":{"projectPath":"/path/to/project"}}}'
+```
+
+## SDK Usage
+
+```typescript
+import { ClaudeCodeAgent, SessionGroup } from "claude-code-agent";
+
+const agent = new ClaudeCodeAgent({
+  configDir: "~/.config/claude-code-agent",
+  dataDir: "~/.local/claude-code-agent",
+});
+
+// Run a single session
+const session = await agent.runSession({
+  projectPath: "/path/to/project",
+  prompt: "Implement feature X",
+  onProgress: (event) => console.log(event),
+});
+
+// Create and run a session group
+const group = await agent.createGroup({
+  name: "My Task",
+  maxConcurrent: 3,
+});
+
+await group.addSession({
+  projectPath: "/path/to/project-a",
+  prompt: "Task A",
+});
+
+await group.run({
+  onSessionComplete: (session) => {
+    /* ... */
+  },
+  onGroupComplete: (stats) => {
+    /* ... */
+  },
+});
+
+// Create and run a command queue
+const queue = await agent.createQueue({
+  name: "Feature Implementation",
+  projectPath: "/path/to/project",
+});
+
+await queue.addCommand({ prompt: "Analyze codebase" });
+await queue.addCommand({ prompt: "Implement feature" });
+await queue.addCommand({ prompt: "Write tests" });
+
+await queue.run({
+  onCommandStart: (cmd) => console.log(`Starting: ${cmd.prompt}`),
+  onCommandComplete: (cmd) => console.log(`Done: ${cmd.prompt}`),
+});
+```
+
+### SDK Attachment Example (Image/Binary)
+
+```typescript
+import { SessionRunner } from "claude-code-agent/sdk";
+
+const runner = new SessionRunner({ cwd: process.cwd() });
+
+const session = await runner.startSession({
+  prompt: "Compare attached UI screenshots and list visual regressions.",
+  attachments: [
+    { path: "./screenshots/before.png", mimeType: "image/png" },
+    { path: "./screenshots/after.png", mimeType: "image/png" },
+    {
+      fileName: "notes.txt",
+      encoding: "utf8",
+      content: "Focus on header spacing and sidebar contrast.",
+    },
+  ],
+});
+
+for await (const message of session.messages()) {
+  console.log(message);
+}
+```
+
+### Tool Version Introspection
+
+Use SDK API to retrieve structured runtime tool versions:
+
+```typescript
+import { SdkManager } from "claude-code-agent/sdk";
+import { createProductionContainer } from "claude-code-agent/container";
+
+const agent = await SdkManager.create(createProductionContainer());
+const versions = await agent.getToolVersions();
+
+console.log(versions.claude.version); // e.g. "1.2.3"
+console.log(versions.claude.error); // null if available
+```
+
+CLI also supports version introspection:
+
+```bash
+claude-code-agent version
+claude-code-agent version --json
+```
+
+### Transcript Search API
+
+`SessionReader` now supports full-text search across transcript content:
+
+```typescript
+import { SessionReader } from "claude-code-agent/sdk";
+
+const reader = new SessionReader(container);
+
+const single = await reader.searchTranscript(
+  "88487b4c-f3f6-4a49-b59b-d1d4a098425f",
+  "もう一度",
+  {
+    role: "assistant",
+    caseSensitive: false,
+    maxMatches: 10,
+    maxBytes: 2_000_000,
+    timeoutMs: 100,
+  },
+);
+
+const many = await reader.searchSessions("authentication", {
+  projectPath: "/home/me/.claude/projects",
+  workingDirectoryPrefix: "/home/me/workspace", // optional pre-scan scope
+  projectPathPrefix: "/home/me/workspace", // alias
+  source: "uuid", // "all" | "uuid" | "legacy"
+  role: "both",
+  offset: 0,
+  limit: 20,
+  maxSessions: 500,
+  timeoutMs: 50,
+});
+```
+
+Performance and truncation behavior:
+
+- Search scans full transcript lines by default (not only first page/chunk).
+- Default `maxMatches` is `1` for early stop and lower latency.
+- `truncated: true` indicates early stop by `maxMatches`, `maxBytes`, `maxSessions`, or timeout.
+- `timedOut: true` indicates timeout-based truncation.
+- `role` filter supports `user`, `assistant`, or `both`.
+- Unicode/multilingual queries (for example, `もう一度`) are supported.
+
+## CLI Command Reference
+
+### Entity Commands
+
+```bash
+claude-code-agent <entity> <action> [options]
+```
+
+| Entity          | Actions                                                                          |
+| --------------- | -------------------------------------------------------------------------------- |
+| `session`       | `list`, `show`, `add`, `watch`, `pause`, `resume`                                |
+| `group`         | `create`, `list`, `show`, `run`, `watch`, `pause`, `resume`, `archive`, `delete` |
+| `queue`         | `create`, `list`, `show`, `run`, `pause`, `resume`, `stop`, `delete`             |
+| `queue command` | `add`, `edit`, `remove`, `move`, `toggle-mode`                                   |
+| `bookmark`      | `add`, `list`, `show`, `search`, `delete`                                        |
+| `daemon`        | `start`, `stop`, `status`                                                        |
+| `gql`           | Execute GraphQL documents or shorthand commands                                  |
+| `token`         | `create`, `list`, `revoke`, `rotate`                                             |
+
+## GraphQL API
+
+User-facing daemon traffic is exposed through `/graphql` using a command-style schema.
+
+```graphql
+query ($param: JSON) {
+  command(name: "session.list", params: $param)
+}
+```
+
+## Development
+
+### Prerequisites
+
+- Nix with flakes enabled (recommended)
+- Or: Bun >= 1.0.0, TypeScript
+
+### Setup
+
+```bash
+# Using Nix (recommended)
+nix develop
+
+# Or manually
+bun install
+```
+
+### Commands
+
+```bash
+bun run dev          # Run with watch mode
+bun run build        # Build for production
+bun run test         # Run tests
+bun run test:watch   # Run tests in watch mode
+bun run typecheck    # Type check
+bun run format       # Format code
+```
+
+### Project Structure
+
+```
+src/
++-- cli/                # CLI entry point (thin wrapper around SDK)
++-- sdk/                # Core SDK (TypeScript API)
++-- polling/            # Real-time monitoring (file watcher)
++-- repository/         # Data access layer
++-- daemon/             # GraphQL daemon for remote execution
++-- interfaces/         # Abstractions for testability
+```
+
+## Technology Stack
+
+| Component      | Technology               |
+| -------------- | ------------------------ |
+| Runtime        | Bun                      |
+| Language       | TypeScript (strict mode) |
+| HTTP Server    | Elysia                   |
+| GraphQL API    | graphql-yoga             |
+| Testing        | Vitest                   |
+| Packaging      | Nix flakes               |
+
+---
+
+## For AI Agents
+
+This section provides structured information optimized for AI agents working with this codebase.
+
+### Project Context
+
+**Purpose**: claude-code-agent is a monitoring and orchestration layer for Claude Code. It does NOT modify Claude Code behavior directly but provides observation, configuration generation, and execution management.
+
+**Key Constraints**:
+
+- Does NOT persist session content to databases (external apps handle this)
+- Does NOT modify `~/.claude` directly
+- Does NOT store auth tokens (only provides override capability)
+- Reads transcript files written by Claude Code at `~/.claude/projects/`
+
+### Architecture Patterns
+
+1. **SDK-First Design**: CLI is a thin wrapper around SDK. All functionality is accessible programmatically.
+
+2. **Event-Driven**: Uses typed events for session lifecycle, progress, and group coordination.
+
+3. **Clean Architecture**: Repository pattern for data access with testable abstractions.
+
+4. **Non-Invasive Monitoring**: Uses file watching on Claude Code's transcript files rather than modifying Claude Code.
+
+### Key Abstractions
+
+```typescript
+// Core interfaces for testability
+interface FileSystem {
+  /* file operations */
+}
+interface ProcessManager {
+  /* process spawning */
+}
+interface Clock {
+  /* time operations */
+}
+
+// Main SDK classes
+class ClaudeCodeAgent {
+  /* orchestration entry point */
+}
+class SessionGroup {
+  /* multi-session management */
+}
+class CommandQueue {
+  /* sequential prompt execution */
+}
+```
+
+### Event Types
+
+```typescript
+type SessionEvent =
+  | { type: "session_created"; sessionId: string; groupId: string }
+  | { type: "session_started"; sessionId: string; timestamp: string }
+  | { type: "session_completed"; sessionId: string; cost: number }
+  | { type: "message_added"; sessionId: string; message: Message }
+  | { type: "tool_executed"; sessionId: string; toolName: string };
+// ... more events
+```
+
+### Directory Conventions
+
+| Path                           | Purpose                                  |
+| ------------------------------ | ---------------------------------------- |
+| `~/.config/claude-code-agent/` | User configuration, templates            |
+| `~/.local/claude-code-agent/`  | Runtime data, session groups, queues     |
+| `~/.claude/projects/`          | Claude Code transcript files (read-only) |
+
+### Design Documentation
+
+For detailed specifications, see `design-docs/`:
+
+| Document                 | Description                           |
+| ------------------------ | ------------------------------------- |
+| `DESIGN.md`              | Main architecture overview            |
+| `spec-session-groups.md` | Session Group lifecycle and execution |
+| `spec-command-queue.md`  | Command Queue for sequential prompts  |
+| `spec-sdk-api.md`        | SDK, daemon, REST API, authentication |
+| `spec-viewers.md`        | Browser and TUI viewer specifications |
+| `DECISIONS.md`           | All design decisions (Q1-Q36)         |
+
+### Implementation Plans
+
+Implementation plans are in `impl-plans/` directory. To execute tasks:
+
+```bash
+# Auto-execute all parallelizable tasks
+/impl-exec-auto <plan-name>
+
+# Execute specific tasks
+/impl-exec-specific <plan-name> TASK-001 TASK-002
+```
+
+### TypeScript Conventions
+
+This project uses maximum TypeScript strictness. Key conventions:
+
+- Use `neverthrow` Result types for error handling
+- Use `nanoid` for ID generation
+- Use `consola` for logging
+- Prefer explicit types over inference for public APIs
+- All async operations must handle errors explicitly
+
+### Testing
+
+```bash
+bun run test           # Run all tests
+bun run test:watch     # Watch mode
+bun run test:ui        # Visual test UI
+```
+
+Tests use Vitest with mock implementations of system interfaces.
+
+## License
+
+MIT
