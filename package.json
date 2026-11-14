@@ -1,0 +1,34 @@
+{
+  "name": "claude-code-peeper",
+  "version": "0.1.0",
+  "description": "peeper",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "bun run typecheck",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "clean": "rm -rf dist"
+  },
+  "homepage": "https://github.com/user/repo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/repo"
+  },
+
+  "license": "MIT",
+  "trustedDependencies": [],
+  "devDependencies": {
+    "@types/bun": "1.1.14",
+    "typescript": "5.7.2",
+    "prettier": "3.4.2"
+  }
+}
