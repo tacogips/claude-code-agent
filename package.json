@@ -1,0 +1,80 @@
+{
+  "name": "claude-code-agent",
+  "version": "0.1.0",
+  "description": "Monitoring, visualization, and orchestration for Claude Code sessions",
+  "type": "module",
+  "main": "dist/main.js",
+  "module": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "bin": {
+    "claude-code-agent": "./bin/claude-code-agent"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js",
+      "default": "./dist/main.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js",
+      "default": "./dist/sdk/index.js"
+    },
+    "./sdk/testing": {
+      "types": "./dist/sdk/mock-session-runner.d.ts",
+      "import": "./dist/sdk/mock-session-runner.js",
+      "default": "./dist/sdk/mock-session-runner.js"
+    },
+    "./container": {
+      "types": "./dist/container.d.ts",
+      "import": "./dist/container.js",
+      "default": "./dist/container.js"
+    }
+  },
+  "scripts": {
+    "dev": "bun run --watch src/main.ts",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun build src/main.ts src/sdk/index.ts src/sdk/mock-session-runner.ts src/container.ts --outdir dist --target bun",
+    "prepack": "bun run build",
+    "start": "bun run src/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "typecheck": "tsc --noEmit",
+    "lint": "bun run typecheck",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "clean": "rm -rf dist"
+  },
+  "homepage": "https://github.com/tacogips/claude-code-agent",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tacogips/claude-code-agent.git"
+  },
+  "license": "MIT",
+  "trustedDependencies": [],
+  "devDependencies": {
+    "@types/bun": "1.1.14",
+    "@vitest/ui": "2.1.8",
+    "prettier": "3.4.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  },
+  "dependencies": {
+    "commander": "14.0.2",
+    "consola": "3.4.2",
+    "graphql": "16.13.1",
+    "minimatch": "10.1.1",
+    "mitt": "3.0.1",
+    "mustache": "4.2.0",
+    "@types/mustache": "4.2.6",
+    "nanoid": "5.1.6",
+    "neverthrow": "8.2.0",
+    "perfect-debounce": "2.0.0",
+    "slugify": "1.6.6"
+  }
+}
